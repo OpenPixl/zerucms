@@ -58,24 +58,19 @@ volumes:
 ```
 
 Rien à faire de plus : le dossier est créé au premier compte. Il **survit
-aux redéploiements** (`./deploy.sh`) et n'est jamais envoyé sur git.
+aux mises à jour** (`./update.sh`) et n'est jamais envoyé sur git.
 
 > 💾 **Sauvegardez `data/`** avec vos autres sauvegardes du VPS : c'est la
 > seule donnée de l'Espace Admin. Perdre ce dossier = recréer les comptes.
 
 ### 3. Déployer
 
-Comme d'habitude :
+Premier démarrage : voir [deploiement-docker.md](deploiement-docker.md#4-première-installation-sur-le-vps-ovh)
+(`docker compose up -d`). Ensuite, les nouvelles versions passent par
+`./update.sh` ([mise-a-jour.md](mise-a-jour.md)) — jamais de `git pull`.
 
-```bash
-cd /opt/numerik2026
-git pull
-./deploy.sh
-```
-
-> Si le site tournait déjà et que seul le `.env` a changé, `./deploy.sh` ne
-> recrée pas forcément le conteneur (image identique) : le nouveau secret ne
-> serait pas lu. Dans ce cas :
+> Si seul le `.env` a changé, il suffit de recréer le conteneur pour que le
+> nouveau secret soit lu :
 >
 > ```bash
 > DOCKER_CONFIG=$PWD/.dockercfg docker compose up -d --force-recreate
@@ -84,7 +79,7 @@ git pull
 ### 4. Créer le super admin et le premier compte administrateur
 
 Ces comptes se créent en ligne de commande, avec le script `./auth-user.sh`
-(à côté de `deploy.sh`) ; ensuite, tout se fait depuis le site.
+(à côté de `update.sh`) ; ensuite, tout se fait depuis le site.
 
 D'abord le **super admin** : compte technique (rôle `superadmin` seul), qui a
 tous les droits et est **le seul à voir le journal des modifications**. Il
@@ -117,7 +112,7 @@ La commande affiche un **mot de passe provisoire** (ex. `k7mp-q3zt-h9wx`),
 [Changer mon mot de passe](#changer-mon-mot-de-passe)).
 
 > `./auth-user.sh` lance le CLI **dans le conteneur** (`docker compose exec`)
-> en posant `DOCKER_CONFIG` comme `deploy.sh` (`/root` est en lecture seule
+> en posant `DOCKER_CONFIG` comme `update.sh` (`/root` est en lecture seule
 > sur le VPS). Ne lancez pas `node dist/cli/auth-user.mjs` directement sur le
 > VPS : le `dist/` du VPS n'est pas celui de l'image.
 
@@ -1017,7 +1012,7 @@ déploiement. Détail : [src/content/README.md](../src/content/README.md).
 | « Requête refusée » | Requête venant d'un autre site, ou domaine non prévu | Vérifier `SITE_URL` dans le `.env` (puis reconstruire) et l'en-tête `X-Forwarded-Host` de nginx |
 | Comptes disparus après un déploiement | Volume `./data` non monté | Vérifier `volumes:` dans `docker-compose.yml`, restaurer la sauvegarde de `data/` |
 | `Cannot find package 'yaml'` en lançant `auth-user.mjs` | `node dist/cli/auth-user.mjs` lancé **sur le VPS, hors du conteneur** (chemin `/opt/…`) | Utiliser `./auth-user.sh …` |
-| `docker` : erreur de permission / config en lecture seule | `DOCKER_CONFIG` non posé (`/root` en lecture seule) | Passer par `./auth-user.sh` ou `./deploy.sh`, ou préfixer par `DOCKER_CONFIG=$PWD/.dockercfg` |
+| `docker` : erreur de permission / config en lecture seule | `DOCKER_CONFIG` non posé (`/root` en lecture seule) | Passer par `./auth-user.sh` ou `./update.sh`, ou préfixer par `DOCKER_CONFIG=$PWD/.dockercfg` |
 | Plus aucun admin ne peut se connecter | — | Sur le VPS : `./auth-user.sh reset <login>` |
 | Modification enregistrée mais absente du site | Enregistrée **sans publier** (bouton ambre **À publier (N)** dans la barre) | **Publier les modifications** depuis ce bouton ou l'encadré en tête du module |
 | Le bouton **À publier** a disparu sans qu'on ait publié | Le site a été reconstruit entre-temps (autre publication, redémarrage, `./update.sh`) : le lot est en ligne | Rien à faire |

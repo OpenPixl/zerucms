@@ -215,11 +215,11 @@ un moment calme (aucune publication en cours).
 
 ### Passer à ce système (site déjà installé)
 
-- **Docker, installé avec `git clone` + `./deploy.sh`** (cas du premier
-  site) : ajouter `SITE_URL` au `.env`, sauvegarder `src/content/` (voir
-  l'avertissement plus haut), `git pull`, puis `./update.sh` une
-  fois une version publiée. `./deploy.sh` reste utilisable par le mainteneur
-  (construction locale depuis les sources).
+- **Docker, installé avec `git clone` + l'ancien `./deploy.sh`** (cas du
+  premier site ; script retiré du modèle) : ajouter `SITE_URL` au `.env`,
+  sauvegarder `src/content/` (voir l'avertissement plus haut), `git pull`,
+  puis `./update.sh` une fois une version publiée. Ensuite, plus jamais de
+  `git pull` ni de `docker compose up --build`.
 - **Node seul** : ajouter `SITE_URL` au `.env`, remplacer `npm run build &&
   npm start` par `npm start` dans le gestionnaire de process.
 

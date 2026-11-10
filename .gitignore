@@ -26,7 +26,7 @@ pnpm-debug.log*
 # obsidian vault settings (docs/)
 .obsidian/
 
-# Config Docker CLI locale (deploy.sh, VPS avec /root en lecture seule)
+# Config Docker CLI locale (update.sh, auth-user.sh : VPS avec /root en lecture seule)
 .dockercfg/
 
 # Comptes de l'espace bénévoles (auth à plat, cf. docs/auth.md) — données, jamais versionnées

@@ -128,3 +128,19 @@ server.listen(port, host, () => {
 		log('mode maintenance terminé.');
 	}
 });
+
+// Arrêt demandé (docker stop, update.sh, systemd, Ctrl-C) : on termine les
+// requêtes en cours puis on sort. Sans ce gestionnaire, Node lancé en PID 1
+// (conteneur sans `init`) ignore SIGTERM et Docker attend 10 s avant de le tuer.
+let arretEnCours = false;
+function arreter(signal) {
+	if (arretEnCours) return;
+	arretEnCours = true;
+	log(`${signal} reçu : arrêt du serveur.`);
+	server.close(() => process.exit(0));
+	server.closeIdleConnections();
+	// Requête qui traîne (flux, client lent) : on n'attend pas plus de 5 s.
+	setTimeout(() => process.exit(0), 5000).unref();
+}
+process.on('SIGTERM', () => arreter('SIGTERM'));
+process.on('SIGINT', () => arreter('SIGINT'));

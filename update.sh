@@ -70,7 +70,8 @@ if [ "$mode" = node ]; then
 fi
 
 # ── Docker ───────────────────────────────────────────────────────────────────
-# Certains VPS montent /root en lecture seule (cf. deploy.sh).
+# Certains VPS montent /root en lecture seule : le CLI Docker a besoin d'un
+# dossier de config inscriptible (aussi dans auth-user.sh, sauvegarde.sh…).
 export DOCKER_CONFIG="${DOCKER_CONFIG:-$(pwd)/.dockercfg}"
 mkdir -p "$DOCKER_CONFIG" .releases
 
