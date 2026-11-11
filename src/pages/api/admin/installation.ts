@@ -24,13 +24,21 @@ export const GET: APIRoute = withErrors(async ({ url }) =>
 );
 
 export const POST: APIRoute = withErrors(async ({ request, locals }) => {
-	const availability = await canPublish();
-	if (!availability.ok) return jsonError(availability.reason!, 503);
-	if (isPublishing()) return jsonError('Une publication est en cours, réessayez dans une minute.', 409);
-
 	const user = locals.user!;
+	// Tout refus est consigné (terminal + journal) : sans cela, une installation
+	// refusée ne laisse aucune trace sur le serveur.
+	const refus = async (message: string, status: number) => {
+		console.warn(`[installation] refusée (${status}) : ${message}`);
+		await logEvent({ by: user, action: 'installation', label: 'Site', outcome: 'echec', message }).catch(() => {});
+		return jsonError(message, status);
+	};
+	const availability = await canPublish();
+	if (!availability.ok) return refus(availability.reason!, 503);
+	if (isPublishing()) return refus('Une publication est en cours, réessayez dans une minute.', 409);
+
 	const resultat = await installer((await readJson(request)) ?? {}, user);
-	if (resultat.errors.length || !('applied' in resultat)) return jsonError(resultat.errors.join(' '), 422);
+	if (resultat.errors.length || !('applied' in resultat)) return refus(resultat.errors.join(' '), 422);
+	console.log(`[installation] lancée par ${user.login}.`);
 
 	const par = user.fullname || user.login;
 	await logEvent({

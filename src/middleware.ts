@@ -55,7 +55,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
 	const path = context.url.pathname.replace(/\/+$/, '') || '/';
 	const isAuthApi = startsWithSegment(path, '/api/auth') || startsWithSegment(path, '/api/admin');
-	if (isAuthApi && !isSameOrigin(context)) return jsonError('Requête refusée.', 403);
+	if (isAuthApi && !isSameOrigin(context)) {
+		// Souvent : site ouvert à une autre adresse que SITE_URL (IP, 127.0.0.1…).
+		console.warn(`[admin] requête refusée (origine) : ${context.request.method} ${path} depuis ${context.request.headers.get('origin') ?? context.request.headers.get('sec-fetch-site') ?? 'origine inconnue'}`);
+		return jsonError('Requête refusée.', 403);
+	}
 
 	const user = await readSession(context.cookies);
 	context.locals.user = user;
