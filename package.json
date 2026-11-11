@@ -1,7 +1,7 @@
 {
   "name": "zerucms",
   "type": "module",
-  "version": "0.5.10",
+  "version": "0.5.11",
   "engines": {
     "node": ">=22.12.0"
   },
