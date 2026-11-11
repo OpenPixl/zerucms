@@ -110,7 +110,7 @@ En ligne de commande, la même rotation : `./sauvegarde.sh "motif" --garder 5`.
 1. Ancien serveur : `./sauvegarde.sh "demenagement"`, puis récupérer
    l'archive (`scp serveur:/opt/numerik2026/data/sauvegardes/<nom>.zip .`) et
    le `.env`.
-2. Nouveau serveur : installer le site ([deploiement-docker.md](deploiement-docker.md)),
+2. Nouveau serveur : installer le site ([deploiement.md](deploiement.md)),
    y copier le `.env`, puis `./restauration.sh ~/<nom>.zip` — ou, connecté·e
    en super admin, **glisser l'archive** dans le module « Sauvegardes » :
    elle est restaurée aussitôt (le contenu de démonstration n'est pas

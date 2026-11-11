@@ -19,6 +19,9 @@
  *    levée depuis le module. Ce n'est pas une protection : le contenu reste
  *    public, seul l'affichage est suspendu.
  *
+ * Site neuf sans aucun compte : la même porte sert l'écran « Bienvenue »
+ * (création du premier compte, `scripts/bienvenue.mjs`).
+ *
  * La décision (`reponseMaintenance`) est partagée par la porte placée devant
  * le serveur de production (`porteMaintenance`, `scripts/start.mjs`) et par
  * `src/integrations/maintenance.ts` en développement (serveur Vite : le
@@ -28,6 +31,7 @@
 
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { aucunCompte, pageBienvenue } from './bienvenue.mjs';
 
 /**
  * @typedef {{ etat: 'en-cours' | 'redemarrage', motif: string, etape: string, progression: number, debut: string,
@@ -244,6 +248,14 @@ export function reponseMaintenance({ url, method = 'GET', cookie = '', dataDir, 
 	}
 	if (LIBRES.test(url) || (method !== 'GET' && method !== 'HEAD')) return null;
 	const m = lireMaintenance(dataDir);
+	// Site neuf sans aucun compte : écran « Bienvenue » (création du premier compte, scripts/bienvenue.mjs).
+	if (!m && aucunCompte(dataDir)) {
+		return {
+			status: 200,
+			headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' },
+			body: method === 'HEAD' ? undefined : pageBienvenue(),
+		};
+	}
 	if (!m) return null;
 	if (m.manuel && cookie.split(/;\s*/).includes(COOKIE_CONNECTE)) return null;
 	return {

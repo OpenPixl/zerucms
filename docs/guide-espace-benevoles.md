@@ -17,7 +17,7 @@ Détail technique (fichiers, routes, sécurité) : [auth.md](auth.md).
 ## Partie 1 — Mise en service
 
 À faire **une fois**, sur le VPS, en plus de l'installation décrite dans
-[deploiement-docker.md](deploiement-docker.md).
+[deploiement.md](deploiement.md).
 
 ### 1. Secret de session (facultatif)
 
@@ -65,8 +65,8 @@ aux mises à jour** (`./update.sh`) et n'est jamais envoyé sur git.
 
 ### 3. Déployer
 
-Premier démarrage : voir [deploiement-docker.md](deploiement-docker.md#4-première-installation-sur-le-vps-ovh)
-(`docker compose up -d`). Ensuite, les nouvelles versions passent par
+Premier démarrage : voir [deploiement.md](deploiement.md)
+(Docker ou Node.js). Ensuite, les nouvelles versions passent par
 `./update.sh` ([mise-a-jour.md](mise-a-jour.md)) — jamais de `git pull`.
 
 > Si seul le `.env` a changé, il suffit de recréer le conteneur pour que le
@@ -78,10 +78,14 @@ Premier démarrage : voir [deploiement-docker.md](deploiement-docker.md#4-premi�
 
 ### 4. Créer le super admin et le premier compte administrateur
 
-Ces comptes se créent en ligne de commande, avec le script `./auth-user.sh`
-(à côté de `update.sh`) ; ensuite, tout se fait depuis le site.
+Sur un site neuf, le premier compte se crée **dans le navigateur** : tant
+qu'aucun compte n'existe, le site affiche l'écran « Bienvenue » qui crée le
+super admin avec le mot de passe de votre choix, puis ouvre l'assistant
+d'installation ([deploiement.md](deploiement.md#partie-d--paramétrer-le-site-dans-le-navigateur)).
+Le script `./auth-user.sh` (à côté de `update.sh`) reste disponible pour le
+faire en ligne de commande ou dépanner un compte.
 
-D'abord le **super admin** : compte technique (rôle `superadmin` seul), qui a
+Le **super admin** : compte technique (rôle `superadmin` seul), qui a
 tous les droits et est **le seul à voir le journal des modifications**. Il
 n'apparaît pas dans le module « Comptes » et ne peut y être ni modifié ni
 supprimé. Son mot de passe est provisoire : il **doit être changé à la
@@ -179,7 +183,7 @@ ne le voit jamais.
 
 ### Reverse proxy (nginx)
 
-La configuration nginx de [deploiement-docker.md](deploiement-docker.md#5-reverse-proxy--https-nginx)
+La configuration nginx de [deploiement.md](deploiement.md#c3-configurer-nginx)
 convient telle quelle. Il est conseillé d'y ajouter une ligne :
 
 ```nginx

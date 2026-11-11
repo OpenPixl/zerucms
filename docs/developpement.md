@@ -19,6 +19,19 @@
 
 En session avec l'assistant IA, le serveur de dev tourne en tâche de fond (`astro dev --background`, `astro dev stop`, `astro dev status`, `astro dev logs` — voir `CLAUDE.md` à la racine).
 
+### Tester l'image Docker en local
+
+Le `docker-compose.yml` ne construit jamais l'image (il utilise celle
+publiée sur ghcr.io). Pour essayer une image construite depuis les sources,
+avec un `.env` rempli :
+
+```bash
+docker build -t ghcr.io/openpixl/zerucms:local .
+NUMERIK_VERSION=local docker compose up        # → http://localhost:4321
+```
+
+Ctrl+C pour arrêter, `docker compose down` pour nettoyer.
+
 ## Arborescence détaillée
 
 ```text
@@ -146,6 +159,7 @@ Le champ `site` sert à générer des URLs absolues correctes dans le flux RSS (
 - [docs/activites.md](activites.md) — alimenter les activités
 - [docs/annonces.md](annonces.md) — bannière d'annonces temporaires (au-dessus de la navbar)
 - [docs/pages.md](pages.md) — créer des pages
+- [docs/deploiement.md](deploiement.md) — mettre le site en ligne (Docker ou Node.js)
 - [docs/api.md](api.md) — routes serveur et intégration Grist (bulletin d'adhésion)
 - [docs/theme.md](theme.md) — couleurs, polices, logo
 - [docs/composants.md](composants.md) — composants disponibles
