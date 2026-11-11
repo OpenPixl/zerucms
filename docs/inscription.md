@@ -194,7 +194,7 @@ forms:
   [composants.md](composants.md#forms)).
 
 Changer ce réglage demande une reconstruction du site (voir
-[deploiement-docker.md](deploiement-docker.md)).
+[deploiement.md](deploiement.md)).
 
 ## Gérer les inscriptions (côté association)
 

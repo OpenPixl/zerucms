@@ -77,52 +77,14 @@ Sinon, le module « Actualités » l'indique et le bouton d'ajout est désactiv�
 > production. `PUBLISH_RESTART=false` désactive tout redémarrage (le nouveau
 > contenu n'est alors servi qu'au prochain redémarrage manuel).
 
-## Installation « Node seul » (cas de base)
+## Installation (Docker ou Node.js)
 
-Sur un serveur avec Node 22+, sans Docker ni git :
-
-```bash
-# Récupérer le projet (archive des sources) dans /srv/numerik, puis :
-cd /srv/numerik
-npm ci
-cp .env.example .env        # renseigner AUTH_SECRET, Grist… (docs/api.md)
-npm run build
-```
-
-Puis le faire tourner sous un gestionnaire, par exemple **PM2** :
-
-```bash
-pm2 start npm --name numerik -- start     # relancé automatiquement à chaque arrêt
-pm2 save && pm2 startup
-```
-
-ou **systemd** (`/etc/systemd/system/numerik.service`) :
-
-```ini
-[Service]
-WorkingDirectory=/srv/numerik
-ExecStart=/usr/bin/npm start
-Restart=always
-User=numerik
-Environment=PORT=4321 HOST=127.0.0.1
-```
-
-Le site est servi par ce serveur Node (pages statiques comprises), derrière
-nginx/Apache pour le domaine et le HTTPS ([api.md](api.md)).
-
-## Avec Docker
-
-Le `Dockerfile` embarque tout le projet construit (sources + `node_modules`
-complet + `dist/`), et `docker-compose.yml` :
-
-- monte `./src/content` du serveur dans le conteneur : le contenu publié
-  depuis le site est écrit dans la copie du projet sur le serveur et **survit
-  aux redéploiements** (la prochaine image le reprend) ;
-- relance le conteneur quand le serveur s'arrête (`restart: unless-stopped`).
-
-Les actualités publiées apparaissent dans `git status` sur le serveur :
-les commiter pour les avoir aussi dans le dépôt
-(`git add src/content/news && git commit -m "Actualités publiées en ligne"`).
+Les deux installations remplissent ces prérequis : pas à pas dans
+[deploiement.md](deploiement.md). Avec Docker, l'image embarque tout le
+projet (sources + `node_modules` complet) et `./src/content` est monté
+depuis le serveur, donc conservé d'une version à l'autre ; le conteneur est
+relancé après chaque publication (`restart: unless-stopped`). Avec Node.js,
+c'est PM2 (ou systemd) qui le relance.
 
 ## Site statique sur un autre hébergement (`PUBLISH_HOOK`)
 

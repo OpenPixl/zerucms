@@ -191,7 +191,11 @@ base de données**, façon Grav : un YAML par compte dans
 `data/accounts/<login>.yaml` (`DATA_DIR`, volume Docker `./data`), cookie de
 session signé HMAC (`AUTH_SECRET`), groupes `admin` / `animateur` /
 `redacteur`, plus `superadmin` (`src/lib/auth/groups.ts`) : compte technique
-créé au déploiement (`auth-user init`, mot de passe provisoire imposé —
+créé à la première visite d'un site neuf — écran « Bienvenue » servi par
+la porte de `scripts/maintenance.mjs` tant que `data/accounts/` est vide
+(`scripts/bienvenue.mjs`, `POST /api/auth/premier-compte`, mot de passe
+choisi, session ouverte, refusé dès qu'un compte existe) — ou par
+`auth-user init` (mot de passe provisoire imposé —
 `must_change_password`, modale non refermable, `/api/admin/*` bloqué sauf
 `mot-de-passe`), tous les droits + seul à voir le **journal**, invisible et
 intouchable depuis le module « Comptes ».

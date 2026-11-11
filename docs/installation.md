@@ -1,8 +1,9 @@
 # Installer un nouveau site (assistant d'installation)
 
 Sur un serveur neuf, l'installation se fait en deux temps : **en ligne de
-commande**, le strict minimum (déployer, créer le super admin) ; puis **dans
-le navigateur**, un assistant qui règle tout le reste : type de structure,
+commande**, le strict minimum (déployer le site) ; puis **dans le
+navigateur**, comme pour les CMS courants : écran « Bienvenue » (création de
+son compte), puis un assistant qui règle tout le reste : type de structure,
 compte administrateur, identité, plugins et leurs secrets, contenu d'exemple.
 
 > Pour un site **déjà en service** (le vôtre, mis à jour) : rien ne change,
@@ -11,9 +12,8 @@ compte administrateur, identité, plugins et leurs secrets, contenu d'exemple.
 
 ## 1. En ligne de commande
 
-Le déploiement lui-même est décrit dans
-[deploiement-docker.md](deploiement-docker.md) (Docker) ou
-[mise-a-jour.md](mise-a-jour.md#node-seul-sans-docker-ni-git) (Node seul).
+Le déploiement lui-même (Docker ou Node.js, pas à pas) est décrit dans
+[deploiement.md](deploiement.md).
 Seul le **`SITE_URL`** est indispensable dans le `.env` :
 
 ```dotenv
@@ -27,20 +27,27 @@ absent : généré… »). Les clés Grist, Gotenberg, etc. se saisissent dans
 l'assistant ; rien n'empêche de les mettre dans le `.env` à l'avance (elles
 ne sont alors plus demandées).
 
-Puis créer le **super admin** (compte technique, mot de passe provisoire) :
+## 2. Dans le navigateur
+
+1. Ouvrir le site. Tant qu'il n'a **aucun compte**, toute page affiche
+   l'écran **« Bienvenue »** (`scripts/bienvenue.mjs`, servi par la porte de
+   `scripts/maintenance.mjs`) : nom, identifiant, email facultatif, mot de
+   passe choisi → compte **super admin** créé
+   (`POST /api/auth/premier-compte`, refusé dès qu'un compte existe) et
+   session ouverte. Comme pour WordPress, la première personne qui ouvre le
+   site l'installe.
+2. Retour sur le site, connecté·e : l'assistant s'ouvre de lui-même.
+
+Variante en ligne de commande (ferme l'écran « Bienvenue », mot de passe
+provisoire à changer à la première connexion) :
 
 ```bash
-sudo ./auth-user.sh init                # Docker (VPS)
+./auth-user.sh init                     # Docker (VPS)
 npm run auth:user -- init               # Node seul
 SUPERADMIN_PASSWORD='…' ./auth-user.sh init   # pour imposer le mot de passe provisoire
 ```
 
-## 2. Dans le navigateur
-
-1. Ouvrir le site, **« Espace Admin »** en bas de page, se connecter en
-   super admin.
-2. Choisir son mot de passe (imposé à la première connexion).
-3. La fenêtre **« Installation du site »** s'ouvre. Ses étapes :
+La fenêtre **« Installation du site »** (étape 2) :
 
 | Étape | Contenu |
 | --- | --- |

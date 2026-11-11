@@ -49,7 +49,7 @@ updated: 2026-10-06T10:00:00.000Z
 
 | Groupe | Droits |
 | :--- | :--- |
-| `superadmin` | Tout ce que peut `admin` + module « Journal » (seul à le voir). Créé au déploiement par `auth-user init`, jamais attribué ni visible dans le module « Comptes » (les routes `/api/admin/comptes/<login>` répondent 404 pour ce compte) |
+| `superadmin` | Tout ce que peut `admin` + module « Journal » (seul à le voir). Créé à la première visite d'un site neuf (écran « Bienvenue », `scripts/bienvenue.mjs`, `POST /api/auth/premier-compte`) ou par `auth-user init`, jamais attribué ni visible dans le module « Comptes » (les routes `/api/admin/comptes/<login>` répondent 404 pour ce compte) |
 | `admin` | Tout : toutes les pages réservées + tous les modules (dont « Comptes »), sauf « Journal » |
 | `animateur` | Pages réservées dont l'`access:` cite `animateur` (ou `true`) |
 | `redacteur` | Module « Actualités » (publication des actualités, cf. [publication.md](publication.md)) |
@@ -240,7 +240,8 @@ npm run auth:user -- reset xavier                       # nouveau mot de passe p
 1. Ajouter `AUTH_SECRET=…` au `.env` du VPS.
 2. Le `docker-compose.yml` monte `./data` sur `/app/data` (`DATA_DIR`) :
    les comptes survivent aux redéploiements. Sauvegarder ce dossier.
-3. Créer le super admin (mot de passe à changer à la première connexion ;
+3. Ouvrir le site : l'écran « Bienvenue » crée le super admin (mot de
+   passe choisi). Ou bien, en ligne de commande, créer le super admin (mot de passe à changer à la première connexion ;
    relançable sans risque, ne fait rien s'il existe déjà), puis le premier
    admin ; ensuite tout se fait depuis le module « Comptes » :
 

@@ -151,7 +151,7 @@ En dev, le plus simple est un Gotenberg local
 Gotenberg doit être **joignable depuis le conteneur `web`** : soit un service
 dans le `docker-compose.yml` (même réseau, `GOTENBERG_URL=http://gotenberg:3000`),
 soit une instance externe dont l'URL est renseignée dans `.env`. Voir
-[deploiement-docker.md](deploiement-docker.md).
+[deploiement.md](deploiement.md#imprimer-des-pdf-bulletin-dadhésion-planning-des-rendez-vous).
 
 ## Piste d'évolution — généraliser le jeton
 

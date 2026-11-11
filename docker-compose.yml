@@ -3,7 +3,7 @@ services:
     # Image publiée du modèle, version choisie par NUMERIK_VERSION dans le .env
     # (écrit par ./update.sh ; défaut : la dernière). Jamais construite ici :
     # tester une image locale = `docker build -t ghcr.io/openpixl/zerucms:local .`
-    # puis `NUMERIK_VERSION=local docker compose up` (cf. docs/deploiement-docker.md).
+    # puis `NUMERIK_VERSION=local docker compose up` (cf. docs/developpement.md).
     image: ghcr.io/openpixl/zerucms:${NUMERIK_VERSION:-latest}
     container_name: numerik2026
     restart: unless-stopped
