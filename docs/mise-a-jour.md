@@ -11,7 +11,7 @@ mise à jour :
 | `.env` (`SITE_URL`, clés Grist…) | |
 
 Le contenu d'une association n'est **pas dans le dépôt** (`.gitignore`) : un
-nouveau site part du **contenu de démonstration** de `contenu-initial/`
+nouveau site part du **contenu de démonstration** de `src/modeles/association/`
 (« Mon association », logo neutre, une actualité, deux activités, pages
 légales génériques), copié dans `src/content/` tant que celui-ci n'a pas
 d'`association.yaml` — par `npm install` / `npm ci` (`postinstall`) et par
@@ -215,11 +215,11 @@ un moment calme (aucune publication en cours).
 
 ### Passer à ce système (site déjà installé)
 
-- **Docker, installé avec `git clone` + `./deploy.sh`** (cas du premier
-  site) : ajouter `SITE_URL` au `.env`, sauvegarder `src/content/` (voir
-  l'avertissement plus haut), `git pull`, puis `./update.sh` une
-  fois une version publiée. `./deploy.sh` reste utilisable par le mainteneur
-  (construction locale depuis les sources).
+- **Docker, installé avec `git clone` + l'ancien `./deploy.sh`** (cas du
+  premier site ; script retiré du modèle) : ajouter `SITE_URL` au `.env`,
+  sauvegarder `src/content/` (voir l'avertissement plus haut), `git pull`,
+  puis `./update.sh` une fois une version publiée. Ensuite, plus jamais de
+  `git pull` ni de `docker compose up --build`.
 - **Node seul** : ajouter `SITE_URL` au `.env`, remplacer `npm run build &&
   npm start` par `npm start` dans le gestionnaire de process.
 

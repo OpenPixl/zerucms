@@ -2,32 +2,20 @@
 
 ## 1. Ce qui reste modifiable — et ce qui demande une reconstruction
 
-C'est **la** question à se poser avant de choisir Docker. Le site est généré par
-Astro : la majeure partie est du **HTML statique produit au `build`**. Docker n'y
-change rien — il empaquette juste ce build.
+Le site est généré par Astro : la majeure partie est du **HTML statique
+produit au `build`**. L'image Docker n'en contient aucun : elle est la même
+pour toutes les structures, et le site est construit **par le conteneur**,
+avec le contenu monté depuis le serveur.
 
-| Élément | Où il vit | Ajout / modif = rebuild de l'image ? |
+| Élément | Où il vit | Ajout / modif |
 | :--- | :--- | :--- |
-| **Adhésions, inscriptions, contacts** (formulaire) | **Grist** (via les routes `/api/adhesion/*`) | ❌ **Non.** C'est live, indépendant de l'image. |
-| **Comptes de l'Espace Admin** | `data/accounts/` sur le VPS (volume) | ❌ Non — gérés depuis le site |
-| Autres données saisies via un futur formulaire | Grist / service externe | ❌ Non |
-| **Actualités** (`src/content/news/…`) | fichiers Markdown compilés au build | ✅ **Oui** |
-| **Activités** (`src/content/activites/…`) | idem | ✅ Oui |
-| **Pages de contenu** (`src/content/pages/…`) | idem | ✅ Oui |
-| **Bannière d'annonces** (`src/content/annonces.yaml`) | idem | ✅ Oui |
-| **Partenaires, catégories, infos asso** (`src/lib/*.ts`) | données en dur dans le code | ✅ Oui |
-| Composants, styles, structure | code | ✅ Oui |
+| **Adhésions, inscriptions, RDV** (formulaires) | **Grist** (routes `/api/*`) | En direct, aucune reconstruction |
+| **Comptes de l'Espace Admin**, journal, sauvegardes | `./data/` (volume) | Depuis le site, aucune reconstruction |
+| **Actualités, activités, pages, annonces, partenaires, réglages, infos de la structure** | `./src/content/` (volume) | Depuis l'Espace Admin : le serveur reconstruit le site lui-même ([publication.md](publication.md)) |
+| Composants, styles, structure (le modèle) | l'image | Nouvelle version du modèle : `./update.sh` ([mise-a-jour.md](mise-a-jour.md)) |
 
-> **En clair :** le cœur « vivant » du projet (les adhésions) tourne contre Grist
-> et n'est jamais concerné par un rebuild. En revanche, **publier une actualité
-> ou changer une page = reconstruire l'image** (30 s – 2 min) puis redémarrer le
-> conteneur. C'est le fonctionnement normal d'un site statique ; ce n'est pas une
-> limite de Docker.
-
-Si un jour vous voulez éditer les actualités « en live » sans rebuild, il faudra
-les faire vivre elles aussi dans Grist (ou un CMS) et les rendre via des routes
-SSR — c'est un autre chantier. Pour l'instant : **workflow de rebuild**, décrit
-plus bas, très simple.
+> **En clair :** on ne touche jamais au code sur le serveur. Le contenu se
+> modifie depuis l'Espace Admin, le modèle se met à jour par `./update.sh`.
 
 ---
 
@@ -35,15 +23,21 @@ plus bas, très simple.
 
 | Fichier | Rôle |
 | :--- | :--- |
-| `Dockerfile` | build multi-étapes : `npm ci` + `npm run build`, puis une image runtime qui ne garde que `dist/` + `node_modules` + le serveur |
-| `.dockerignore` | exclut `node_modules`, `dist`, `.astro`, **`.env`**, `.git`… du contexte de build |
-| `docker-compose.yml` | un service `web`, `restart: unless-stopped`, port publié **uniquement sur `127.0.0.1:4321`**, secrets via `env_file: .env` |
-| `deploy.sh` | `git pull` + `docker compose up -d --build` + ménage |
+| `Dockerfile` | multi-étapes : `npm ci` + sources, **sans site construit** ; `CMD node scripts/start.mjs` (construit le site au démarrage si besoin, puis sert) |
+| `.dockerignore` | exclut `node_modules`, `dist`, `.astro`, **`.env`**, `.git`, `data`, `.releases`… du contexte de build |
+| `docker-compose.yml` | un service `web` sur l'image publiée `ghcr.io/openpixl/zerucms:${NUMERIK_VERSION}` (jamais construite sur le serveur), `restart: unless-stopped`, `init: true`, port publié **uniquement sur `127.0.0.1:4321`**, secrets via `env_file: .env`, volumes `./data`, `./src/content`, `./.releases` |
+| `update.sh` | mise à jour du site vers une version publiée ([mise-a-jour.md](mise-a-jour.md)) |
+| `auth-user.sh`, `sauvegarde.sh`, `restauration.sh` | comptes et sauvegardes, exécutés dans le conteneur (recopiés depuis l'image par `update.sh`) |
 
 ### Pourquoi ces choix
 
-- **Multi-étapes** : l'image finale ne contient pas les sources ni le cache de
-  build, seulement de quoi servir.
+- **Sources et `node_modules` complet dans l'image** : le serveur reconstruit
+  lui-même le site à chaque publication depuis l'Espace Admin.
+- **`init: true`** : un petit init (tini) en PID 1 relaie l'arrêt
+  (`docker stop`, bascule d'`update.sh`) à Node, qui termine ses requêtes et
+  s'arrête aussitôt (`scripts/start.mjs` gère aussi `SIGTERM` sans lui), et
+  ramasse les processus orphelins. Le `restart: unless-stopped` relance le
+  serveur après chaque publication.
 - **`node:22-slim`** (Debian) plutôt qu'`alpine` : `sharp` (optimisation d'images
   au build) est plus fiable sur Debian.
 - **`mode: 'standalone'`** (déjà dans `astro.config.mjs`) → `dist/server/entry.mjs`
@@ -53,9 +47,11 @@ plus bas, très simple.
   `localhost` **dans** le conteneur et n'est pas joignable.
 - **Port sur `127.0.0.1`** : le conteneur n'est pas exposé directement à
   Internet. Un reverse proxy (nginx/Traefik) fait le domaine + HTTPS (§5).
-- **Un seul volume, `./data`** : les comptes de l'Espace Admin (un
-  fichier YAML par compte). Tout le reste va dans Grist. À sauvegarder ;
-  mise en service : [guide-espace-benevoles.md](guide-espace-benevoles.md).
+- **Trois volumes** : `./data` (comptes, journal, sauvegardes, état des
+  publications), `./src/content` (contenu du site, jamais suivi par git) et
+  `./.releases` (versions construites, pour une bascule rapide). Les deux
+  premiers sont **à sauvegarder** (module « Sauvegardes » ou
+  `./sauvegarde.sh`, [sauvegarde.md](sauvegarde.md)).
 
 ### Le `.env` : jamais dans l'image
 
@@ -100,8 +96,10 @@ Sans ces variables, le lien « Imprimer le bulletin » n'apparaît simplement pa
 ## 3. Tester en local
 
 ```bash
-# à la racine du projet, avec un .env rempli
-docker compose up --build
+# à la racine du projet, avec un .env rempli : image construite depuis les
+# sources sous l'étiquette « local » (le compose ne construit jamais)
+docker build -t ghcr.io/openpixl/zerucms:local .
+NUMERIK_VERSION=local docker compose up
 
 # → http://localhost:4321
 # Ctrl-C pour arrêter ; `docker compose down` pour nettoyer
@@ -121,20 +119,24 @@ curl -s http://localhost:4321/api/adhesion/cotisations                    # JSON
 ## 4. Première installation sur le VPS OVH
 
 ```bash
-# 1. Récupérer le projet
+# 1. Récupérer le projet (seuls docker-compose.yml, .env.example et les
+#    scripts *.sh servent sur le serveur ; jamais de `git pull` ensuite :
+#    les mises à jour passent par ./update.sh)
 cd /opt        # ou ~/apps, au choix
-git clone <url-du-dépôt> numerik2026
+git clone https://github.com/OpenPixl/zerucms.git numerik2026
 cd numerik2026
+export DOCKER_CONFIG=$PWD/.dockercfg   # si /root est en lecture seule
 
 # 2. Créer le .env — NE PAS commiter
 cp .env.example .env
 nano .env       # SITE_URL (obligatoire) ; le reste (AUTH_SECRET, clés Grist…)
                 # peut attendre l'assistant d'installation
 
-# 3. Construire et démarrer (premier démarrage : src/content/ est rempli avec
-#    le contenu de démonstration de contenu-initial/, à personnaliser ensuite
-#    depuis l'Espace Admin)
-docker compose up -d --build
+# 3. Télécharger l'image et démarrer (premier démarrage : src/content/ est
+#    rempli avec le contenu de démonstration de src/modeles/association/, à
+#    personnaliser ensuite depuis l'Espace Admin ; le site se construit en
+#    une à quelques minutes). Version précise : NUMERIK_VERSION=X.Y.Z dans le .env
+docker compose up -d
 
 # 4. Vérifier
 docker compose ps
@@ -144,7 +146,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:4321/
 
 Le conteneur redémarre tout seul au reboot du VPS (`restart: unless-stopped`).
 
-Ensuite : `sudo ./auth-user.sh init` (super admin), puis connexion dans le
+Ensuite : `./auth-user.sh init` (super admin), puis connexion dans le
 navigateur : l'**assistant d'installation** règle le type de structure, le
 compte administrateur, l'identité, les plugins et leurs secrets, et le
 contenu d'exemple — voir [installation.md](installation.md).
@@ -185,71 +187,36 @@ nginx -t && systemctl reload nginx
 certbot --nginx -d numerikandco.org -d www.numerikandco.org   # HTTPS auto
 ```
 
-> Pensez à mettre le vrai domaine dans `astro.config.mjs` (`site:`) — il sert aux
-> URL absolues du flux RSS.
+> Le domaine se règle par `SITE_URL` dans le `.env` (liens absolus, flux RSS,
+> sécurité derrière le proxy) : après un changement, `docker compose restart web`
+> suffit, le site se reconstruit au démarrage.
 
 ---
 
-## 6. Workflow « ajouter du contenu » (actualité, activité, page…)
+## 6. Ajouter du contenu (actualité, activité, page…)
 
-### Depuis votre poste (recommandé)
+Tout se fait **depuis l'Espace Admin** : le module écrit dans
+`./src/content/`, le serveur reconstruit le site puis redémarre (quelques
+secondes) — voir [publication.md](publication.md). Ni commit, ni
+reconstruction de l'image.
 
-```bash
-# 1. localement : créer le dossier de l'article + index.md + image
-#    (voir docs/actualites.md)
-# 2. commit + push
-git add src/content/news/2026-09-xx-mon-article
-git commit -m "Actu : mon article"
-git push
-```
-
-```bash
-# 3. sur le VPS
-cd /opt/numerik2026
-./deploy.sh          # git pull + rebuild image + redémarrage (~1 min de coupure)
-```
-
-### En éditant directement sur le VPS
-
-```bash
-cd /opt/numerik2026
-nano src/content/news/...           # ou scp de vos fichiers
-git add -A && git commit -m "..."    # gardez l'historique propre
-docker compose up -d --build         # reconstruit et redémarre
-```
-
-Dans les deux cas, **le rebuild est obligatoire** : le Markdown est transformé en
-HTML pendant `npm run build`, pas au moment où on visite la page.
-
-### Ce qui NE demande PAS de rebuild
-
-- toute **adhésion / inscription / contact** faite via le formulaire → écrit dans
-  Grist en temps réel ;
-- toute modif faite **dans Grist** (tarifs de cotisation, activités et leurs
-  places, saison active…) → les routes `/api/adhesion/*` la lisent à chaque
-  requête. Le `<select>` du formulaire se met à jour sans toucher au site.
+Ce qui ne demande **aucune** reconstruction : adhésions, inscriptions, RDV,
+et toute modification faite **dans Grist** (tarifs, activités et leurs
+places, saison active…), lue à chaque requête par les routes `/api/*`.
 
 ---
 
 ## 7. Commandes utiles
 
 ```bash
+export DOCKER_CONFIG=$PWD/.dockercfg  # si /root est en lecture seule
 docker compose logs -f web            # suivre les logs
-docker compose restart web            # redémarrer sans rebuild
-docker compose up -d --build          # rebuild + redémarrage
-docker compose down                   # arrêter et supprimer le conteneur
+docker compose restart web            # redémarrer (ex. après un changement du .env)
 docker compose ps                     # état
-docker image prune -f                 # supprimer les images orphelines (après rebuilds)
+./update.sh                           # passer à la dernière version publiée
+./update.sh v0.5.9                    # … ou à une version précise (retour arrière compris)
+./sauvegarde.sh                       # archive de src/content/ + data/
 docker stats numerik2026              # CPU / RAM du conteneur
-```
-
-### Rollback rapide
-
-```bash
-git log --oneline -5
-git checkout <commit-precedent>
-docker compose up -d --build
-# puis revenir : git checkout master && ./deploy.sh
 ```
 
 ---
@@ -259,21 +226,21 @@ docker compose up -d --build
 | Sujet | À savoir |
 | :--- | :--- |
 | **RAM du build** | `astro build` + `sharp` peuvent monter à ~1–1,5 Go. VPS OVH « VPS Value » (2 Go) : OK. En dessous, ajouter du swap ou builder ailleurs. |
-| **Coupure au déploiement** | `up -d --build` reconstruit puis remplace le conteneur → quelques secondes d'indisponibilité. Acceptable pour ce site. Pour du zéro-coupure : deux conteneurs + bascule nginx (surdimensionné ici). |
+| **Coupure à la mise à jour** | `update.sh` construit la nouvelle version à côté (`./.releases`) puis remplace le conteneur → quelques secondes d'indisponibilité. Une publication depuis l'Espace Admin coupe de même le temps du redémarrage. |
 | **`.env` absent** | le conteneur démarre mais les routes `/api/adhesion/*` renvoient `500 « Configuration Grist manquante »`. Le reste du site fonctionne. |
 | **Secrets** | ne jamais faire `COPY .env` ni `ENV GRIST_API_KEY=...` dans le `Dockerfile`. Toujours `env_file` / `-e` au runtime. |
 | **Fuseau horaire** | l'image est en UTC. Les dates « saison » Grist sont calculées côté Grist, donc OK. Si besoin : `ENV TZ=Europe/Paris` + paquet `tzdata`. |
-| **Mises à jour Node** | image basée sur `node:22-slim`. Rebuild régulier pour les correctifs de sécurité de base. |
-| **Registre d'images** | non nécessaire ici (on build sur le VPS). Si un jour CI → registre → `docker compose pull` : possible, mais plus lourd à mettre en place. |
+| **Mises à jour Node** | image basée sur `node:22-slim`, reconstruite à chaque version publiée (correctifs de sécurité de base compris). |
+| **Registre d'images** | les images sont publiées sur `ghcr.io/openpixl/zerucms` par la CI à chaque tag ([ci.md](ci.md)) ; le serveur ne construit jamais d'image. |
 
 ---
 
-## 9. Résumé décision
+## 9. Résumé
 
-- **Docker = bon choix** : déploiement reproductible, `restart` automatique,
-  isolation, rollback par commit.
-- **Le formulaire d'adhésion continue de fonctionner en autonomie** (Grist),
-  quel que soit l'état de l'image.
-- **Publier du contenu éditorial = 1 commit + `./deploy.sh`.** Si ce rythme
-  devient gênant, la vraie solution n'est pas Docker mais faire passer ces
-  contenus dans Grist eux aussi.
+- **Docker = bon choix** : image publiée et identique pour toutes les
+  structures, `restart` automatique, isolation, retour arrière par
+  `./update.sh <version précédente>`.
+- **Les formulaires (adhésion, RDV…) fonctionnent en autonomie** (Grist),
+  quel que soit l'état du site construit.
+- **Contenu = Espace Admin**, **modèle = `./update.sh`** ; jamais de
+  `git pull` ni de construction d'image sur le serveur.

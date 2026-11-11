@@ -4,7 +4,7 @@
  *   node --env-file-if-exists=.env scripts/start.mjs     (= npm start)
  *
  * 0. nouveau site (src/content/ sans association.yaml) : copie le contenu de
- *    démonstration de `contenu-initial/` (scripts/contenu-initial.mjs) ;
+ *    démonstration de `src/modeles/association/` (scripts/contenu-initial.mjs) ;
  *    Charge ensuite les secrets saisis à l'installation
  *    (`<DATA_DIR>/installation/secrets.env`, scripts/installation.mjs : le
  *    .env l'emporte) et génère `AUTH_SECRET` s'il manque ;
@@ -128,3 +128,19 @@ server.listen(port, host, () => {
 		log('mode maintenance terminé.');
 	}
 });
+
+// Arrêt demandé (docker stop, update.sh, systemd, Ctrl-C) : on termine les
+// requêtes en cours puis on sort. Sans ce gestionnaire, Node lancé en PID 1
+// (conteneur sans `init`) ignore SIGTERM et Docker attend 10 s avant de le tuer.
+let arretEnCours = false;
+function arreter(signal) {
+	if (arretEnCours) return;
+	arretEnCours = true;
+	log(`${signal} reçu : arrêt du serveur.`);
+	server.close(() => process.exit(0));
+	server.closeIdleConnections();
+	// Requête qui traîne (flux, client lent) : on n'attend pas plus de 5 s.
+	setTimeout(() => process.exit(0), 5000).unref();
+}
+process.on('SIGTERM', () => arreter('SIGTERM'));
+process.on('SIGINT', () => arreter('SIGINT'));

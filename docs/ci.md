@@ -46,6 +46,6 @@ connue que des serveurs (`.env`). La CI n'a accès à aucun secret ni à Grist.
 - Pas de tests automatisés du comportement (formulaires, Grist, espace
   bénévoles) : la CI garantit que le site **se construit**, pas qu'il
   **fonctionne** de bout en bout.
-- La CI construit avec le contenu de démonstration (`contenu-initial/`, copié
+- La CI construit avec le contenu de démonstration (`src/modeles/association/`, copié
   dans `src/content/` par le `postinstall` de `npm ci`) ; un déploiement
   construit avec le contenu de son serveur (`src/content/` de l'association).

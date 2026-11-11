@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Comptes de l'Espace Admin, sur le VPS (à côté de deploy.sh).
+# Comptes de l'Espace Admin, sur le VPS (à côté de update.sh).
 # Lance le CLI DANS le conteneur : le dist/ du VPS n'est pas celui de l'image.
 #
 # Usage (depuis le dossier du projet, sur le serveur) :
@@ -10,7 +10,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# Même contournement que deploy.sh : /root peut être en lecture seule sur le
+# Même contournement que update.sh : /root peut être en lecture seule sur le
 # VPS, le CLI Docker a besoin d'un dossier de config inscriptible.
 export DOCKER_CONFIG="$(pwd)/.dockercfg"
 mkdir -p "$DOCKER_CONFIG"

@@ -35,6 +35,7 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
+import { dossierModele } from './contenu-initial.mjs';
 
 export const FORMAT = 'numerik-sauvegarde';
 /** Nom d'une archive : minuscules, chiffres, tirets, `.zip`. */
@@ -146,9 +147,9 @@ function empreinte(files, prefixe = '') {
 	return h.digest('hex');
 }
 
-/** Le contenu est-il encore le contenu de démonstration (`contenu-initial/`, site neuf) ? */
+/** Le contenu est-il encore le contenu de démonstration (`src/modeles/association/`, site neuf) ? */
 function estContenuDeDemo(root, files) {
-	const demo = join(root, 'contenu-initial');
+	const demo = dossierModele(root, 'association');
 	if (!existsSync(demo)) return false;
 	const fichiersDemo = {};
 	for (const rel of fichiersDe(demo)) if (!FICHIERS_DU_MODELE.has(rel)) fichiersDemo[rel] = readFileSync(join(demo, rel));

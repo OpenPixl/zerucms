@@ -31,13 +31,13 @@ les variables de page restent `{{association.nom}}`, `{{association.siret}}`,
 ## Contenu d'exemple
 
 Au premier démarrage, `src/content/` reçoit toujours le contenu de
-démonstration d'association (`contenu-initial/`). Si l'assistant choisit
+démonstration d'association (`src/modeles/association/`). Si l'assistant choisit
 **Auto-entrepreneur**, il :
 
 1. retire les exemples propres aux associations **encore inchangés**
    (activités sauf `_categories.yaml`, menu « Association », statuts,
    règlement intérieur) ;
-2. pose ceux de **`contenu-initial-entreprise/`** là où le fichier manque ou
+2. pose ceux de **`src/modeles/entreprise/`** là où le fichier manque ou
    est encore celui de démonstration ; un fichier déjà personnalisé n'est
    jamais remplacé.
 
@@ -76,7 +76,7 @@ Pas prévu depuis l'Espace Admin. À la main, sur le serveur :
 - Vocabulaire : libellé du module dans `src/components/admin/modules.ts`,
   `GeneralForm.vue` (mentions légales), libellés des variables
   (`src/lib/page-variables.ts`), assistant.
-- Exemples : `contenu-initial-entreprise/` (son `README.md`), appliqués par
+- Exemples : `src/modeles/entreprise/` (son `README.md`), appliqués par
   `appliquerEntreprise()` de `src/lib/installation.ts`
   (`ASSOCIATION_SEULEMENT`, `SOCLE_ENTREPRISE`).
 - Nouveau plugin réservé à un type : `structures: ['entreprise']` dans son

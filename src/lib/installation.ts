@@ -44,15 +44,16 @@ import {
 	lireSecrets,
 	secretAleatoire,
 } from '../../scripts/installation.mjs';
+import { dossierModele } from '../../scripts/contenu-initial.mjs';
 
 const contenu = () => join(siteRoot(), 'src', 'content');
-const modeles = () => join(siteRoot(), 'contenu-initial');
-/** Contenu d'exemple « auto-entrepreneur » : remplace ou complète `contenu-initial/` (cf. son README). */
-const modelesEntreprise = () => join(siteRoot(), 'contenu-initial-entreprise');
+const modeles = () => dossierModele(siteRoot(), 'association');
+/** Contenu d'exemple « auto-entrepreneur » : remplace ou complète `src/modeles/association/` (cf. son README). */
+const modelesEntreprise = () => dossierModele(siteRoot(), 'entreprise');
 
 /** Exemples propres aux associations, retirés pour une entreprise (s'ils sont inchangés). */
 const ASSOCIATION_SEULEMENT = ['activites/', 'pages/association/', 'pages/statuts/', 'pages/reglement-interieur/'];
-/** Fichiers de `contenu-initial-entreprise/` appliqués même sans exemples. */
+/** Fichiers de `src/modeles/entreprise/` appliqués même sans exemples. */
 const SOCLE_ENTREPRISE = ['association.yaml', 'images/logo.svg', 'pages/mentions-legales/index.md', 'pages/_pages-site.md', 'partenaires.yaml'];
 
 /**
@@ -83,7 +84,7 @@ export async function installationRequise(): Promise<boolean> {
 	return !(await listAccounts()).some((a) => !isSuperadminAccount(a));
 }
 
-/** Fichiers de `contenu-initial/` (chemins relatifs). */
+/** Fichiers de `src/modeles/association/` (chemins relatifs). */
 async function fichiersDe(dossier: string, base = dossier): Promise<string[]> {
 	const entrees = await readdir(dossier, { withFileTypes: true }).catch(() => []);
 	const fichiers: string[] = [];
@@ -101,7 +102,7 @@ async function identique(f: string, dossier: string): Promise<boolean> {
 	return Boolean(a && b && a.equals(b));
 }
 
-/** Exemples encore identiques à `contenu-initial/` dans `src/content/` (ceux modifiés depuis sont gardés). */
+/** Exemples encore identiques à `src/modeles/association/` dans `src/content/` (ceux modifiés depuis sont gardés). */
 async function exemplesPresents(): Promise<string[]> {
 	const presents: string[] = [];
 	for (const f of await fichiersDe(modeles())) {
@@ -484,7 +485,7 @@ async function elaguer(fichiers: string[]) {
 
 /**
  * Type « entreprise » : retire les exemples propres aux associations encore
- * inchangés, puis pose ceux de `contenu-initial-entreprise/` (le socle
+ * inchangés, puis pose ceux de `src/modeles/entreprise/` (le socle
  * seulement sans exemples) là où le fichier manque ou est encore celui de
  * démonstration. Copie de chaque fichier touché gardée pour l'annulation.
  */
