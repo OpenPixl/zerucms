@@ -28,7 +28,7 @@ jamais de dossier vidé : volumes, surveillance du dev), état courant sauvegard
 sinon par l'image visée. Restauration depuis l'admin = **mode maintenance**
 (`scripts/maintenance.mjs` : `maintenance.json` dans
 `<DATA_DIR>/publication/`, page 503 + barre de progression, état sur
-`/__maintenance` ; porte posée par `scripts/start.mjs`, qui lance lui-même
+`/__maintenance` ; porte posée par `scripts/serveur.mjs` (lancé par `npm start`), qui lance lui-même
 le serveur HTTP — `ASTRO_NODE_AUTOSTART=disabled` + `handler` de
 l'adaptateur — et lève la maintenance une fois à l'écoute ; progression =
 `publish({ maintenance: true })` qui lit la sortie du build). Maintenance
@@ -50,7 +50,7 @@ Mise à jour d'un site : `./update.sh [vX.Y.Z]` (Docker : `NUMERIK_VERSION`
 dans `.env`, construction à côté par `docker compose run` dans le volume
 `.releases`, bascule, vérification, retour arrière ; Node seul :
 `scripts/update.mjs`, sauvegarde `.update/`, code du modèle remplacé hors
-`src/content/`, `data/`, `.env`). `start.mjs` réutilise une version de
+`src/content/`, `data/`, `.env`). `serveur.mjs` réutilise une version de
 `.releases/` déjà construite avec la même empreinte (`findRelease`) ;
 `pruneReleases` ne supprime jamais la version active. Docker : avant le
 `docker pull`, `nettoyer_images` d'`update.sh` supprime les images du modèle
@@ -60,8 +60,12 @@ autres que la version en ligne et la version visée (+ `image prune`), sauf
 `migrer_image` d'`update.sh` passe le `docker-compose.yml` du serveur de
 `ghcr.io/numerik-co/numerik2026` à la nouvelle image (copie
 `docker-compose.yml.avant-<version>`, image en ligne ré-étiquetée).
-Production sans Docker : `npm start`
-(`node --env-file-if-exists=.env scripts/start.mjs` : construit le site si
+Production sans Docker = **`git clone` + `npm install` + `npm start`**
+(souhait explicite : rien d'exotique, pas de PM2 ; mise à jour `git pull` +
+`npm install` + redémarrage, `update.mjs` refuse un dossier `.git` ; en
+continu : service systemd, docs/deploiement.md partie B).
+`npm start` = superviseur `scripts/start.mjs`, qui lance et relance
+`scripts/serveur.mjs` (`node --env-file-if-exists=.env` : construit le site si
 l'empreinte version + `SITE_URL` + `src/content/` diffère de
 `dist/build-info.json`, puis lance le serveur HTTP de `dist/server/entry.mjs`
 derrière la porte du mode maintenance). Docker : même
@@ -349,8 +353,9 @@ Le module écrit dans les **sources** (`src/content/news/<date-slug>/`,
 dangereux et images locales refusés, photo nettoyée par sharp) puis `src/lib/site-build.ts`
 relance `npm run build` sur le serveur dans `.releases/<horodatage>`
 (`ASTRO_OUT_DIR` → `outDir`), fait pointer `dist` dessus, lance
-`PUBLISH_HOOK` éventuel et **arrête le process** pour que son gestionnaire
-(Docker, PM2, systemd) le relance. Build en échec = contenu retiré, site
+`PUBLISH_HOOK` éventuel et **sort avec le code 75** : le superviseur
+`scripts/start.mjs` (= `npm start`, aussi `CMD` Docker) relance
+`scripts/serveur.mjs` — aucun PM2 ni outil à installer. Build en échec = contenu retiré, site
 intact. Modification (`PUT /api/admin/actualites/<slug>`, formulaire dans le
 module) : même dossier donc URL inchangée, sauvegarde restaurée si échec
 (`updateNews`). Suppression (`DELETE …/<slug>`) : dossier mis de

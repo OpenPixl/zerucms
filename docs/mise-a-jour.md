@@ -208,7 +208,11 @@ migration vérifiée), puis une 0.0.3 cassée qui doit être refusée.
 4. `npm ci` puis construction à côté ; en cas d'échec, l'ancien code est
    remis (`npm ci` compris) et le site, jamais arrêté, reste tel quel ;
 5. redémarrage par la commande `UPDATE_RESTART` du `.env` (ex.
-   `pm2 restart numerik2026`), sinon consigne affichée.
+   `systemctl restart monsite`), sinon consigne affichée.
+
+Installation par `git clone` (cas courant sans Docker) : `update.sh` refuse
+et renvoie à `git pull` + `npm install` + redémarrage, `npm start`
+reconstruisant le site sur la nouvelle version.
 
 Pendant l'étape 4, `node_modules` change sous le serveur en marche : choisir
 un moment calme (aucune publication en cours).

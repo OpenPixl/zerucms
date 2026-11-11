@@ -6,8 +6,10 @@ pourquoi, et comment vérifier que ça a marché.
 
 Deux méthodes sont possibles ; choisissez-en **une seule** :
 
-- **[Avec Docker](#partie-a--installer-avec-docker)** (recommandé) ;
-- **[Avec Node.js](#partie-b--installer-avec-nodejs)** (sans Docker).
+- **[Avec Node.js](#partie-b--installer-avec-nodejs)** : le plus simple,
+  `git clone`, `npm install`, `npm start`, et c'est tout ;
+- **[Avec Docker](#partie-a--installer-avec-docker)** : si vous utilisez
+  déjà Docker (retour automatique en arrière si une mise à jour échoue).
 
 Les étapes communes (nom de domaine, HTTPS, première connexion) sont
 décrites une seule fois, [à la fin](#partie-c--nom-de-domaine-et-https).
@@ -56,12 +58,13 @@ jour.
 
 ### Docker ou Node.js ?
 
-| | Docker (recommandé) | Node.js |
+| | Node.js | Docker |
 | :--- | :--- | :--- |
-| **À installer sur le serveur** | Docker seulement | Node.js 22 et PM2 |
-| **Fichiers sur le serveur** | Une poignée (le code est dans l'« image » Docker) | Tout le code du site |
-| **Mise à jour** | `./update.sh`, avec **retour automatique** à la version précédente si le site ne répond plus | `./update.sh`, sans retour automatique |
-| **Quand la choisir** | Dans la plupart des cas | Hébergement où Docker n'est pas possible, ou si vous connaissez déjà Node.js |
+| **À installer sur le serveur** | Node.js 22 et git | Docker seulement |
+| **Installer** | `git clone` puis `npm install` | Quelques fichiers à télécharger |
+| **Démarrer** | `npm start` | `docker compose up -d` |
+| **Mettre à jour** | `git pull`, `npm install`, puis relancer `npm start` | `./update.sh`, avec **retour automatique** à la version précédente si le site ne répond plus |
+| **Quand la choisir** | Dans la plupart des cas : rien d'autre à apprendre | Si vous utilisez déjà Docker |
 
 ---
 
@@ -212,144 +215,112 @@ Toujours depuis le dossier du site (`cd /opt/monsite`) :
 
 ## Partie B — Installer avec Node.js
 
-Ici, le code du site est déposé directement sur le serveur et lancé par
-**Node.js** (le moteur qui fait tourner le site). Un petit outil, **PM2**,
-le surveille : il le relance s'il s'arrête et au redémarrage du serveur.
+Le code du site est copié sur le serveur avec **git**, puis lancé par
+**Node.js**. Trois commandes : `git clone`, `npm install`, `npm start`.
 
-### B1. Installer Node.js 22
+### B1. Installer Node.js 22 et git
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-apt install -y nodejs
+apt install -y nodejs git
 ```
 
-✅ **Vérifier :**
+✅ **Vérifier :** `node --version` affiche `v22.12.0` ou plus récent.
+
+### B2. Copier le site sur le serveur
 
 ```bash
-node --version
-```
-
-doit afficher `v22.12.0` ou plus récent.
-
-### B2. Installer PM2
-
-```bash
-npm install -g pm2
-```
-
-✅ **Vérifier :** `pm2 --version` affiche un numéro de version.
-
-### B3. Télécharger le site
-
-On télécharge l'archive d'une version (la dernière est indiquée sur
-<https://github.com/OpenPixl/zerucms/releases>) et on la décompresse dans
-le dossier du site :
-
-```bash
-mkdir -p /srv/monsite && cd /srv/monsite
-
-VERSION=v0.5.10   # ← remplacer par la dernière version publiée
-curl -fsSL "https://github.com/OpenPixl/zerucms/archive/refs/tags/$VERSION.tar.gz" \
-  | tar xz --strip-components=1
-```
-
-✅ **Vérifier :** `ls -a` montre notamment `package.json`, `src`, `scripts`,
-`update.sh` et `.env.example`.
-
-> Les fichiers dont le nom commence par un point (`.env.example`, plus tard
-> `.env`) sont **cachés** : un simple `ls` ne les montre pas, `ls -a` oui.
-
-### B4. Installer les dépendances
-
-```bash
-npm ci
-```
-
-Cette commande télécharge les bibliothèques dont le site a besoin (dossier
-`node_modules`, quelques minutes). Elle installe aussi le **contenu de
-démonstration** dans `src/content/`.
-
-> N'ajoutez **pas** `--omit=dev` : le serveur a besoin de tous les outils
-> pour reconstruire le site à chaque publication depuis l'Espace Admin.
-
-### B5. Écrire le fichier de réglages `.env`
-
-```bash
+git clone https://github.com/OpenPixl/zerucms.git /srv/monsite
 cd /srv/monsite
-cp .env.example .env
-nano .env
+npm install
 ```
 
-> `cp: impossible d'évaluer '.env.example'` ? Vérifiez l'orthographe
-> (`example`, à l'anglaise, pas `exemple`) et que `ls -a` montre bien le
-> fichier dans `/srv/monsite`. À défaut, `nano .env` crée un fichier vide :
-> il suffit d'y écrire les deux lignes ci-dessous.
+`npm install` télécharge les bibliothèques du site (quelques minutes) et
+installe le **contenu de démonstration** dans `src/content/`.
 
-Renseignez l'adresse publique du site, sans `/` à la fin, et la commande
-qui redémarre le site après une mise à jour :
+> Votre contenu (`src/content/`), vos comptes (`data/`) et vos réglages
+> (`.env`) ne sont **jamais** dans git : un `git pull` ne les touche pas.
 
-```dotenv
-SITE_URL=https://www.mon-asso.fr
-UPDATE_RESTART=pm2 restart monsite
-```
+### B3. Indiquer l'adresse du site
 
-Laissez le reste vide : l'**assistant d'installation** demandera dans le
-navigateur ce qui est utile. Enregistrer et quitter : **Ctrl+O**, Entrée,
-**Ctrl+X**.
-
-### B6. Démarrer le site avec PM2
+Créez le fichier `.env` avec l'adresse publique du site, sans `/` à la fin :
 
 ```bash
-pm2 start npm --name monsite -- start
+echo "SITE_URL=https://www.mon-asso.fr" > .env
 ```
 
-Au premier démarrage, le site **se construit** (une à trois minutes). Pour
-suivre ce qui se passe :
+Rien d'autre : l'**assistant d'installation** demandera dans le navigateur
+ce qui est utile. Pour un simple essai sur votre ordinateur :
+`SITE_URL=http://localhost:4321`.
+
+### B4. Démarrer le site
 
 ```bash
-pm2 logs monsite
+npm start
 ```
 
-Attendez la ligne `[démarrage] serveur à l'écoute sur http://localhost:4321`,
-puis quittez avec **Ctrl+C** (le site continue de tourner).
+Au premier démarrage, le site **se construit** (une à trois minutes), puis
+affiche `[démarrage] serveur à l'écoute sur http://localhost:4321`.
 
-✅ **Vérifier :**
+C'est tout : le site tourne. Quand vous publiez depuis l'Espace Admin, il se
+reconstruit et **redémarre tout seul**. **Ctrl+C** l'arrête.
 
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:4321/
-```
-
-doit afficher `200`.
-
-### B7. Relancer le site au redémarrage du serveur
-
-```bash
-pm2 save
-pm2 startup
-```
-
-`pm2 startup` affiche parfois une commande à copier-coller : faites-le.
-Ensuite, le site repart tout seul quand le serveur redémarre.
+✅ **Vérifier :** dans un autre terminal,
+`curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:4321/` affiche `200`.
 
 Le site n'est joignable que depuis le serveur lui-même (c'est voulu). Pour
 l'ouvrir au public : [Partie C](#partie-c--nom-de-domaine-et-https).
 
-### B8. Au quotidien (Node.js)
+### B5. Garder le site allumé (serveur en ligne)
 
-Toujours depuis le dossier du site (`cd /srv/monsite`) :
+`npm start` s'arrête quand vous fermez le terminal. Sur un vrai serveur, on
+demande donc au système de le lancer lui-même, au démarrage de la machine.
+Une seule fois, copiez-collez ce bloc (en remplaçant `/srv/monsite` si
+besoin) :
+
+```bash
+cat > /etc/systemd/system/monsite.service <<'FIN'
+[Unit]
+Description=Site
+After=network.target
+
+[Service]
+WorkingDirectory=/srv/monsite
+ExecStart=/usr/bin/npm start
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+FIN
+systemctl daemon-reload && systemctl enable --now monsite
+```
+
+Ensuite :
 
 | Je veux… | Je tape… |
 | :--- | :--- |
-| Voir si le site tourne | `pm2 status` |
-| Lire le journal du site | `pm2 logs monsite --lines 50` |
-| Prendre en compte un `.env` modifié | `pm2 restart monsite` |
-| Mettre à jour le site | `./update.sh` ([détails](#mettre-à-jour)) |
-| Faire une sauvegarde | `./sauvegarde.sh` |
-| Créer un compte | `npm run auth:user -- add prenom.nom "Prénom Nom" admin` |
+| Voir si le site tourne | `systemctl status monsite` |
+| Lire le journal du site | `journalctl -u monsite -n 50` |
+| Redémarrer (après un `.env` modifié, une mise à jour) | `systemctl restart monsite` |
 
-> Si Docker est **aussi** installé sur ce serveur, ajoutez `--node` aux
-> commandes `./update.sh`, `./sauvegarde.sh` et `./restauration.sh` (sinon
-> elles croient le site installé avec Docker).
+> Sans cette étape, lancez simplement `npm start` dans le terminal : tout
+> fonctionne pareil tant qu'il reste ouvert.
+
+### B6. Mettre à jour (Node.js)
+
+```bash
+cd /srv/monsite
+./sauvegarde.sh        # facultatif : une sauvegarde du contenu avant
+git pull
+npm install
+```
+
+puis redémarrez le site (Ctrl+C et `npm start`, ou
+`systemctl restart monsite`) : il se reconstruit sur la nouvelle version.
+La branche `master` ne contient que les versions publiées. En cas de
+souci, `git checkout v0.5.11` (une version précise) revient en arrière,
+suivi de `npm install` et d'un redémarrage ; `git checkout master` puis
+`git pull` ramènent ensuite à la dernière version.
 
 ---
 
@@ -497,8 +468,12 @@ l'Espace Admin au quotidien : [guide-espace-benevoles.md](guide-espace-benevoles
 ## Mettre à jour
 
 Quand une nouvelle version est publiée, un badge **« Mise à jour X.Y.Z »**
-apparaît dans la barre de l'Espace Admin. Pour l'installer, depuis le
-dossier du site :
+apparaît dans la barre de l'Espace Admin.
+
+**Avec Node.js** : `git pull`, `npm install`, puis redémarrer le site
+([B6](#b6-mettre-à-jour-nodejs)).
+
+**Avec Docker**, depuis le dossier du site :
 
 ```bash
 ./update.sh             # dernière version
@@ -512,13 +487,13 @@ Le script, dans l'ordre :
 2. **construit la nouvelle version à côté**, pendant que le site continue de
    tourner (s'il y a un problème, rien ne change et le message dit pourquoi) ;
 3. **bascule** sur la nouvelle version (quelques secondes de coupure) ;
-4. avec Docker : **vérifie** que le site répond, et revient tout seul à
-   l'ancienne version sinon.
+4. **vérifie** que le site répond, et revient tout seul à l'ancienne
+   version sinon.
 
 Il se termine par `✓ Site en version X.Y.Z.`
 
-> ⚠️ N'utilisez jamais `git pull` ni `git clone` par-dessus un site en
-> service : le contenu de `src/content/` pourrait être effacé.
+> ⚠️ Un site installé avec Docker ne se met pas à jour par `git pull` :
+> passez toujours par `./update.sh`.
 
 Détails : [mise-a-jour.md](mise-a-jour.md).
 
@@ -539,7 +514,7 @@ Restaurer, déménager sur un autre serveur : [sauvegarde.md](sauvegarde.md).
 | Ce que je vois | Cause probable | Que faire |
 | :--- | :--- | :--- |
 | `SITE_URL manquant dans .env` | Ligne absente ou mal écrite | Ajouter `SITE_URL=https://…` au `.env` (sans espace autour du `=`), puis redémarrer |
-| Le navigateur affiche **502 Bad Gateway** | nginx fonctionne, mais le site ne répond pas (encore en construction, ou arrêté) | Patienter 2 ou 3 minutes, puis lire le journal (A5 ou B8) |
+| Le navigateur affiche **502 Bad Gateway** | nginx fonctionne, mais le site ne répond pas (encore en construction, ou arrêté) | Patienter 2 ou 3 minutes, puis lire le journal (A5 ou B5) |
 | **413** en envoyant une photo | Limite de taille de nginx | Vérifier `client_max_body_size 20m;` (C3), puis `systemctl reload nginx` |
 | Impossible de se connecter à l'Espace Admin, sans message clair | Le site est ouvert sous une autre adresse que `SITE_URL` | Utiliser l'adresse exacte de `SITE_URL`, et rediriger l'autre dans nginx (C4) |
 | Mot de passe de votre compte oublié | — | Depuis le dossier du site : `./auth-user.sh reset <identifiant>` (Docker) ou `npm run auth:user -- reset <identifiant>` (Node.js) affiche un mot de passe provisoire |
@@ -573,27 +548,6 @@ pages en PDF. Deux possibilités :
 
 Sans Gotenberg, les boutons d'impression n'apparaissent simplement pas.
 Détails : [bulletin-pdf.md](bulletin-pdf.md).
-
-### Lancer le site par systemd au lieu de PM2 (Node.js)
-
-Fichier `/etc/systemd/system/monsite.service` :
-
-```ini
-[Unit]
-Description=Site
-After=network.target
-
-[Service]
-WorkingDirectory=/srv/monsite
-ExecStart=/usr/bin/npm start
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Puis `systemctl daemon-reload && systemctl enable --now monsite`, et
-`UPDATE_RESTART=systemctl restart monsite` dans le `.env`.
 
 ### Plusieurs sites sur le même serveur
 

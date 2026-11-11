@@ -10,9 +10,8 @@
  *  2. bascule atomique : `dist` devient un lien vers cette version ;
  *  3. commande `PUBLISH_HOOK` facultative (ex. copie vers un hébergement statique) ;
  *  4. redémarrage du serveur sur la nouvelle version (~1 s d'interruption) :
- *     sous un gestionnaire de process (Docker, PM2, systemd), simple arrêt,
- *     le gestionnaire relance ; sinon (ex. `npm start` dans un terminal), le
- *     serveur se relance lui-même (`restartServer()`).
+ *     lancé par `npm start`, le serveur sort avec le code de relance et le
+ *     superviseur (`scripts/start.mjs`) le relance (`restartServer()`).
  * En cas d'échec du build, `onFailure` défait la modification de contenu et
  * le site reste tel quel ; en cas de succès, `onSuccess` la rend définitive
  * (ex. effacer le dossier d'une actualité supprimée, gardé de côté jusque-là).
@@ -30,7 +29,7 @@
 
 import { PUBLISH_HOOK, PUBLISH_RESTART, SITE_ROOT } from 'astro:env/server';
 import { spawn } from 'node:child_process';
-import { createWriteStream, existsSync, readdirSync } from 'node:fs';
+import { createWriteStream, readdirSync } from 'node:fs';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { avancerMaintenance, fermerMaintenance } from '../../scripts/maintenance.mjs';
@@ -152,16 +151,8 @@ function run(command: string, args: string[], env: NodeJS.ProcessEnv, log: NodeJ
 	});
 }
 
-/**
- * Le process tourne-t-il sous un gestionnaire qui le relancera s'il s'arrête ?
- * Docker (politique `restart`) et PM2 sont détectés. Pas systemd : sa
- * variable `INVOCATION_ID` est aussi héritée par les terminaux de bureau ;
- * sous un service systemd (`Restart=always`), la relance autonome est sans
- * effet néfaste — l'arrêt du process principal fait redémarrer le service.
- */
-function underProcessManager(): boolean {
-	return existsSync('/.dockerenv') || 'pm_id' in process.env;
-}
+/** Code de sortie qui demande au superviseur une relance (cf. `scripts/start.mjs`). */
+const CODE_RELANCE = 75;
 
 /** `'…'` pour le shell. */
 function shellQuote(arg: string): string {
@@ -169,24 +160,27 @@ function shellQuote(arg: string): string {
 }
 
 /**
- * Redémarre le serveur sur la nouvelle version. Sous un gestionnaire : on
- * s'arrête, il relance. Sinon, un petit shell détaché attend la fin de ce
- * process (libération du port) puis relance la même commande Node, mêmes
- * options (`--env-file…`), même dossier, même environnement.
+ * Redémarre le serveur sur la nouvelle version. Lancé par `npm start`
+ * (`ZERUCMS_SUPERVISE`) : on sort avec `CODE_RELANCE`, le superviseur
+ * relance. Sinon (serveur lancé autrement), un petit shell détaché attend la
+ * fin de ce process (libération du port) puis relance la même commande Node,
+ * mêmes options, même dossier, même environnement.
  */
 function restartServer(log: NodeJS.WritableStream): void {
-	if (!underProcessManager()) {
-		const command = [process.execPath, ...process.execArgv, ...process.argv.slice(1)].map(shellQuote).join(' ');
-		const waiter = spawn('sh', ['-c', `while kill -0 ${process.pid} 2>/dev/null; do sleep 0.2; done; exec ${command}`], {
-			cwd: process.cwd(),
-			env: process.env,
-			detached: true,
-			stdio: 'inherit',
-		});
-		waiter.unref();
-		log.write(`\nAucun gestionnaire de process détecté : relance autonome du serveur (${command}).\n`);
-		console.log('[publication] Nouvelle version en ligne : le serveur redémarre (relance autonome, en arrière-plan).');
+	if (process.env.ZERUCMS_SUPERVISE) {
+		setTimeout(() => process.exit(CODE_RELANCE), 500);
+		return;
 	}
+	const command = [process.execPath, ...process.execArgv, ...process.argv.slice(1)].map(shellQuote).join(' ');
+	const waiter = spawn('sh', ['-c', `while kill -0 ${process.pid} 2>/dev/null; do sleep 0.2; done; exec ${command}`], {
+		cwd: process.cwd(),
+		env: process.env,
+		detached: true,
+		stdio: 'inherit',
+	});
+	waiter.unref();
+	log.write(`\nServeur lancé sans \`npm start\` : relance autonome (${command}).\n`);
+	console.log('[publication] Nouvelle version en ligne : le serveur redémarre (relance autonome, en arrière-plan).');
 	setTimeout(() => process.exit(0), 500);
 }
 

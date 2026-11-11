@@ -19,8 +19,8 @@
  * 4. `npm ci` puis construction de la nouvelle version À CÔTÉ
  *    (`.releases/<horodatage>`) — le site en ligne continue sur l'ancienne ;
  * 5. échec en 4 → code d'origine restauré, `npm ci`, rien n'a changé ;
- *    succès → redémarrage par `UPDATE_RESTART` (.env, ex. « pm2 restart
- *    numerik2026 ») ou consigne affichée : au redémarrage, `start.mjs` trouve
+ *    succès → redémarrage par `UPDATE_RESTART` (.env, ex. « systemctl
+ *    restart monsite ») ou consigne affichée : au redémarrage, `start.mjs` trouve
  *    la version déjà construite et bascule sans reconstruire.
  *
  * Pendant l'étape 4, `node_modules` change sous le serveur en marche : faire
@@ -63,6 +63,12 @@ const tag = args.find((a) => /^v\d/.test(a));
 const archiveArg = args.includes('--archive') ? args[args.indexOf('--archive') + 1] : null;
 const sansSauvegarde = args.includes('--sans-sauvegarde');
 if (!tag) echec('usage : node scripts/update.mjs vX.Y.Z [--archive fichier.tar.gz]');
+
+// Installation par `git clone` : la mise à jour passe par git, pas par l'archive
+// (qui laisserait le dépôt plein de modifications).
+if (existsSync(join(root, '.git'))) {
+	echec("site installé avec git : mettez-le à jour par « git pull » puis « npm install », puis relancez « npm start » (voir docs/deploiement.md).");
+}
 
 // Variables du .env (SITE_URL, UPDATE_RESTART) pour la construction et le redémarrage.
 if (existsSync(join(root, '.env'))) process.loadEnvFile(join(root, '.env'));
@@ -158,6 +164,6 @@ if (restart) {
 	if (!run('sh', ['-c', restart])) echec(`la commande UPDATE_RESTART a échoué : redémarrez le serveur à la main (version ${cible} prête).`);
 	console.log(`✓ Site en version ${cible}.`);
 } else {
-	console.log(`✓ Version ${cible} installée et construite. Redémarrez le serveur pour la mettre en ligne`);
-	console.log('  (ex. « pm2 restart numerik2026 », « systemctl restart numerik2026 ») — ou définissez UPDATE_RESTART dans .env.');
+	console.log(`✓ Version ${cible} installée et construite. Redémarrez le site pour la mettre en ligne :`);
+	console.log('  arrêtez « npm start » (Ctrl+C) puis relancez-le — ou définissez UPDATE_RESTART dans .env.');
 }
