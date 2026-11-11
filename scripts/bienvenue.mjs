@@ -114,7 +114,12 @@ export function pageBienvenue() {
 		try {
 			const r = await fetch('${ROUTE_PREMIER_COMPTE}', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) });
 			const j = await r.json().catch(() => null);
-			if (r.ok || r.status === 409) { location.href = '/'; return; }
+			if (r.ok || r.status === 409) {
+				// Site neuf : un « Plus tard » d'une installation précédente (même adresse, même onglet) ne vaut plus.
+				try { sessionStorage.removeItem('numerik-installation-plus-tard'); } catch {}
+				location.href = '/';
+				return;
+			}
 			erreur.textContent = (j && j.error) || 'Création du compte impossible.';
 		} catch { erreur.textContent = 'Serveur injoignable.'; }
 		bouton.disabled = false;

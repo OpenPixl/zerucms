@@ -63,6 +63,7 @@ async function loadVersion() {
  */
 const InstallationWizard = defineAsyncComponent(() => import('./InstallationWizard.vue'));
 const installationOuverte = ref(false);
+// Même clé effacée par l'écran « Bienvenue » (scripts/bienvenue.mjs) à la création du premier compte.
 const PLUS_TARD = 'numerik-installation-plus-tard';
 async function verifierInstallation() {
 	if (!user.value?.groups.includes('superadmin') || mustChangePassword.value) return;
