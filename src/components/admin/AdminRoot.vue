@@ -520,7 +520,7 @@ onBeforeUnmount(() => {
 		</button>
 	</AdminOverlay>
 
-	<AdminOverlay v-if="installationOuverte && user && !mustChangePassword" title="Installation du site" variant="modal" wide @close="installationPlusTard">
+	<AdminOverlay v-if="installationOuverte && user && !mustChangePassword" title="Installation du site" variant="modal" wide opaque @close="installationPlusTard">
 		<InstallationWizard @later="installationPlusTard" @done="reload" />
 	</AdminOverlay>
 

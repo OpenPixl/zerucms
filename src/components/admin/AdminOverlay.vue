@@ -3,7 +3,9 @@
  * Calque superposé au site : `variant="drawer"` = panneau latéral à droite
  * (modules), sous la barre d'administration (`top-10`) pour qu'un clic sur
  * un autre module de la barre l'ouvre directement ; `variant="modal"` =
- * fenêtre centrée (connexion ; `wide` = plus large, ex. ajout par fichier .md).
+ * fenêtre centrée (connexion ; `wide` = plus large, ex. ajout par fichier .md ;
+ * `opaque` = fond plein qui cache le site, ex. assistant d'installation : le
+ * contenu de démonstration n'a pas à être vu avant le choix du type de structure).
  * Échap ou clic sur le fond ferme (sauf `closable: false`, ex. changement de
  * mot de passe imposé) ; le focus est placé dans le calque à
  * l'ouverture et rendu à l'élément d'origine à la fermeture ; la page
@@ -11,7 +13,7 @@
  */
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 
-const props = withDefaults(defineProps<{ title: string; variant?: 'drawer' | 'modal'; closable?: boolean; wide?: boolean }>(), {
+const props = withDefaults(defineProps<{ title: string; variant?: 'drawer' | 'modal'; closable?: boolean; wide?: boolean; opaque?: boolean }>(), {
 	variant: 'drawer',
 	closable: true,
 });
@@ -62,7 +64,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="['fixed z-[70]', props.variant === 'modal' ? 'inset-0 flex items-center justify-center p-4' : 'inset-x-0 top-10 bottom-0']">
-		<div class="absolute inset-0 bg-gray-900/50" aria-hidden="true" @click="requestClose"></div>
+		<div :class="['absolute inset-0', props.opaque ? 'bg-gray-100' : 'bg-gray-900/50']" aria-hidden="true" @click="requestClose"></div>
 		<div
 			ref="panel"
 			role="dialog"
