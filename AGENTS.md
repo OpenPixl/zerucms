@@ -209,7 +209,7 @@ intouchable depuis le module « Comptes ».
 **Assistant d'installation** (site neuf : `installation.json` absent et
 aucun compte hors super admin, ou installation inachevée) : ouvert au super
 admin après le changement de mot de passe (`InstallationWizard.vue` dans
-`AdminRoot`, « Plus tard » = `sessionStorage`, reprise depuis le module
+`AdminRoot`, fond plein `opaque` qui cache le site de démonstration, « Plus tard » = `sessionStorage`, reprise depuis le module
 Site) — **type de structure** (association ou auto-entrepreneur :
 `src/lib/structure.ts`, `structure:` de `reglages.yaml` → `site.structure` ;
 plugins filtrés par `structures` du catalogue, `proposePour()`,
@@ -610,7 +610,9 @@ selon les besoins ; `plugin.ts` = manifeste, `index.ts` = ce que le reste
 du site en utilise). Catalogue `src/plugins/catalogue.ts` (`PLUGINS`, sans
 dépendance), réglage `plugins: { <id>: true }` de `reglages.yaml`
 (`site.plugins`, **inactif par défaut** sauf `actifParDefaut: true` du
-catalogue — `adhesion`, `inscription` — ; `requiert: ['<id>']` = inactif si
+catalogue — `adhesion`, `inscription` —, pour les sites existants : le
+`reglages.yaml` de démonstration les met à `false`, un site neuf démarre
+sans aucun plugin ; `requiert: ['<id>']` = inactif si
 le plugin requis l'est, et seul dossier d'un autre plugin importable ;
 `resoudrePlugins()` du catalogue, lu par `site.ts` et
 `src/integrations/plugins.ts` ; module « Plugins » : activation refusée si

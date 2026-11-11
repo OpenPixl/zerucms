@@ -45,16 +45,17 @@ share:
   facebook: true
   copy: true # « Copier le lien »
 
-# Plugins : volets du site à activer ou non (true / false), inactifs si
-# rien n'est écrit, sauf l'adhésion et l'inscription (actives : false pour
-# les retirer). Changer une valeur demande de reconstruire le site.
+# Plugins : volets du site à activer ou non (true / false). Tous inactifs
+# sur un site neuf : on les choisit dans l'assistant d'installation, puis
+# dans le module « Plugins » de l'Espace Admin. Changer une valeur demande
+# de reconstruire le site.
 #   adhesion    → adhésion en ligne et bulletin PDF, « Je participe »,
 #                 planning lu dans Grist
 #   inscription → /inscription et bouton « S'inscrire » des activités
 #                 (requiert adhesion : inactive aussi sans elle)
 #   rdv         → prise de rendez-vous en ligne (page, permanences dans le
 #                 planning, encart d'accueil) ; se règle dans src/content/rdv.yaml
-plugins: {}
+plugins: {adhesion: false, inscription: false}
 
 # Formulaires en ligne. enabled: false ferme le formulaire : à sa place
 # s'affiche un encart avec closedTitle et closedMessage.
