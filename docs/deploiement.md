@@ -273,35 +273,23 @@ l'ouvrir au public : [Partie C](#partie-c--nom-de-domaine-et-https).
 
 ### B5. Garder le site allumé (serveur en ligne)
 
-`npm start` s'arrête quand vous fermez le terminal. Sur un vrai serveur, on
-demande donc au système de le lancer lui-même, au démarrage de la machine.
-Une seule fois, copiez-collez ce bloc (en remplaçant `/srv/monsite` si
-besoin) :
+`npm start` s'arrête quand vous fermez le terminal. Sur un vrai serveur,
+arrêtez-le (**Ctrl+C**) puis, depuis le dossier du site :
 
 ```bash
-cat > /etc/systemd/system/monsite.service <<'FIN'
-[Unit]
-Description=Site
-After=network.target
-
-[Service]
-WorkingDirectory=/srv/monsite
-ExecStart=/usr/bin/npm start
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-FIN
-systemctl daemon-reload && systemctl enable --now monsite
+sudo npm run service
 ```
 
-Ensuite :
+Le site tourne alors en permanence et redémarre tout seul avec le serveur.
+La commande affiche le nom du service (celui du dossier : `/srv/monsite` →
+`monsite`) et les commandes utiles :
 
 | Je veux… | Je tape… |
 | :--- | :--- |
 | Voir si le site tourne | `systemctl status monsite` |
 | Lire le journal du site | `journalctl -u monsite -n 50` |
-| Redémarrer (après un `.env` modifié, une mise à jour) | `systemctl restart monsite` |
+| Redémarrer (après un `.env` modifié, une mise à jour) | `sudo systemctl restart monsite` |
+| Ne plus faire tourner le site en permanence | `sudo npm run service -- retirer` |
 
 > Sans cette étape, lancez simplement `npm start` dans le terminal : tout
 > fonctionne pareil tant qu'il reste ouvert.
@@ -316,7 +304,7 @@ npm install
 ```
 
 puis redémarrez le site (Ctrl+C et `npm start`, ou
-`systemctl restart monsite`) : il se reconstruit sur la nouvelle version.
+`sudo systemctl restart monsite`) : il se reconstruit sur la nouvelle version.
 La branche `master` ne contient que les versions publiées. En cas de
 souci, `git checkout v0.5.11` (une version précise) revient en arrière,
 suivi de `npm install` et d'un redémarrage ; `git checkout master` puis

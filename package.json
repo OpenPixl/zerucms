@@ -10,6 +10,7 @@
     "build": "astro build && npm run build:cli",
     "preview": "astro preview",
     "start": "node --env-file-if-exists=.env scripts/start.mjs",
+    "service": "node scripts/service.mjs",
     "astro": "astro",
     "auth:user": "npm run -s build:cli && node dist/cli/auth-user.mjs",
     "build:cli": "esbuild scripts/auth-user.ts --bundle --platform=node --format=esm --log-level=warning \"--banner:js=import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=${ASTRO_OUT_DIR:-dist}/cli/auth-user.mjs",

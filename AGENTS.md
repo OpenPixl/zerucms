@@ -63,7 +63,9 @@ autres que la version en ligne et la version visée (+ `image prune`), sauf
 Production sans Docker = **`git clone` + `npm install` + `npm start`**
 (souhait explicite : rien d'exotique, pas de PM2 ; mise à jour `git pull` +
 `npm install` + redémarrage, `update.mjs` refuse un dossier `.git` ; en
-continu : service systemd, docs/deploiement.md partie B).
+continu : `sudo npm run service` = `scripts/service.mjs`, unité systemd
+`<dossier>.service` au nom du compte propriétaire du dossier, `-- retirer` ;
+docs/deploiement.md partie B).
 `npm start` = superviseur `scripts/start.mjs`, qui lance et relance
 `scripts/serveur.mjs` (`node --env-file-if-exists=.env` : construit le site si
 l'empreinte version + `SITE_URL` + `src/content/` diffère de
