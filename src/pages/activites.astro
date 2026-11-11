@@ -26,7 +26,8 @@ let notice: string | undefined;
 try {
 	sessions = [...permanences, ...(await planningActivites())];
 } catch (err) {
-	console.error('[activites] Grist injoignable pour le planning : permanences seules.', err);
+	// Une ligne, sans pile : l'erreur se répète à chaque visite de la page.
+	console.error(`[activites] Grist injoignable pour le planning : permanences seules (${(err as Error).message})`);
 	notice =
 		'Le planning des activités est momentanément indisponible. ' +
 		'Contactez-nous pour connaître les horaires des séances.';
