@@ -10,8 +10,8 @@
 #   ./restauration.sh … --oui                            sans demander de confirmation
 #
 # Options : --docker / --node (mode, détecté sinon, comme ./update.sh).
-# Node seul : redémarrage par UPDATE_RESTART du .env (ex. « pm2 restart
-# numerik2026 »), sinon consigne affichée.
+# Node seul : redémarrage par UPDATE_RESTART du .env (ex. « systemctl restart
+# monsite »), sinon consigne affichée.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -67,7 +67,7 @@ else
   if [ -n "$restart" ]; then
     eval "$restart"
   else
-    echo "  Redémarrez le site (ex. « pm2 restart numerik2026 » ou « npm start ») pour le reconstruire."
+    echo "  Redémarrez le site (Ctrl+C puis « npm start », ou « systemctl restart monsite ») pour le reconstruire."
   fi
 fi
 echo "✓ Terminé."

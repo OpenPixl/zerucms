@@ -33,10 +33,11 @@ export default defineConfig({
 
 En développement (`astro dev`), tout fonctionne de façon transparente. En production sur un VPS/serveur dédié (OVH ou autre) :
 
-1. Lancer le serveur en continu avec un process manager : `npm start`
-   (= `node --env-file-if-exists=.env scripts/start.mjs`, ex. PM2 :
-   `pm2 start npm --name numerik2026 -- start`). Le `.env` est lu **au
-   démarrage**. `scripts/start.mjs` construit d'abord le site (`npm run build`
+1. Lancer le serveur : `npm start`
+   (= `node --env-file-if-exists=.env scripts/start.mjs`, superviseur qui
+   lance `scripts/serveur.mjs` et le relance après chaque publication ; en
+   continu sur un serveur : service systemd, cf. [deploiement.md](deploiement.md)).
+   Le `.env` est lu **au démarrage**. `scripts/serveur.mjs` construit d'abord le site (`npm run build`
    → `dist/server/entry.mjs` + `dist/client/`) s'il n'existe pas ou si la
    version, `SITE_URL` ou `src/content/` ont changé depuis le dernier build
    (empreinte `dist/build-info.json`, cf. [mise-a-jour.md](mise-a-jour.md)),

@@ -3,7 +3,7 @@
 ## Stack
 
 - **[Astro 7](https://docs.astro.build)** — `output` reste `'static'` par défaut : chaque page est pré-rendue en HTML au build. Seules les routes qui déclarent explicitement `export const prerender = false` (ex. `src/pages/api/adherer.ts`) sont rendues à la demande par le serveur Node.
-- **`@astrojs/node`** (`mode: 'standalone'`) — adaptateur qui fournit le petit serveur HTTP nécessaire aux routes API ; à mettre derrière un reverse proxy (nginx/Apache) et un process manager (PM2) en production. Voir [api.md](api.md).
+- **`@astrojs/node`** (`mode: 'standalone'`) — adaptateur qui fournit le petit serveur HTTP nécessaire aux routes API ; à mettre derrière un reverse proxy (nginx/Apache) lancé par `npm start` en production. Voir [api.md](api.md).
 - **[Tailwind CSS 4](https://tailwindcss.com)** — classes utilitaires, configurées directement en CSS via `@theme` dans `src/styles/global.css` (pas de fichier `tailwind.config.js`, c'est le fonctionnement natif de Tailwind 4).
 - **`@astrojs/rss`** — génération du flux `/rss.xml`.
 - **`@astrojs/mdx`** — pour les pages de `src/content/pages/` qui ont besoin d'interpoler des valeurs dynamiques (ex. `mentions-legales`) ; voir [pages.md](pages.md).

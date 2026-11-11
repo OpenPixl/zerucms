@@ -14,10 +14,11 @@ revient donc à faire, sur le serveur, ce qu'un·e développeur·se ferait à la
 3. faire pointer `dist` sur cette nouvelle version (bascule atomique) ;
 4. lancer la commande `PUBLISH_HOOK` si elle est définie (voir plus bas) ;
 5. redémarrer le serveur sur la nouvelle version (≈ 1 s d'interruption) :
-   sous **Docker** ou **PM2**, le process s'arrête et son gestionnaire le relance ;
-   sinon (ex. `npm start` dans un terminal, ou service systemd), le serveur
-   **se relance lui-même** : un petit processus attend son arrêt puis relance
-   la même commande (journal : « relance autonome »).
+   le serveur s'arrête avec un code de relance et `npm start`
+   (`scripts/start.mjs`, petit superviseur) le relance aussitôt — dans un
+   terminal comme sous Docker ou systemd, sans autre outil. Serveur lancé
+   autrement que par `npm start` : un petit processus attend son arrêt puis
+   relance la même commande (journal : « relance autonome »).
 
 Si la reconstruction échoue, la modification est défaite (dossier ajouté
 retiré, sauvegarde ou dossier supprimé remis en place), `dist` n'est pas modifié, le site reste en ligne tel quel, et le module affiche
@@ -65,17 +66,16 @@ La publication n'est possible que si le serveur Node dispose :
 | Les **sources** du site (`src/`, `astro.config.mjs`, `package.json`…) et `node_modules` complet (`npm ci`, dépendances de développement comprises) | Le serveur relance `npm run build` |
 | `npm` dans le `PATH` du process | Idem |
 | Le dossier du projet **en écriture** | Écriture de `src/content/news/`, `.releases/`, lien `dist` |
-| De préférence un **gestionnaire de process** (PM2, systemd, Docker) | Relance propre sur la nouvelle version (étape 5) ; à défaut, relance autonome |
 
 Sinon, le module « Actualités » l'indique et le bouton d'ajout est désactivé
 (rien n'est écrit).
 
 > Lancé à la main (`npm start` dans un terminal), le serveur se relance
-> lui-même après chaque publication, en arrière-plan : il n'est alors plus
-> lié au terminal (Ctrl+C ne l'arrête plus — `pkill -f scripts/start.mjs`).
-> Un gestionnaire (PM2, systemd `Restart=always`, Docker) reste recommandé en
-> production. `PUBLISH_RESTART=false` désactive tout redémarrage (le nouveau
-> contenu n'est alors servi qu'au prochain redémarrage manuel).
+> après chaque publication et reste lié au terminal (Ctrl+C l'arrête). Pour
+> qu'il survive à la fermeture du terminal et au redémarrage de la machine :
+> service systemd, voir [deploiement.md](deploiement.md#b5-garder-le-site-allumé-serveur-en-ligne).
+> `PUBLISH_RESTART=false` désactive tout redémarrage (le nouveau contenu
+> n'est alors servi qu'au prochain redémarrage manuel).
 
 ## Installation (Docker ou Node.js)
 
@@ -83,8 +83,8 @@ Les deux installations remplissent ces prérequis : pas à pas dans
 [deploiement.md](deploiement.md). Avec Docker, l'image embarque tout le
 projet (sources + `node_modules` complet) et `./src/content` est monté
 depuis le serveur, donc conservé d'une version à l'autre ; le conteneur est
-relancé après chaque publication (`restart: unless-stopped`). Avec Node.js,
-c'est PM2 (ou systemd) qui le relance.
+relancé après chaque publication par `npm start` (superviseur, dans le
+conteneur comme sans Docker).
 
 ## Site statique sur un autre hébergement (`PUBLISH_HOOK`)
 
