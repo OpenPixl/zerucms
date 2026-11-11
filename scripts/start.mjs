@@ -4,7 +4,7 @@
  *   node --env-file-if-exists=.env scripts/start.mjs     (= npm start)
  *
  * 0. nouveau site (src/content/ sans association.yaml) : copie le contenu de
- *    démonstration de `contenu-initial/` (scripts/contenu-initial.mjs) ;
+ *    démonstration de `src/modeles/association/` (scripts/contenu-initial.mjs) ;
  *    Charge ensuite les secrets saisis à l'installation
  *    (`<DATA_DIR>/installation/secrets.env`, scripts/installation.mjs : le
  *    .env l'emporte) et génère `AUTH_SECRET` s'il manque ;

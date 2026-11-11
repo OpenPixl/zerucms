@@ -204,12 +204,12 @@ Site) — **type de structure** (association ou auto-entrepreneur :
 `src/lib/structure.ts`, `structure:` de `reglages.yaml` → `site.structure` ;
 plugins filtrés par `structures` du catalogue, `proposePour()`,
 `resoudrePlugins(lus, structure)` ; vocabulaire de l'admin et des variables
-de page ; entreprise = exemples de `contenu-initial-entreprise/` appliqués
+de page ; entreprise = exemples de `src/modeles/entreprise/` appliqués
 là où le fichier est encore celui de démonstration, exemples d'association
 retirés), compte `admin`, identité (nom, coordonnées, logo), plugins tous
 décochés (état écrit pour **tous** dans `reglages.yaml`, fichier `modele`
 du catalogue copié s'il manque), réglages + `secrets` du catalogue,
-exemples gardés ou retirés (ceux encore identiques à `contenu-initial/`,
+exemples gardés ou retirés (ceux encore identiques à `src/modeles/association/`,
 hors socle), puis reconstruction en maintenance. Logique
 `src/lib/installation.ts`, route `/api/admin/installation` (super admin),
 secrets dans `<DATA_DIR>/installation/secrets.env` (`scripts/installation.mjs` :
@@ -379,11 +379,11 @@ schéma `zod` via `astro/zod`) — suivre la doc Astro
 (https://docs.astro.build/en/guides/content-collections/). **Ne pas stocker de
 contenu hors de `src/content/`.** `src/content/` n'est **pas suivi par git**
 (sauf `README.md`) : chaque site a le sien. Nouveau site / clone / CI :
-contenu de démonstration `contenu-initial/` (même arborescence, neutre)
+contenu de démonstration `src/modeles/association/` (même arborescence, neutre)
 copié par `scripts/contenu-initial.mjs` si `src/content/association.yaml`
 manque (`postinstall`, `npm run contenu:init`, `scripts/start.mjs` ; jamais
 d'écrasement). Nouveau fichier de contenu exigé par le code (import direct,
-lien en dur) = l'ajouter aussi dans `contenu-initial/`.
+lien en dur) = l'ajouter aussi dans `src/modeles/association/`.
 
 - `news` — `src/content/news/<AAAA-MM-JJ-slug>/index.md`, id = nom du
   dossier, `cover: ./cover.jpg` validé par `image()`. `src/lib/news.ts` :

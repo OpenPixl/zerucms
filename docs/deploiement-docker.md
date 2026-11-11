@@ -133,7 +133,7 @@ nano .env       # SITE_URL (obligatoire) ; le reste (AUTH_SECRET, clés Grist…
                 # peut attendre l'assistant d'installation
 
 # 3. Télécharger l'image et démarrer (premier démarrage : src/content/ est
-#    rempli avec le contenu de démonstration de contenu-initial/, à
+#    rempli avec le contenu de démonstration de src/modeles/association/, à
 #    personnaliser ensuite depuis l'Espace Admin ; le site se construit en
 #    une à quelques minutes). Version précise : NUMERIK_VERSION=X.Y.Z dans le .env
 docker compose up -d

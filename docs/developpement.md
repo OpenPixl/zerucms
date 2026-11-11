@@ -73,7 +73,8 @@ src/
 | `src/lib/installation.ts`, `src/pages/api/admin/installation.ts`, `src/components/admin/InstallationWizard.vue` | Assistant d'installation (super admin, site neuf) |
 | `src/integrations/installation.ts` | Secrets de l'installation en dev (le `.env` l'emporte) |
 | `src/lib/structure.ts` | Type de structure (`association` / `entreprise`) et vocabulaire — [structure.md](structure.md) |
-| `contenu-initial-entreprise/` | Contenu d'exemple « auto-entrepreneur », appliqué par l'assistant |
+| `src/modeles/association/` | Contenu de démonstration d'un nouveau site (copié dans `src/content/` par `scripts/contenu-initial.mjs`) |
+| `src/modeles/entreprise/` | Contenu d'exemple « auto-entrepreneur », appliqué par l'assistant |
 | `scripts/maintenance.mjs`, `src/integrations/maintenance.ts` | Mode maintenance (restauration, installation, manuel) : porte devant le serveur (`scripts/start.mjs`) et en dev — [sauvegarde.md](sauvegarde.md#détails-techniques) |
 | `src/lib/grist-client.ts` | Client Grist générique des plugins (`clientGrist()`) |
 | `src/plugins/facturation/` | Plugin devis et facturation — [facturation.md](facturation.md) |

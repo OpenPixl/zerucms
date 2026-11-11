@@ -41,7 +41,7 @@ pnpm-debug.log*
 
 # Contenu du site (src/content/ : pages, actualités, activités, images,
 # polices, *.yaml) : propre à chaque association, jamais commité. Un nouveau
-# site part du contenu de démonstration de contenu-initial/, copié par
+# site part du contenu de démonstration de src/modeles/association/, copié par
 # scripts/contenu-initial.mjs. Seul le guide des éditeurs est suivi.
 /src/content/*
 !/src/content/README.md

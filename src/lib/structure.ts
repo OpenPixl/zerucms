@@ -5,7 +5,7 @@
  * (lu par `src/config/site.ts` : `site.structure`). Il décide :
  *  - des plugins proposés (`structures` du catalogue `src/plugins/catalogue.ts`) ;
  *  - du vocabulaire de l'Espace Admin et des textes par défaut (ci-dessous) ;
- *  - des mentions légales et du contenu d'exemple (`contenu-initial-entreprise/`,
+ *  - des mentions légales et du contenu d'exemple (`src/modeles/entreprise/`,
  *    appliqué par l'assistant : `src/lib/installation.ts`).
  * Les noms techniques (`association.yaml`, `{{association.nom}}`…) ne changent pas.
  *

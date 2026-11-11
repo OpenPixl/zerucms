@@ -2,7 +2,7 @@
 
 Appliqué par l'assistant d'installation (`src/lib/installation.ts`) quand le
 type de structure choisi est **Auto-entrepreneur** : chaque fichier remplace
-celui de `contenu-initial/` encore inchangé dans `src/content/`, ou s'y
+celui de `src/modeles/association/` encore inchangé dans `src/content/`, ou s'y
 ajoute. Les exemples propres aux associations (activités, statuts, règlement
 intérieur, menu « Association », partenaire) sont retirés.
 

@@ -11,7 +11,7 @@ mise à jour :
 | `.env` (`SITE_URL`, clés Grist…) | |
 
 Le contenu d'une association n'est **pas dans le dépôt** (`.gitignore`) : un
-nouveau site part du **contenu de démonstration** de `contenu-initial/`
+nouveau site part du **contenu de démonstration** de `src/modeles/association/`
 (« Mon association », logo neutre, une actualité, deux activités, pages
 légales génériques), copié dans `src/content/` tant que celui-ci n'a pas
 d'`association.yaml` — par `npm install` / `npm ci` (`postinstall`) et par

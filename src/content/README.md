@@ -5,7 +5,7 @@ de toucher au code : créer une page = créer un fichier Markdown.
 
 Il est propre à chaque association et n'est pas suivi par git. Sur un nouveau
 site, il est rempli au premier lancement avec le **contenu de démonstration**
-de `contenu-initial/` (« Mon association », logo neutre, exemples à
+de `src/modeles/association/` (« Mon association », logo neutre, exemples à
 remplacer), personnalisable ensuite depuis l'Espace Admin.
 
 ## Où va quoi
