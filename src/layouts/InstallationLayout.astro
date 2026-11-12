@@ -1,0 +1,45 @@
+---
+/**
+ * Mise en page de l'installation d'un site neuf (`src/pages/installation.astro`) :
+ * fond gris plein, une carte centrée, ni en-tête, ni pied de page, ni barre
+ * d'admin (`AdminLoader` absent) — le site de démonstration n'apparaît
+ * jamais pendant l'installation. Mêmes styles, couleurs et polices que le site.
+ */
+import '../styles/global.css';
+import { favicons } from '../lib/site-images';
+import { themeCss } from '../config/site';
+import { fontPreloads, fontsCss } from '../lib/fonts';
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="fr">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<title>{title}</title>
+		{favicons.map((icon) => <link rel="icon" type={icon.type} href={icon.href} />)}
+		<style is:inline set:html={themeCss} />
+		{fontPreloads.map((href) => <link rel="preload" as="font" type="font/woff2" href={href} crossorigin />)}
+		<style is:inline set:html={fontsCss} />
+	</head>
+	<body class="flex min-h-screen items-start justify-center bg-gray-100 px-4 py-8 sm:items-center">
+		<main class="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl">
+			<header class="flex items-center gap-3 border-b border-gray-100 px-5 py-4">
+				<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+					<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+				</span>
+				<h1 class="font-heading text-lg font-semibold text-gray-900">{title}</h1>
+			</header>
+			<div class="px-5 py-5">
+				<slot />
+			</div>
+		</main>
+	</body>
+</html>

@@ -1,0 +1,78 @@
+---
+/**
+ * Installation d'un site neuf (super admin), sur une page à part : l'écran
+ * « Bienvenue » (`scripts/bienvenue.mjs`) y mène après la création du
+ * premier compte, la barre d'admin (`AdminRoot.vue`) y renvoie tant que
+ * l'installation est à faire. Rien du site de démonstration n'est affiché.
+ *  - installation à faire → assistant (`InstallationWizard.vue`) ;
+ *  - terminée → écran « Votre site est prêt » (voir le site, se déconnecter) ;
+ *  - site déjà en service (comptes, sans installation) → accueil.
+ * En production, l'assistant recharge cette page après l'envoi : la porte de
+ * maintenance montre la construction, puis revient ici sur l'écran de fin.
+ */
+import InstallationLayout from '../layouts/InstallationLayout.astro';
+import InstallationWizard from '../components/admin/InstallationWizard.vue';
+import { association } from '../lib/association';
+import { dataDir } from '../lib/data-dir';
+import { installationRequise } from '../lib/installation';
+import { readStatus } from '../lib/site-build';
+import { lireInstallation } from '../../scripts/installation.mjs';
+
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/#connexion');
+// Mot de passe provisoire : la modale de la barre d'admin le fait changer, puis renvoie ici.
+if (!user.groups.includes('superadmin') || user.mustChangePassword) return Astro.redirect('/');
+
+const etat = lireInstallation(dataDir()) as { etat: string } | null;
+const requise = await installationRequise();
+if (!requise && etat?.etat !== 'terminee') return Astro.redirect('/');
+
+// Reconstruction échouée : installation annulée (sauf compte et secrets), à relancer.
+const status = requise && etat?.etat === 'en-cours' ? await readStatus() : null;
+const echec = status?.state === 'failed' ? (status.message ?? 'La construction du site a échoué.') : '';
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+
+<InstallationLayout title={requise ? 'Installation du site' : 'Votre site est prêt'}>
+	{
+		requise ? (
+			<InstallationWizard client:load echec={echec} />
+		) : (
+			<div class="space-y-4 text-sm">
+				<p class="alerte-succes" role="status">
+					<i class="fa-solid fa-circle-check mr-1.5" aria-hidden="true" />
+					Installation terminée : <strong>{association.name}</strong> est en ligne.
+				</p>
+				<p class="text-gray-600">
+					Le compte administrateur créé pendant l'installation se connecte avec le lien <strong>« Espace Admin »</strong> du
+					pied de page, puis remplace son mot de passe provisoire.
+				</p>
+				<p class="text-gray-600">
+					Votre compte super admin reste réservé aux interventions techniques (plugins, journal, restaurations) : vous pouvez
+					vous déconnecter.
+				</p>
+				<div class="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
+					<button type="button" class="bouton bouton-primaire" data-deconnexion>
+						<i class="fa-solid fa-right-from-bracket" aria-hidden="true" />
+						Me déconnecter et voir le site
+					</button>
+					<a href="/" class="bouton bouton-neutre">
+						<i class="fa-solid fa-house" aria-hidden="true" />
+						Voir le site en restant connecté
+					</a>
+				</div>
+			</div>
+		)
+	}
+</InstallationLayout>
+
+<script>
+	document.querySelector('[data-deconnexion]')?.addEventListener('click', async (event) => {
+		(event.currentTarget as HTMLButtonElement).disabled = true;
+		await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+		window.location.assign('/');
+	});
+</script>

@@ -3,10 +3,7 @@
  * Calque superposé au site : `variant="drawer"` = panneau latéral à droite
  * (modules), sous la barre d'administration (`top-10`) pour qu'un clic sur
  * un autre module de la barre l'ouvre directement ; `variant="modal"` =
- * fenêtre centrée (connexion ; `wide` = plus large, ex. ajout par fichier .md ;
- * `opaque` = fond plein qui cache le site, ex. assistant d'installation : le
- * contenu de démonstration n'a pas à être vu avant le choix du type de structure ;
- * seul le bouton ✕ le ferme : ni Échap ni un clic à côté, qui feraient perdre la saisie).
+ * fenêtre centrée (connexion ; `wide` = plus large, ex. ajout par fichier .md).
  * Échap ou clic sur le fond ferme (sauf `closable: false`, ex. changement de
  * mot de passe imposé) ; le focus est placé dans le calque à
  * l'ouverture et rendu à l'élément d'origine à la fermeture ; la page
@@ -14,7 +11,7 @@
  */
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 
-const props = withDefaults(defineProps<{ title: string; variant?: 'drawer' | 'modal'; closable?: boolean; wide?: boolean; opaque?: boolean }>(), {
+const props = withDefaults(defineProps<{ title: string; variant?: 'drawer' | 'modal'; closable?: boolean; wide?: boolean }>(), {
 	variant: 'drawer',
 	closable: true,
 });
@@ -29,7 +26,7 @@ const titleId = `admin-overlay-${Math.random().toString(36).slice(2, 8)}`;
 let previousFocus: HTMLElement | null = null;
 
 function onKeydown(event: KeyboardEvent) {
-	if (event.key === 'Escape' && !props.opaque) requestClose();
+	if (event.key === 'Escape') requestClose();
 	if (event.key !== 'Tab' || !panel.value) return;
 	// Garde le focus clavier dans le calque.
 	const focusables = panel.value.querySelectorAll<HTMLElement>(
@@ -65,7 +62,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="['fixed z-[70]', props.variant === 'modal' ? 'inset-0 flex items-center justify-center p-4' : 'inset-x-0 top-10 bottom-0']">
-		<div :class="['absolute inset-0', props.opaque ? 'bg-gray-100' : 'bg-gray-900/50']" aria-hidden="true" @click="!props.opaque && requestClose()"></div>
+		<div class="absolute inset-0 bg-gray-900/50" aria-hidden="true" @click="requestClose()"></div>
 		<div
 			ref="panel"
 			role="dialog"

@@ -7,7 +7,9 @@
  * décochés) → réglages et secrets des plugins cochés → contenu d'exemple →
  * récapitulatif. « Installer » envoie tout d'un coup (`installationApi`,
  * src/lib/installation.ts) ; en production, le site passe en maintenance
- * pendant sa reconstruction (page de progression).
+ * pendant sa reconstruction (page de progression), puis la page
+ * `/installation` (`src/pages/installation.astro`, seule à monter ce
+ * composant) revient sur l'écran de fin.
  */
 import { computed, onMounted, ref } from 'vue';
 import { PASSWORD_MIN_LENGTH } from '../../lib/auth/password-rules';
@@ -15,7 +17,20 @@ import { ApiError, installationApi, type InstallationEtat, type InstallationPlug
 import { fileToBase64, inputClass } from './context';
 import { STRUCTURES, vocabulaire, type Structure } from '../../lib/structure';
 
-const emit = defineEmits<{ later: [] }>();
+/** Message de la reconstruction échouée d'une installation précédente (annulée, à relancer). */
+const props = defineProps<{ echec?: string }>();
+
+// Même clé que `AdminRoot.vue` et l'écran « Bienvenue » (scripts/bienvenue.mjs).
+const PLUS_TARD = 'numerik-installation-plus-tard';
+/** « Plus tard » : le site, sans être renvoyé ici jusqu'à la fermeture de l'onglet. */
+function plusTard() {
+	try {
+		sessionStorage.setItem(PLUS_TARD, '1');
+	} catch {
+		// Rien à garder.
+	}
+	window.location.assign('/');
+}
 
 const etat = ref<InstallationEtat | null>(null);
 const error = ref('');
@@ -154,9 +169,9 @@ async function installer() {
 		};
 		const r = await installationApi.installer(saisie);
 		termine.value = true;
-		// Toujours vers l'accueil du site installé (production : page de
-		// maintenance avec la progression de la construction, puis l'accueil).
-		setTimeout(() => window.location.assign('/'), r.maintenance ? 1500 : 0);
+		// Production : la page rechargée est celle de la maintenance (progression
+		// de la construction), qui revient ensuite ici, sur l'écran de fin.
+		if (r.maintenance) setTimeout(() => window.location.reload(), 1500);
 	} catch (err) {
 		error.value = err instanceof ApiError ? err.message : (err as Error).message;
 	} finally {
@@ -165,6 +180,7 @@ async function installer() {
 }
 
 const libelleChamp = 'champ-libelle';
+const reload = () => window.location.reload();
 </script>
 
 <template>
@@ -178,14 +194,21 @@ const libelleChamp = 'champ-libelle';
 			<i class="fa-solid fa-circle-check mr-1.5" aria-hidden="true"></i>Installation enregistrée : le site est en cours de
 			construction.
 		</p>
-		<p v-if="etat.dev" class="text-gray-600">
-			Serveur de développement : rien n'est reconstruit. Relancez le serveur de dev pour que les secrets saisis soient pris en
-			compte.
-		</p>
+		<template v-if="etat.dev">
+			<p class="text-gray-600">
+				Serveur de développement : rien n'est reconstruit. Relancez le serveur de dev pour que les secrets saisis soient pris
+				en compte.
+			</p>
+			<button type="button" class="bouton bouton-primaire" @click="reload">Continuer</button>
+		</template>
 		<p v-else class="text-gray-600">Le site passe en maintenance le temps de sa construction, puis revient seul.</p>
 	</div>
 
 	<div v-else class="text-sm">
+		<p v-if="props.echec" class="mb-4 alerte-erreur" role="alert">
+			La construction du site a échoué : l'installation précédente a été annulée (le compte administrateur est gardé).
+			Vérifiez les réglages puis relancez-la. <span class="mt-1 block text-xs">{{ props.echec }}</span>
+		</p>
 		<!-- Étapes -->
 		<ol class="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label="Étapes de l'installation">
 			<li
@@ -474,7 +497,7 @@ const libelleChamp = 'champ-libelle';
 				<i class="fa-solid" :class="busy ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'" aria-hidden="true"></i>
 				{{ busy ? 'Installation…' : 'Installer le site' }}
 			</button>
-			<button type="button" class="ml-auto text-xs text-gray-500 underline hover:text-gray-900" :disabled="busy" @click="emit('later')">
+			<button type="button" class="ml-auto text-xs text-gray-500 underline hover:text-gray-900" :disabled="busy" @click="plusTard">
 				Plus tard
 			</button>
 		</div>

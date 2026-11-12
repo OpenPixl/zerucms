@@ -208,11 +208,16 @@ intouchable depuis le module « Comptes ».
 
 **Assistant d'installation** (site neuf : `installation.json` absent et
 aucun compte hors super admin, ou installation inachevée) : ouvert au super
-admin après le changement de mot de passe (`InstallationWizard.vue` dans
-`AdminRoot`, fond plein `opaque` qui cache le site de démonstration, barre d'admin masquée pendant l'assistant et sa vérification (`barreVisible`), fin = accueil `/`, « Plus tard » = `sessionStorage`, effacé par l'écran « Bienvenue » à la
-création du premier compte ; fermeture par ✕ seulement, ni Échap ni clic
-à côté, reprise depuis le module
-Site) — **type de structure** (association ou auto-entrepreneur :
+admin après le changement de mot de passe, sur une **page à part**
+`/installation` (`src/pages/installation.astro`, mise en page
+`src/layouts/InstallationLayout.astro` : fond gris, ni en-tête, ni pied, ni
+barre d'admin ; monte `InstallationWizard.vue`, ou l'écran de fin « Votre
+site est prêt » : se déconnecter / voir le site ; échec de construction =
+message dans l'assistant) ; l'écran « Bienvenue » y mène, `AdminRoot` y
+renvoie (`verifierInstallation`, `apresConnexion`, barre masquée d'ici là :
+`barreVisible`) ; « Plus tard » = `sessionStorage` puis accueil, effacé par
+l'écran « Bienvenue » à la création du premier compte ; reprise depuis le
+module Site) — **type de structure** (association ou auto-entrepreneur :
 `src/lib/structure.ts`, `structure:` de `reglages.yaml` → `site.structure` ;
 plugins filtrés par `structures` du catalogue, `proposePour()`,
 `resoudrePlugins(lus, structure)` ; vocabulaire de l'admin et des variables
