@@ -36,7 +36,9 @@ ne sont alors plus demandées).
    (`POST /api/auth/premier-compte`, refusé dès qu'un compte existe) et
    session ouverte. Comme pour WordPress, la première personne qui ouvre le
    site l'installe.
-2. Retour sur le site, connecté·e : l'assistant s'ouvre de lui-même.
+2. Connecté·e, on arrive directement sur la page **`/installation`** :
+   l'assistant, sur une page à part (fond gris, ni menu ni pied de page ni
+   barre d'admin), sans repasser par le site de démonstration.
 
 Variante en ligne de commande (ferme l'écran « Bienvenue », mot de passe
 provisoire à changer à la première connexion) :
@@ -47,7 +49,7 @@ npm run auth:user -- init               # Node seul
 SUPERADMIN_PASSWORD='…' ./auth-user.sh init   # pour imposer le mot de passe provisoire
 ```
 
-La fenêtre **« Installation du site »** (étape 2) :
+La page **« Installation du site »** (étape 2) :
 
 | Étape | Contenu |
 | --- | --- |
@@ -60,12 +62,16 @@ La fenêtre **« Installation du site »** (étape 2) :
 | **Installer** | Récapitulatif (avec le mot de passe provisoire), puis installation |
 
 4. **Installer le site** : le site passe en **maintenance** (page « en cours
-   d'installation » avec barre de progression), se reconstruit et revient
-   seul. Le compte administrateur peut alors se connecter.
+   d'installation » avec barre de progression), se reconstruit, puis revient
+   sur `/installation`, écran **« Votre site est prêt »** : « Me déconnecter
+   et voir le site » (le super admin a fini) ou « Voir le site en restant
+   connecté ». Le compte administrateur peut alors se connecter. Si la
+   construction échoue, l'installation est annulée (compte et secrets
+   gardés) et l'assistant revient avec le message d'erreur.
 
-**Plus tard** referme l'assistant jusqu'à la fermeture de l'onglet ; il se
-rouvre à la connexion suivante, ou depuis **Paramètres → Site** (bouton
-« Assistant d'installation »).
+**Plus tard** mène au site sans y être renvoyé jusqu'à la fermeture de
+l'onglet ; l'assistant revient à la connexion suivante, ou depuis
+**Paramètres → Site** (bouton « Assistant d'installation »).
 
 ## Ce que l'installation écrit
 
@@ -132,9 +138,12 @@ plugins gardent leur état (Adhésion et Inscription actifs par défaut).
   `installationRequise`, `terminerInstallation`) ; route
   `src/pages/api/admin/installation.ts` (`GET`, `GET ?requise`, `POST`),
   réservée au **super admin** (`GUARDS` de `src/middleware.ts`).
-- Interface : `src/components/admin/InstallationWizard.vue`, ouvert par
-  `AdminRoot.vue` (`verifierInstallation`, évènement
-  `numerik:installation` envoyé par le module Site).
+- Interface : page `src/pages/installation.astro` (rendue à la demande,
+  super admin seul ; mise en page `src/layouts/InstallationLayout.astro`,
+  sans `AdminLoader`) qui monte `src/components/admin/InstallationWizard.vue`
+  ou l'écran de fin. `AdminRoot.vue` y renvoie (`verifierInstallation`,
+  `apresConnexion` après connexion ou mot de passe provisoire, évènement
+  `numerik:installation` du module Site), l'écran « Bienvenue » aussi.
 - Secrets : `scripts/installation.mjs` (`lireSecrets`, `ecrireSecrets`,
   `chargerSecrets`, `assurerAuthSecret`, `lireInstallation`) ; chargés par
   `scripts/start.mjs` en production et par `src/integrations/installation.ts`

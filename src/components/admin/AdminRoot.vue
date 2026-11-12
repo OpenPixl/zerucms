@@ -57,11 +57,14 @@ async function loadVersion() {
 }
 
 /**
- * Assistant d'installation (super admin, site neuf) : ouvert d'office tant
- * qu'il n'est pas fait, sauf « Plus tard » (jusqu'à la fermeture de l'onglet) ;
- * repris depuis le module « Site » (évènement `numerik:installation`).
+ * Assistant d'installation (super admin, site neuf) : page à part
+ * `/installation` (`src/pages/installation.astro`), où l'on est renvoyé
+ * d'office tant qu'il n'est pas fait, sauf « Plus tard » (jusqu'à la
+ * fermeture de l'onglet) ; repris depuis le module « Site » (évènement
+ * `numerik:installation`).
  */
-const InstallationWizard = defineAsyncComponent(() => import('./InstallationWizard.vue'));
+const PAGE_INSTALLATION = '/installation';
+/** Départ vers la page d'installation en cours : barre masquée. */
 const installationOuverte = ref(false);
 /** Super admin : vérification de l'installation en cours (barre masquée d'ici là, pas d'apparition furtive). */
 const installationEnVerification = ref(true);
@@ -76,7 +79,10 @@ async function verifierInstallation() {
 			// sessionStorage indisponible : on propose l'assistant.
 		}
 		try {
-			installationOuverte.value = (await installationApi.requise()).requise;
+			if ((await installationApi.requise()).requise) {
+				installationOuverte.value = true;
+				window.location.replace(PAGE_INSTALLATION);
+			}
 		} catch {
 			// Information seulement.
 		}
@@ -84,18 +90,27 @@ async function verifierInstallation() {
 		installationEnVerification.value = false;
 	}
 }
-function installationPlusTard() {
-	installationOuverte.value = false;
-	try {
-		sessionStorage.setItem(PLUS_TARD, '1');
-	} catch {
-		// Rien à garder.
-	}
-}
 const ouvrirInstallation = () => {
-	activeId.value = null;
-	installationOuverte.value = true;
+	try {
+		sessionStorage.removeItem(PLUS_TARD);
+	} catch {
+		// Rien à effacer.
+	}
+	window.location.assign(PAGE_INSTALLATION);
 };
+/**
+ * Après la connexion ou le changement du mot de passe provisoire : droit vers
+ * l'installation si elle est à faire (super admin, site neuf), sans repasser
+ * par la page du site ; sinon simple rechargement.
+ */
+async function apresConnexion() {
+	try {
+		if ((await installationApi.requise()).requise) return window.location.assign(PAGE_INSTALLATION);
+	} catch {
+		// Pas super admin (403) ou serveur muet : rechargement.
+	}
+	reload();
+}
 
 /** Mot de passe provisoire : rien d'autre n'est accessible avant de l'avoir changé. */
 const mustChangePassword = computed(() => Boolean(user.value?.mustChangePassword));
@@ -529,17 +544,13 @@ onBeforeUnmount(() => {
 	</AdminOverlay>
 
 	<AdminOverlay v-if="mustChangePassword" title="Choisissez votre mot de passe" variant="modal" :closable="false">
-		<PasswordModule forced @done="reload" />
+		<PasswordModule forced @done="apresConnexion" />
 		<button type="button" class="mt-4 w-full text-center text-xs text-gray-500 underline hover:text-gray-900" @click="logout">
 			Me déconnecter
 		</button>
 	</AdminOverlay>
 
-	<AdminOverlay v-if="installationOuverte && user && !mustChangePassword" title="Installation du site" variant="modal" wide opaque @close="installationPlusTard">
-		<InstallationWizard @later="installationPlusTard" />
-	</AdminOverlay>
-
 	<AdminOverlay v-if="loginOpen && !user" title="Espace Admin" variant="modal" @close="loginOpen = false">
-		<LoginForm @success="reload" />
+		<LoginForm @success="apresConnexion" />
 	</AdminOverlay>
 </template>

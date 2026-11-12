@@ -3,8 +3,9 @@
  * qu'aucun compte n'existe (`<DATA_DIR>/accounts/` vide), toute page répond
  * par l'écran « Bienvenue » qui crée le compte super admin (nom, identifiant,
  * e-mail, mot de passe choisi), via `POST /api/auth/premier-compte`. La
- * personne est alors connectée et l'assistant d'installation s'ouvre sur le
- * site (`AdminRoot.vue`).
+ * personne est alors connectée et arrive sur la page de l'assistant
+ * d'installation (`/installation`, `src/pages/installation.astro`), sans
+ * repasser par le site de démonstration.
  *
  * Comme pour WordPress, la première personne qui ouvre le site l'installe :
  * à faire dès la mise en ligne (ou créer le compte en ligne de commande avec
@@ -117,7 +118,7 @@ export function pageBienvenue() {
 			if (r.ok || r.status === 409) {
 				// Site neuf : un « Plus tard » d'une installation précédente (même adresse, même onglet) ne vaut plus.
 				try { sessionStorage.removeItem('numerik-installation-plus-tard'); } catch {}
-				location.href = '/';
+				location.href = '/installation';
 				return;
 			}
 			erreur.textContent = (j && j.error) || 'Création du compte impossible.';
