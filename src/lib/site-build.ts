@@ -92,7 +92,7 @@ export async function canPublish(): Promise<{ ok: boolean; reason?: string }> {
 	try {
 		await access(join(base, 'package.json'));
 		await access(join(base, 'node_modules', 'astro', 'package.json'));
-		await access(join(base, 'src', 'content', 'news'), constants.W_OK);
+		await access(join(base, 'src', 'content'), constants.W_OK);
 		await access(base, constants.W_OK);
 	} catch {
 		return {

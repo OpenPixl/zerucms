@@ -15,7 +15,7 @@ import { ApiError, installationApi, type InstallationEtat, type InstallationPlug
 import { fileToBase64, inputClass } from './context';
 import { STRUCTURES, vocabulaire, type Structure } from '../../lib/structure';
 
-const emit = defineEmits<{ later: []; done: [] }>();
+const emit = defineEmits<{ later: [] }>();
 
 const etat = ref<InstallationEtat | null>(null);
 const error = ref('');
@@ -154,9 +154,9 @@ async function installer() {
 		};
 		const r = await installationApi.installer(saisie);
 		termine.value = true;
-		// Production : page de maintenance avec la progression de la construction.
-		if (r.maintenance) setTimeout(() => window.location.assign('/'), 1500);
-		else emit('done');
+		// Toujours vers l'accueil du site installé (production : page de
+		// maintenance avec la progression de la construction, puis l'accueil).
+		setTimeout(() => window.location.assign('/'), r.maintenance ? 1500 : 0);
 	} catch (err) {
 		error.value = err instanceof ApiError ? err.message : (err as Error).message;
 	} finally {

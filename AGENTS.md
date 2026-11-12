@@ -209,7 +209,7 @@ intouchable depuis le module « Comptes ».
 **Assistant d'installation** (site neuf : `installation.json` absent et
 aucun compte hors super admin, ou installation inachevée) : ouvert au super
 admin après le changement de mot de passe (`InstallationWizard.vue` dans
-`AdminRoot`, fond plein `opaque` qui cache le site de démonstration, « Plus tard » = `sessionStorage`, effacé par l'écran « Bienvenue » à la
+`AdminRoot`, fond plein `opaque` qui cache le site de démonstration, barre d'admin masquée pendant l'assistant et sa vérification (`barreVisible`), fin = accueil `/`, « Plus tard » = `sessionStorage`, effacé par l'écran « Bienvenue » à la
 création du premier compte ; fermeture par ✕ seulement, ni Échap ni clic
 à côté, reprise depuis le module
 Site) — **type de structure** (association ou auto-entrepreneur :

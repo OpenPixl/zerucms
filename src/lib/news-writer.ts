@@ -195,6 +195,7 @@ export async function writeNews(markdown: string, cover?: Buffer): Promise<{ slu
 			}
 		}
 		await writeFile(join(tmp, 'index.md'), serializeNews(frontmatter, body, cover ? './cover.jpg' : undefined), 'utf8');
+		await mkdir(newsSourceDir(), { recursive: true }); // site sans aucune actualité
 		await rename(tmp, target);
 		return { slug, title: frontmatter.title, errors: [] };
 	} finally {
