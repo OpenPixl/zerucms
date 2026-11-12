@@ -476,7 +476,8 @@ async function retirerExemples(): Promise<Applied> {
 async function elaguer(fichiers: string[]) {
 	for (const f of fichiers) {
 		let dossier = dirname(join(contenu(), f));
-		while (dossier !== contenu() && (await readdir(dossier).catch(() => ['?'])).length === 0) {
+		// Jamais les dossiers de collection eux-mêmes (news/, pages/…) : ils restent, vides.
+		while (dirname(dossier) !== contenu() && dossier !== contenu() && (await readdir(dossier).catch(() => ['?'])).length === 0) {
 			await rm(dossier, { recursive: true, force: true });
 			dossier = dirname(dossier);
 		}

@@ -63,19 +63,25 @@ async function loadVersion() {
  */
 const InstallationWizard = defineAsyncComponent(() => import('./InstallationWizard.vue'));
 const installationOuverte = ref(false);
+/** Super admin : vérification de l'installation en cours (barre masquée d'ici là, pas d'apparition furtive). */
+const installationEnVerification = ref(true);
 // Même clé effacée par l'écran « Bienvenue » (scripts/bienvenue.mjs) à la création du premier compte.
 const PLUS_TARD = 'numerik-installation-plus-tard';
 async function verifierInstallation() {
-	if (!user.value?.groups.includes('superadmin') || mustChangePassword.value) return;
 	try {
-		if (sessionStorage.getItem(PLUS_TARD)) return;
-	} catch {
-		// sessionStorage indisponible : on propose l'assistant.
-	}
-	try {
-		installationOuverte.value = (await installationApi.requise()).requise;
-	} catch {
-		// Information seulement.
+		if (!user.value?.groups.includes('superadmin') || mustChangePassword.value) return;
+		try {
+			if (sessionStorage.getItem(PLUS_TARD)) return;
+		} catch {
+			// sessionStorage indisponible : on propose l'assistant.
+		}
+		try {
+			installationOuverte.value = (await installationApi.requise()).requise;
+		} catch {
+			// Information seulement.
+		}
+	} finally {
+		installationEnVerification.value = false;
 	}
 }
 function installationPlusTard() {
@@ -93,6 +99,14 @@ const ouvrirInstallation = () => {
 
 /** Mot de passe provisoire : rien d'autre n'est accessible avant de l'avoir changé. */
 const mustChangePassword = computed(() => Boolean(user.value?.mustChangePassword));
+/**
+ * Barre d'administration : jamais pendant l'installation d'un site neuf (ni
+ * pendant sa vérification) — l'assistant occupe tout l'écran, on arrive
+ * ensuite sur l'accueil du site installé.
+ */
+const barreVisible = computed(
+	() => Boolean(user.value) && !installationOuverte.value && !(installationEnVerification.value && user.value?.groups.includes('superadmin')),
+);
 const modules = computed(() => (user.value && !mustChangePassword.value ? modulesFor(user.value.groups) : []));
 const activeModule = computed(() => modules.value.find((m) => m.id === activeId.value) ?? null);
 const barModules = computed(() => modules.value.filter((m) => m.placement !== 'user'));
@@ -233,7 +247,7 @@ async function logout() {
 	}
 }
 
-watch(user, (u) => document.documentElement.classList.toggle('has-admin-bar', Boolean(u)));
+watch(barreVisible, (v) => document.documentElement.classList.toggle('has-admin-bar', v));
 
 onMounted(async () => {
 	window.addEventListener('numerik:auth-open', open);
@@ -252,10 +266,10 @@ onMounted(async () => {
 		}
 	}
 	// `AdminLoader.astro` a pu poser la classe d'avance (indicateur présent) : on la confirme ou on la retire.
-	document.documentElement.classList.toggle('has-admin-bar', Boolean(user.value));
 	void loadVersion();
 	if (user.value) void chargerMaintenance();
-	void verifierInstallation();
+	await verifierInstallation();
+	document.documentElement.classList.toggle('has-admin-bar', barreVisible.value);
 	if (props.openOnMount) open();
 	// Rechargement après une publication (fin de publication réussie, ou Vite en dev) : on rouvre le module.
 	const reopen = takeModuleToReopen();
@@ -272,7 +286,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<!-- Au-dessus des calques (z-[70]) : la barre reste cliquable, module ouvert ou non. -->
-	<div v-if="user" class="fixed inset-x-0 top-0 z-[80] h-10 bg-gray-900 text-sm text-white shadow">
+	<div v-if="barreVisible" class="fixed inset-x-0 top-0 z-[80] h-10 bg-gray-900 text-sm text-white shadow">
 		<div class="flex h-full w-full items-center gap-1 px-2 sm:px-4">
 			<span class="mr-6 hidden shrink-0 items-center gap-2 font-heading font-semibold md:flex">
 				<i class="fa-solid fa-gear text-gray-400" aria-hidden="true"></i>
@@ -522,7 +536,7 @@ onBeforeUnmount(() => {
 	</AdminOverlay>
 
 	<AdminOverlay v-if="installationOuverte && user && !mustChangePassword" title="Installation du site" variant="modal" wide opaque @close="installationPlusTard">
-		<InstallationWizard @later="installationPlusTard" @done="reload" />
+		<InstallationWizard @later="installationPlusTard" />
 	</AdminOverlay>
 
 	<AdminOverlay v-if="loginOpen && !user" title="Espace Admin" variant="modal" @close="loginOpen = false">
