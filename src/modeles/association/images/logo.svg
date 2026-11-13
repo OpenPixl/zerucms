@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="360" height="80" viewBox="0 0 360 80" role="img" aria-label="Mon association">
   <!-- Logo de démonstration : à remplacer (module « Association », onglet Charte graphique). -->
-  <rect x="4" y="8" width="64" height="64" rx="16" fill="#2f7fc1"/>
+  <rect x="4" y="8" width="64" height="64" rx="16" fill="#2e2e2e"/>
   <circle cx="28" cy="34" r="9" fill="#ffffff"/>
   <circle cx="46" cy="34" r="9" fill="#ffffff" fill-opacity="0.7"/>
   <path d="M14 58c3-9 9-13 14-13s11 4 14 13M32 58c3-9 9-13 14-13s11 4 14 13" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
-  <text x="84" y="38" font-family="Montserrat, Arial, sans-serif" font-size="26" font-weight="700" fill="#1f2937">Mon association</text>
+  <text x="84" y="38" font-family="Montserrat, Arial, sans-serif" font-size="26" font-weight="700" fill="#2e2e2e">Mon association</text>
   <text x="84" y="62" font-family="Open Sans, Arial, sans-serif" font-size="15" fill="#6b7280">Logo à remplacer</text>
 </svg>

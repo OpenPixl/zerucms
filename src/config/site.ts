@@ -55,10 +55,10 @@ const DEFAULTS = {
 	 * celles de `@theme` dans `src/styles/global.css`, à garder alignées.
 	 */
 	colors: {
-		primary: '#2f7fc1',
-		secondary: '#1fa39e',
-		accent: '#7cb93f',
-		stripe: ['#4b4a9e', '#2f7fc1', '#1fa39e', '#7cb93f', '#e8b830', '#e2792f'],
+		primary: '#2e2e2e',
+		secondary: '#2e2e2e',
+		accent: '#2e2e2e',
+		stripe: ['#2e2e2e'],
 		/** `false` = pas de bande de couleurs (en-tête, PDF des RDV). */
 		stripeEnabled: true,
 	},

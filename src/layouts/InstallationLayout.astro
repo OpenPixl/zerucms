@@ -29,7 +29,7 @@ const { title } = Astro.props;
 		{fontPreloads.map((href) => <link rel="preload" as="font" type="font/woff2" href={href} crossorigin />)}
 		<style is:inline set:html={fontsCss} />
 	</head>
-	<body class="flex min-h-screen items-start justify-center bg-gray-100 px-4 py-8 sm:items-center">
+	<body class="theme-admin flex min-h-screen flex-col items-center justify-start bg-gray-100 px-4 py-8 sm:justify-center">
 		<main class="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl">
 			<header class="flex items-center gap-3 border-b border-gray-100 px-5 py-4">
 				<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -41,5 +41,6 @@ const { title } = Astro.props;
 				<slot />
 			</div>
 		</main>
+		<p class="mt-4 text-center text-xs text-gray-500">© {new Date().getFullYear()} OpenPixl | ZeruCMS</p>
 	</body>
 </html>

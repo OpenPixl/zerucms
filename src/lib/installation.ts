@@ -25,7 +25,7 @@ import { isMap, parseDocument, YAMLMap } from 'yaml';
 import { parseReglages } from '../config/site';
 import { PLUGIN_IDS, PLUGINS, proposePour, requis, type PluginId, type PluginInfo, type SecretPlugin } from '../plugins/catalogue';
 import { estStructure, type Structure } from './structure';
-import { FORMATS } from '../plugins/champs';
+import { FORMATS, normaliserChamp } from '../plugins/champs';
 import { readAssociationSource, saveAssociation } from './association-writer';
 import { isSuperadminAccount, isValidLogin, listAccounts, normalizeLogin, readAccount, saveAccount } from './auth/accounts';
 import { hashPassword, passwordProblem } from './auth/password';
@@ -314,8 +314,8 @@ export async function installer(raw: unknown, user: SessionUser): Promise<Result
 		// Réglages obligatoires : valeur saisie, ou variable déjà connue (.env ou secret saisi ici).
 		const champs = etat.plugins.find((p) => p.id === id)!.champs;
 		for (const champ of champs) {
-			const valeur = saisie.reglages[id]?.[champ.cle] ?? champ.valeur;
-			if (valeur && !FORMATS[champ.type].re.test(valeur.replace(/\/+$/, ''))) errors.push(`${champ.label} : ${FORMATS[champ.type].message}.`);
+			const valeur = normaliserChamp(champ.type, saisie.reglages[id]?.[champ.cle] ?? champ.valeur);
+			if (valeur && !FORMATS[champ.type].re.test(valeur)) errors.push(`${champ.label} : ${FORMATS[champ.type].message}.`);
 			const connu = champ.env && (defini(process.env, champ.env) || secrets[champ.env]);
 			if (champ.obligatoire && !valeur && !connu && !champ.defaut) errors.push(`${info.label} : « ${champ.label} » est à renseigner.`);
 		}

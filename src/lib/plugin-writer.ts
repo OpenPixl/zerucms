@@ -21,7 +21,7 @@ import { getSecret } from 'astro:env/server';
 import { isMap, parseDocument, YAMLMap, type Document } from 'yaml';
 import { parseReglages } from '../config/site';
 import { PLUGIN_IDS, PLUGINS, proposePour, requis, type PluginId, type PluginInfo } from '../plugins/catalogue';
-import { FORMATS, type ChampPlugin } from '../plugins/champs';
+import { FORMATS, normaliserChamp, type ChampPlugin } from '../plugins/champs';
 import { pluginActif } from '../plugins';
 import type { Applied } from './content-transaction';
 import { adresseOccupee } from './page-writer';
@@ -131,10 +131,7 @@ export type PluginResult = { applied?: Applied; label: string; errors: string[] 
 
 /** Saisie d'un champ, mise en forme : espaces retirés ; adresse et URL sans « / » final, adresse en minuscules. */
 function normaliser(champ: ChampPlugin, brut: unknown): string {
-	let v = typeof brut === 'string' ? brut.trim() : '';
-	if (champ.type === 'adresse') v = v.toLowerCase();
-	if (champ.type === 'adresse' || champ.type === 'url') v = v.replace(/\/+$/, '');
-	return v;
+	return normaliserChamp(champ.type, brut);
 }
 
 /** Écrit (ou retire, si vide) la clé à points `cle` ; une rubrique devenue vide est retirée aussi. */

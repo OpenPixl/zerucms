@@ -260,6 +260,8 @@ onBeforeUnmount(() => {
 				<div v-if="stripeEnabled" class="flex h-1.5">
 					<span v-for="s in stripe" :key="s.id" class="flex-1" :style="{ backgroundColor: shown(s.value, '#ffffff') }"></span>
 				</div>
+				<!-- Sans bande, l'en-tête du site porte une ombre (Header.astro). -->
+				<div v-else class="h-1.5 bg-gradient-to-b from-black/10 to-transparent"></div>
 				<div class="space-y-2 px-4 py-4 text-sm text-gray-700">
 					<p class="font-heading text-base font-semibold" :style="{ color: shown(colors.primary, source.colors.primary), fontFamily: fontFamily(fonts.titres) }">
 						Le numérique, ensemble

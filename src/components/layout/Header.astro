@@ -15,7 +15,7 @@ const cta = { ...site.cta, enabled: site.cta.enabled && !lienAdhesionIndisponibl
 const presence = { ...site.presence, enabled: site.presence.enabled && !lienAdhesionIndisponible(site.presence.href) };
 ---
 
-<header class="sticky top-[var(--admin-bar-h,0px)] z-50 isolate bg-white/90 backdrop-blur">
+<header class:list={['sticky top-[var(--admin-bar-h,0px)] z-50 isolate bg-white/90 backdrop-blur', !site.colors.stripeEnabled && 'shadow-md shadow-black/10']}>
 	<div class="mx-auto flex max-w-6xl items-center justify-between sm:px-6">
 		<a href="/" class="flex items-center gap-2 font-heading text-xl text-gray-900">
 			<Image src={logo} alt={association.name} width={logoWidth(96)} height={96} loading="eager" fetchpriority="high" class="h-16 w-auto" />

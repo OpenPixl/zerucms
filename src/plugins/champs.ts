@@ -16,8 +16,32 @@ export const FORMATS: Record<TypeChamp, { re: RegExp; message: string }> = {
 	adresse: { re: ADRESSE_RE, message: 'adresse au format /rendez-vous : commence par « / », minuscules, chiffres et tirets' },
 	url: { re: /^https?:\/\/[^\s/?#]+(\/[^\s?#]*)?$/, message: 'adresse web au format https://grist.exemple.fr' },
 	identifiant: { re: /^[A-Za-z0-9_-]+$/, message: 'lettres, chiffres, « - » et « _ » seulement' },
-	table: { re: /^[A-Za-z][A-Za-z0-9_]*$/, message: 'nom de table Grist : lettres, chiffres et « _ », commence par une lettre' },
+	table: {
+		re: /^[A-Za-z][A-Za-z0-9_]*$/,
+		message: 'identifiant de la table dans Grist (ex. Demarches) : lettres sans accent, chiffres et « _ », commence par une lettre',
+	},
 };
+
+/**
+ * Saisie mise en forme avant validation et écriture : espaces retirés,
+ * adresse en minuscules sans « / » final, et nom de table converti en
+ * identifiant comme le fait Grist (« Démarches » → `Demarches`, « mes rdv »
+ * → `Mes_rdv`) : la personne tape souvent le nom affiché, accentué.
+ */
+export function normaliserChamp(type: TypeChamp, brut: unknown): string {
+	let v = typeof brut === 'string' ? brut.trim() : '';
+	if (type === 'adresse') v = v.toLowerCase();
+	if (type === 'adresse' || type === 'url') v = v.replace(/\/+$/, '');
+	if (type === 'table' && v) {
+		v = v
+			.normalize('NFD')
+			.replace(/[̀-ͯ]/g, '')
+			.replace(/[^A-Za-z0-9_]+/g, '_')
+			.replace(/^_+|_+$/g, '');
+		v = v.charAt(0).toUpperCase() + v.slice(1);
+	}
+	return v;
+}
 
 export interface ChampPlugin {
 	/** Chemin de la clé dans le fichier de réglages, séparé par des points (ex. `grist.tables.rdv`). */

@@ -159,7 +159,9 @@ Fonctionnement technique :
 - `src/config/site.ts` — réglages du site (couleurs `colors` → `themeCss`
   injecté dans `<head>` par les deux layouts, remplace les `--color-*` de
   `@theme` ; jamais de couleur du thème en hexadécimal dans le code :
-  `var(--color-primary)` ou classe Tailwind ; bouton CTA « Adhérer », « Je
+  `var(--color-primary)` ou classe Tailwind ; l'Espace Admin ne suit pas
+  la charte : couleurs propres redéfinies sur `#espace-benevoles` et
+  `.theme-admin` dans `global.css` ; bouton CTA « Adhérer », « Je
   participe », outils de partage, ouverture/fermeture des formulaires
   `site.forms`) : `DEFAULTS` du modèle **fusionnés** avec
   `src/content/reglages.yaml` (propre à l'asso, tout facultatif, clé inconnue

@@ -16,6 +16,7 @@ import { PASSWORD_MIN_LENGTH } from '../../lib/auth/password-rules';
 import { ApiError, installationApi, type InstallationEtat, type InstallationPlugin, type InstallationSaisie } from './client';
 import { fileToBase64, inputClass } from './context';
 import { STRUCTURES, vocabulaire, type Structure } from '../../lib/structure';
+import { normaliserChamp } from '../../plugins/champs';
 
 /** Message de la reconstruction échouée d'une installation précédente (annulée, à relancer). */
 const props = defineProps<{ echec?: string }>();
@@ -407,6 +408,7 @@ const reload = () => window.location.reload();
 							:id="`inst-${p.id}-${c.cle}`"
 							v-model.trim="reglages[p.id][c.cle]"
 							type="text"
+							@blur="reglages[p.id][c.cle] = normaliserChamp(c.type, reglages[p.id][c.cle])"
 							autocomplete="off"
 							spellcheck="false"
 							:placeholder="(c.env && secrets[c.env]) || c.repli"

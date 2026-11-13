@@ -50,10 +50,10 @@ export function pageBienvenue() {
 <meta name="robots" content="noindex">
 <title>Bienvenue — installation du site</title>
 <style>
-	:root { color-scheme: light dark; --fond: #f6f7f9; --carte: #fff; --texte: #1f2937; --doux: #6b7280; --bord: #d1d5db; --accent: #2563eb; --erreur: #b91c1c; }
-	@media (prefers-color-scheme: dark) { :root { --fond: #111827; --carte: #1f2937; --texte: #f3f4f6; --doux: #9ca3af; --bord: #4b5563; --accent: #60a5fa; --erreur: #fca5a5; } }
+	:root { color-scheme: light dark; --fond: #f6f7f9; --carte: #fff; --texte: #1f2937; --doux: #6b7280; --bord: #d1d5db; --accent: #2f7fc1; --sur-accent: #fff; --erreur: #b91c1c; }
+	@media (prefers-color-scheme: dark) { :root { --fond: #111827; --carte: #1f2937; --texte: #f3f4f6; --doux: #9ca3af; --bord: #4b5563; --accent: #60a5fa; --sur-accent: #111827; --erreur: #fca5a5; } }
 	* { box-sizing: border-box; }
-	body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--fond); color: var(--texte); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+	body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; background: var(--fond); color: var(--texte); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
 	main { width: 100%; max-width: 30rem; background: var(--carte); border-radius: 16px; padding: 2rem 1.5rem; box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
 	.etapes { margin: 0 0 1rem; font-size: .8rem; color: var(--doux); text-transform: uppercase; letter-spacing: .04em; }
 	h1 { margin: 0 0 .5rem; font-size: 1.4rem; }
@@ -63,10 +63,11 @@ export function pageBienvenue() {
 	.aide { font-weight: 400; font-size: .8rem; color: var(--doux); }
 	input { font: inherit; font-weight: 400; padding: .5rem .7rem; border: 1px solid var(--bord); border-radius: 8px; background: var(--fond); color: var(--texte); }
 	input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-	button { font: inherit; font-weight: 600; margin-top: .4rem; padding: .6rem 1rem; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
+	button { font: inherit; font-weight: 600; margin-top: .4rem; padding: .6rem 1rem; border: 0; border-radius: 8px; background: var(--accent); color: var(--sur-accent); cursor: pointer; }
 	button:disabled { opacity: .6; cursor: wait; }
 	#erreur { margin: 0; color: var(--erreur); font-size: .9rem; }
 	#erreur:empty { display: none; }
+	.mention { margin: 1rem 0 0; font-size: .75rem; color: var(--doux); text-align: center; }
 </style>
 </head>
 <body>
@@ -98,6 +99,7 @@ export function pageBienvenue() {
 		<button type="submit">Créer mon compte et continuer</button>
 	</form>
 </main>
+<p class="mention">© ${new Date().getFullYear()} OpenPixl | ZeruCMS</p>
 <script>
 (() => {
 	const form = document.getElementById('compte');

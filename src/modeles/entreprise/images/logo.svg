@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="360" height="80" viewBox="0 0 360 80" role="img" aria-label="Mon entreprise">
   <!-- Logo de démonstration : à remplacer (module « Entreprise », onglet Charte graphique). -->
-  <rect x="4" y="8" width="64" height="64" rx="16" fill="#2f7fc1"/>
+  <rect x="4" y="8" width="64" height="64" rx="16" fill="#2e2e2e"/>
   <rect x="17" y="30" width="38" height="26" rx="4" fill="#ffffff"/>
   <path d="M28 30v-5a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v5" fill="none" stroke="#ffffff" stroke-width="4"/>
-  <rect x="17" y="40" width="38" height="3" fill="#2f7fc1" fill-opacity="0.35"/>
-  <text x="84" y="38" font-family="Montserrat, Arial, sans-serif" font-size="26" font-weight="700" fill="#1f2937">Mon entreprise</text>
+  <rect x="17" y="40" width="38" height="3" fill="#2e2e2e" fill-opacity="0.35"/>
+  <text x="84" y="38" font-family="Montserrat, Arial, sans-serif" font-size="26" font-weight="700" fill="#2e2e2e">Mon entreprise</text>
   <text x="84" y="62" font-family="Open Sans, Arial, sans-serif" font-size="15" fill="#6b7280">Logo à remplacer</text>
 </svg>

@@ -6,14 +6,15 @@ Tout le thème visuel part d'un seul fichier : **`src/styles/global.css`**.
 
 ```css
 @theme {
-	--color-primary: #2f7fc1;   /* bleu — actions principales, liens */
-	--color-secondary: #1fa39e; /* turquoise — bandeaux, dates/labels */
-	--color-accent: #7cb93f;    /* vert — appels à l'action, boutons "Adhérer" */
+	--color-primary: #2e2e2e;   /* actions principales, liens */
+	--color-secondary: #2e2e2e; /* bandeaux, dates/labels */
+	--color-accent: #2e2e2e;    /* appels à l'action, boutons "Adhérer" */
 }
 ```
 
-Ce sont les couleurs **par défaut du modèle**. Chaque association règle les
-siennes dans `src/content/reglages.yaml` :
+Ce sont les couleurs **par défaut du modèle** : neutres, noir (#2e2e2e) et
+blanc, comme le `reglages.yaml` de démonstration (bande masquée). Chaque
+structure règle les siennes dans `src/content/reglages.yaml` (exemple) :
 
 ```yaml
 colors:
@@ -21,7 +22,7 @@ colors:
   secondary: '#1fa39e'
   accent: '#7cb93f'
   stripe: ['#4b4a9e', '#2f7fc1', '#1fa39e', '#7cb93f', '#e8b830', '#e2792f']  # bande sous l'en-tête
-  stripeEnabled: false  # facultatif : pas de bande (en-tête, PDF des RDV) ; absent = affichée
+  stripeEnabled: false  # facultatif : pas de bande (en-tête, PDF des RDV), l'en-tête prend une ombre ; absent = affichée
 ```
 
 Les layouts injectent ces valeurs dans `<head>` (`themeCss`,
@@ -33,6 +34,12 @@ seulement par les navigateurs sans `color-mix()` (antérieurs à 2023).
 Dans le code, ne jamais recopier une couleur en hexadécimal : utiliser
 `var(--color-primary)` ou une classe Tailwind. Les valeurs de `@theme`
 restent alignées sur `DEFAULTS.colors`.
+
+L'**Espace Admin** ne suit pas la charte : il garde ses propres couleurs
+(bleu `#2f7fc1`, turquoise `#1fa39e`, vert `#7cb93f`), redéfinies sur son
+conteneur `#espace-benevoles` et sur la page d'installation (`.theme-admin`)
+dans `global.css`. Une structure aux couleurs peu contrastées garde ainsi
+une administration lisible.
 
 Ces couleurs sont utilisables partout dans le code via les classes Tailwind générées automatiquement : `bg-primary`, `text-secondary`, `border-accent`, `from-primary`, `to-secondary`, etc. (y compris avec opacité : `bg-primary/10`).
 
