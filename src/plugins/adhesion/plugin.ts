@@ -38,7 +38,7 @@ export default {
 	],
 	env: {
 		// Grist — document de l'adhésion (GRIST_BASE_URL / GRIST_API_KEY, partagés
-		// avec le plugin RDV, sont déclarés dans astro.config.mjs).
+		// avec les autres plugins et les extensions, sont déclarés dans astro.config.mjs).
 		GRIST_DOC_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
 		GRIST_TABLE_MEMBRES: envField.string({ context: 'server', access: 'secret', default: 'Membres' }),
 		GRIST_TABLE_ADHESIONS: envField.string({ context: 'server', access: 'secret', default: 'Adhesions' }),

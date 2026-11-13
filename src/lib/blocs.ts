@@ -23,14 +23,15 @@
  * (`src/components/blocs/BlocView.astro`). Ajouter un type de bloc = une
  * entrée dans `BLOC_TYPES` + son composant dans `BlocView.astro`. Types
  * apportés par un plugin : `src/plugins/<id>/sections/definitions.ts`
- * (champ `plugin`).
+ * (champ `plugin`) ; par une extension : son `definitions.ts` (champ
+ * `extension`, composant fourni par son `site.ts`).
  *
  * Module sans dépendance à Astro ni à Node : aussi utilisé par l'îlot Vue.
  */
 
 import { isSafeUrl } from './safe-url.ts';
 import type { PluginId } from '../plugins/catalogue.ts';
-import { RDV_BLOCS, RDV_TYPES_RENOMMES } from '../plugins/rdv/sections/definitions.ts';
+import { DEFINITIONS_EXTENSIONS } from './extensions.ts';
 
 export type BlocFieldType = 'text' | 'textarea' | 'markdown' | 'url' | 'icon' | 'select';
 
@@ -51,6 +52,8 @@ export interface BlocTypeDef {
 	icon: string;
 	/** Apporté par un plugin : absent de l'éditeur et du rendu si celui-ci est inactif. */
 	plugin?: PluginId;
+	/** Apporté par une extension (posé par `src/lib/extensions.ts`) : de même. */
+	extension?: string;
 	fields: BlocField[];
 	/** Liste d'éléments répétés (ex. cartes). */
 	items?: { label: string; fields: BlocField[]; min: number; max: number };
@@ -62,7 +65,7 @@ const STYLE_BOUTON = [
 	{ value: 'outline', label: 'Contour' },
 ];
 
-export const BLOC_TYPES = {
+const BLOCS_DU_CMS = {
 	cartes: {
 		label: 'Grille de cartes',
 		description: 'Cartes avec icône, titre et texte, sur 2 ou 3 colonnes.',
@@ -127,10 +130,12 @@ export const BLOC_TYPES = {
 			{ name: 'texte', label: 'Texte', type: 'markdown', required: true },
 		],
 	},
-	...RDV_BLOCS,
 } satisfies Record<string, BlocTypeDef>;
 
-export type BlocType = keyof typeof BLOC_TYPES;
+/** Types de bloc : ceux du CMS, puis ceux des extensions installées. */
+export const BLOC_TYPES: Record<string, BlocTypeDef> = { ...DEFINITIONS_EXTENSIONS.blocs, ...BLOCS_DU_CMS };
+
+export type BlocType = keyof typeof BLOCS_DU_CMS | (string & {});
 
 /** Bloc tel qu'il est stocké dans le frontmatter (`type` + valeurs des champs, `items` éventuels). */
 export interface Bloc {
@@ -191,15 +196,24 @@ export function checkBlocField(field: BlocField, value: unknown, where: string, 
  * valeurs par défaut des `select`). Les liens Markdown des champs `markdown`
  * sont vérifiés par l'appelant (cf. `markdownLinkProblems`).
  */
-export function validateBloc(id: string, raw: unknown): { bloc?: Bloc; errors: string[] } {
+/**
+ * `typesInconnus` (lecture du contenu au build) : un bloc de type inconnu
+ * (extension retirée) est gardé tel quel, sans erreur, et noté dans la
+ * liste ; il n'est pas affiché (`BlocView.astro`). Sans elle, refusé.
+ */
+export function validateBloc(id: string, raw: unknown, options: { typesInconnus?: string[] } = {}): { bloc?: Bloc; errors: string[] } {
 	const errors: string[] = [];
 	const where = `Bloc « ${id} »`;
 	if (!BLOC_ID.test(id)) errors.push(`${where} : identifiant invalide (minuscules, chiffres et tirets).`);
 	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { errors: [...errors, `${where} : description invalide.`] };
 	const data = { ...(raw as Record<string, unknown>) };
 	// Type renommé depuis (contenu enregistré avec l'ancien nom).
-	if (typeof data.type === 'string' && Object.hasOwn(RDV_TYPES_RENOMMES, data.type)) data.type = RDV_TYPES_RENOMMES[data.type];
+	if (typeof data.type === 'string' && Object.hasOwn(DEFINITIONS_EXTENSIONS.typesRenommes, data.type)) data.type = DEFINITIONS_EXTENSIONS.typesRenommes[data.type];
 	if (!isBlocType(data.type)) {
+		if (options.typesInconnus && typeof data.type === 'string') {
+			options.typesInconnus.push(data.type);
+			return { bloc: { type: data.type }, errors };
+		}
 		return { errors: [...errors, `${where} : type inconnu « ${String(data.type)} » (connus : ${Object.keys(BLOC_TYPES).join(', ')}).`] };
 	}
 	const def: BlocTypeDef = BLOC_TYPES[data.type];

@@ -7,8 +7,9 @@
  *  - `src/lib/site-build.ts` : publication depuis l'Espace Admin.
  *
  * L'empreinte résume ce qui rend un build propre à un déploiement : version
- * du modèle (`package.json`), adresse du site (`SITE_URL`) et contenu de
- * l'association (`src/content/`, octet par octet). Le même état = la même
+ * du modèle (`package.json`), adresse du site (`SITE_URL`), contenu de
+ * l'association (`src/content/`, octet par octet) et extensions installées
+ * (`extensions/`, hors dossiers cachés de travail). Le même état = la même
  * empreinte : inutile de reconstruire.
  */
 
@@ -61,6 +62,12 @@ export async function computeFingerprint(root, siteUrl) {
 	for (const file of (await listFiles(contentDir)).sort()) {
 		hash.update(`file:${file}\n`);
 		hash.update(await readFile(join(contentDir, file)));
+	}
+	// Extensions (code propre au site) : installer, mettre à jour ou retirer = reconstruire.
+	const extensionsDir = join(root, 'extensions');
+	for (const file of (await listFiles(extensionsDir)).filter((f) => !f.startsWith('.') && !f.includes('/.')).sort()) {
+		hash.update(`extension:${file}\n`);
+		hash.update(await readFile(join(extensionsDir, file)));
 	}
 	return { version, siteUrl: normalizeSiteUrl(siteUrl), fingerprint: hash.digest('hex') };
 }

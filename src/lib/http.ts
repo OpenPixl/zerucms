@@ -1,4 +1,4 @@
-/** Petits utilitaires partagés par les routes API des plugins (adhésion, RDV). */
+/** Petits utilitaires partagés par les routes API des plugins et des extensions. */
 
 /** Messages d'erreur de saisie, par champ. */
 export type Errors<T> = Partial<Record<keyof T, string>>;

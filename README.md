@@ -42,7 +42,7 @@ La documentation détaillée est dans le dossier [`docs/`](docs/), organisée **
 | Ouvrir / fermer un formulaire (adhésion, contact…) | [docs/composants.md](docs/composants.md#forms) |
 | Comprendre l'inscription en ligne à une activité (bouton « S'inscrire »), l'ouvrir / la fermer | [docs/inscription.md](docs/inscription.md) |
 | Comprendre / présenter le parcours d'adhésion en ligne | [docs/adhesion-parcours.md](docs/adhesion-parcours.md) |
-| Comprendre / présenter la prise de rendez-vous en ligne, gérer les démarches (plugin `rdv`) | [src/plugins/rdv/README.md](src/plugins/rdv/README.md) |
+| Installer une extension (développement propre à une structure, ex. prise de rendez-vous de numérik&Co), en écrire une | [docs/extensions.md](docs/extensions.md) |
 | Copier un bloc prêt à l'emploi (frontmatter, bouton, cartes, formulaire, route API…) | [docs/snippets.md](docs/snippets.md) |
 | Comprendre l'organisation technique du projet | [docs/developpement.md](docs/developpement.md) |
 

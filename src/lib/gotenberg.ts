@@ -1,7 +1,8 @@
 /**
  * Conversion HTML → PDF par une instance Gotenberg (`GOTENBERG_URL`, auth
  * Basic facultative `GOTENBERG_USERNAME` / `GOTENBERG_PASSWORD`), partagée
- * par les plugins : bulletin d'adhésion (`adhesion`), semaine de RDV (`rdv`).
+ * par les plugins et les extensions : bulletin d'adhésion (`adhesion`), devis et
+ * factures (`facturation`), semaine de RDV (extension `rdv`).
  * Côté serveur uniquement : l'adresse et les identifiants ne doivent jamais
  * atteindre le navigateur.
  */

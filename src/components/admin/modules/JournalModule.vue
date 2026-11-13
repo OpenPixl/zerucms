@@ -7,6 +7,7 @@
 import { computed, inject, onMounted, ref } from 'vue';
 import { ApiError, journalApi, type JournalEntry } from '../client';
 import { ADMIN_CONTEXT, inputClass } from '../context';
+import { DEFINITIONS_EXTENSIONS } from '../../../lib/extensions';
 
 const { sessionExpired } = inject(ADMIN_CONTEXT)!;
 
@@ -52,8 +53,11 @@ const ACTIONS: Record<string, { label: string; icon: string }> = {
 	'association.modification': { label: "Informations de l'association modifiées", icon: 'fa-landmark' },
 	'charte.modification': { label: 'Charte graphique modifiée', icon: 'fa-palette' },
 	'plugin.modification': { label: 'Plugin modifié', icon: 'fa-puzzle-piece' },
-	'rdv.modification': { label: 'Rendez-vous modifié', icon: 'fa-calendar-check' },
-	'rdv.suppression': { label: 'Rendez-vous supprimé', icon: 'fa-calendar-xmark' },
+	'extension.installation': { label: 'Extension installée', icon: 'fa-plug-circle-plus' },
+	'extension.modification': { label: 'Extension modifiée', icon: 'fa-plug' },
+	'extension.suppression': { label: 'Extension supprimée', icon: 'fa-plug-circle-minus' },
+	// Actions des extensions installées (journal de leur definitions.ts).
+	...DEFINITIONS_EXTENSIONS.journal,
 	// Anciens noms (avant le 2026-10-08), pour les entrées déjà écrites.
 	'menu.ajout': { label: 'Menu déroulant ajouté', icon: 'fa-bars' },
 	'menu.modification': { label: 'Menu déroulant modifié', icon: 'fa-bars' },

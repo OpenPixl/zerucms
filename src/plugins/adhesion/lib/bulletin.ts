@@ -15,7 +15,7 @@ import { BULLETIN_SECRET } from 'astro:env/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { isGotenbergEnabled } from '../../../lib/gotenberg';
 
-// Conversion HTML → PDF : `src/lib/gotenberg.ts` (partagée avec le plugin RDV).
+// Conversion HTML → PDF : `src/lib/gotenberg.ts` (partagée avec la facturation et les extensions).
 export { GotenbergError, htmlToPdf } from '../../../lib/gotenberg';
 
 /** Durée de validité du lien de bulletin (le règlement se fait en présentiel, 24 h suffisent). */

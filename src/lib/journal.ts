@@ -56,8 +56,11 @@ export type JournalAction =
 	| 'association.modification'
 	| 'charte.modification'
 	| 'plugin.modification'
-	| 'rdv.modification'
-	| 'rdv.suppression'
+	| 'extension.installation'
+	| 'extension.modification'
+	| 'extension.suppression'
+	// Actions d'une extension (`<id>.<action>`, libellés : `journal` de son definitions.ts).
+	| `${string}.${string}`
 	| 'facturation'
 	| 'compte.creation'
 	| 'compte.modification'

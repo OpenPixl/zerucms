@@ -38,13 +38,13 @@ organisation).
 - le bouton « Adhérer » de la barre de navigation et « Je participe » (si
   leur lien mène à ces pages), le bouton « Nous rejoindre » du bandeau
   d'accueil et celui de l'encart d'appel à l'action disparaissent ;
-- le planning de `/activites` n'affiche que les permanences du plugin RDV ;
+- le planning de `/activites` n'affiche que les séances des extensions (ex. permanences de prise de RDV) ;
 - plan du site et liens proposés dans l'Espace Admin : sans ces pages.
 
 ## Mise en place
 
 `.env` (voir [api.md](../../../docs/api.md#variables-denvironnement)) :
-`GRIST_BASE_URL`, `GRIST_API_KEY` (partagés avec le plugin RDV),
+`GRIST_BASE_URL`, `GRIST_API_KEY` (partagés avec les autres plugins et les extensions),
 `GRIST_DOC_ID`, et si besoin les noms de tables `GRIST_TABLE_*` ; pour le
 bulletin PDF, `GOTENBERG_URL` (partagé) et `BULLETIN_SECRET`
 ([bulletin-pdf.md](../../../docs/bulletin-pdf.md)). Ouverture et fermeture
@@ -61,7 +61,7 @@ du formulaire : `forms.adhesion` de `reglages.yaml`.
 | `formulaire/` | Îlots Vue : `adhesion/` (formulaire d'adhésion et son client `adhesionApi`, `get`/`post` réutilisés par le plugin inscription), `presence/` |
 | `lib/` | Client Grist et mapping des colonnes (`grist.ts`, **seul endroit à modifier si le schéma change**), choix, types, validation, planning, présence, bulletin |
 
-Outils partagés avec le plugin RDV, hors de ce dossier : `src/lib/http.ts`,
+Outils partagés avec les autres plugins et les extensions, hors de ce dossier : `src/lib/http.ts`,
 `src/lib/grist-error.ts`, `src/lib/gotenberg.ts`.
 
 Détail des routes, des colonnes Grist et du planning :

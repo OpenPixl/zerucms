@@ -19,6 +19,16 @@ import { SITE_PAGE_IDS, SITE_PAGES, sitePageTextNames } from './lib/site-pages';
 import { categories } from './lib/categories';
 import { annonceFields, END_AFTER_START, endAfterStart } from './lib/annonce-schema';
 
+/** Types de blocs ou de modules inconnus (extension retirée ou pas installée) : ignorés, signalés une fois. */
+const dejaSignales = new Set<string>();
+function avertirTypesInconnus(quoi: string, types: string[]) {
+	for (const type of types) {
+		if (dejaSignales.has(`${quoi}:${type}`)) continue;
+		dejaSignales.add(`${quoi}:${type}`);
+		console.warn(`[contenu] ${quoi} de type « ${type} » ignoré : type inconnu (extension absente ou désactivée ? cf. module « Extensions »).`);
+	}
+}
+
 /**
  * Actualités : un dossier par article, `src/content/news/<AAAA-MM-JJ-slug>/`
  * contenant `index.md` (+ la photo citée par `cover:`). L'identifiant de
@@ -85,7 +95,9 @@ const pages = defineCollection({
 				.transform((value, ctx) => {
 					const blocs: Record<string, Bloc> = {};
 					for (const [id, raw] of Object.entries(value ?? {})) {
-						const { bloc, errors } = validateBloc(id, raw);
+						const typesInconnus: string[] = [];
+						const { bloc, errors } = validateBloc(id, raw, { typesInconnus });
+						avertirTypesInconnus('bloc', typesInconnus);
 						for (const message of errors) ctx.addIssue({ code: 'custom', message });
 						if (bloc) blocs[id] = bloc;
 					}
@@ -161,7 +173,9 @@ const sitePages = defineCollection({
 					}
 					if (settings.modules) {
 						if (!def.modules) ctx.addIssue({ code: 'custom', message: `La page « ${id} » n'est pas composée de modules.` });
-						for (const message of validateHomeModules(settings.modules).errors) ctx.addIssue({ code: 'custom', message });
+						const typesInconnus: string[] = [];
+						for (const message of validateHomeModules(settings.modules, { typesInconnus }).errors) ctx.addIssue({ code: 'custom', message });
+						avertirTypesInconnus("module d'accueil", typesInconnus);
 					}
 					const names = sitePageTextNames(id);
 					for (const name of Object.keys(settings.textes ?? {})) {

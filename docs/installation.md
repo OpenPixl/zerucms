@@ -81,7 +81,7 @@ l'onglet ; l'assistant revient à la connexion suivante, ou depuis
 | `src/content/association.yaml` | Nom, email, téléphone, adresse (le reste du fichier est gardé) |
 | `src/content/images/logo.*` | Le logo déposé |
 | `src/content/reglages.yaml` | `structure: entreprise` (rien pour une association) et l'état de **chaque** plugin (`plugins: {adhesion: false, …, facturation: true}`) |
-| `src/content/rdv.yaml`, `src/content/facturation.yaml` | Créés depuis le modèle du plugin s'il est coché et que le fichier manque, avec les réglages saisis |
+| `src/content/facturation.yaml` | Créé depuis le modèle du plugin s'il est coché et que le fichier manque, avec les réglages saisis |
 | `src/content/…` | Exemples retirés, ou exemples « auto-entrepreneur » posés ([structure.md](structure.md#contenu-dexemple)) |
 | `data/installation/secrets.env` | Les secrets saisis (droits 600) |
 | `data/installation/installation.json` | `{ "etat": "terminee", "date", "par" }` |

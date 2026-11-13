@@ -52,7 +52,6 @@ jobs:
           # secret serait figé dans le build (import.meta.env au lieu de
           # astro:env/server, cf. astro.config.mjs) — l'étape suivante échoue.
           GRIST_API_KEY: temoin-ci-grist-api-key
-          GRIST_API_KEY_RDV: temoin-ci-grist-api-key-rdv
           AUTH_SECRET: temoin-ci-auth-secret-0123456789abcdef
           BULLETIN_SECRET: temoin-ci-bulletin-secret
           GOTENBERG_PASSWORD: temoin-ci-gotenberg-password

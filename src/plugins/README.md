@@ -1,15 +1,20 @@
 # Les plugins
 
-Un **plugin** est un volet du site qu'une association active ou non : par
-exemple la prise de rendez-vous en ligne. Tout son code est
-rangé dans un seul dossier, `src/plugins/<id>/`, et il ne laisse aucune trace
-dans le site quand il est inactif.
+Un **plugin** est un outil courant, livré avec le CMS, qu'une structure
+active ou non selon son type (association ou auto-entrepreneur) : adhésion,
+inscription, facturation… Tout son code est rangé dans un seul dossier,
+`src/plugins/<id>/`, et il ne laisse aucune trace dans le site quand il est
+inactif.
+
+Un développement **propre à une structure** (ex. la prise de rendez-vous du
+dispositif conseiller numérique de numérik&Co) n'est pas un plugin mais une
+**extension** : dépôt à part, installée dans `extensions/<id>/` du seul site
+qui l'utilise — voir [docs/extensions.md](../../docs/extensions.md).
 
 | Plugin | Dossier | Contenu |
 | :--- | :--- | :--- |
 | `adhesion` | [`adhesion/`](adhesion/README.md) | Adhésion en ligne et bulletin PDF, présence, planning Grist — **actif par défaut**, associations seulement |
 | `inscription` | [`inscription/`](inscription/README.md) | Inscription aux activités (`/inscription`, bouton « S'inscrire ») — **actif par défaut**, requiert `adhesion`, associations seulement |
-| `rdv` | [`rdv/`](rdv/README.md) | Prise de rendez-vous en ligne (réglages de l'asso : `src/content/rdv.yaml`) |
 | `facturation` | [`facturation/`](facturation/README.md) | Devis et factures dans Grist, PDF, page « Demander un devis » — **auto-entrepreneur seulement** |
 
 ## Activer ou désactiver un plugin
@@ -22,7 +27,7 @@ une mise à jour) :
 
 ```yaml
 plugins:
-  rdv: true
+  facturation: true
   adhesion: false
 ```
 
@@ -122,7 +127,7 @@ plugin.
    `<DATA_DIR>/installation/secrets.env` ; `type` `url` / `identifiant` /
    `cle`, `obligatoire`, `genere` = créé au hasard sans être demandé) et
    `modele` (fichier de `src/content/` copié d'un modèle à l'activation
-   s'il manque, ex. `rdv.yaml`).
+   s'il manque, ex. `facturation.yaml`).
 2. Le dossier `src/plugins/<id>/` avec son `plugin.ts`, ajouté à
    `PLUGIN_MANIFESTS` (`manifests.ts`).
 3. Chaque branchement dans le reste du site passe par `pluginActif()` ou

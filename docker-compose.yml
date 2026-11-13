@@ -32,6 +32,10 @@ services:
       # d'une version à l'autre. À sauvegarder (module « Sauvegardes » ou
       # ./sauvegarde.sh). Cf. docs/publication.md.
       - ./src/content:/app/src/content
+      # Extensions installées sur ce site (extensions/<id>/, docs/extensions.md) :
+      # code propre à la structure, installé depuis l'Espace Admin ou par
+      # `npm run extension -- install`, conservé d'une version à l'autre.
+      - ./extensions:/app/extensions
       # Versions construites du site : gardées d'un conteneur à l'autre, pour
       # que ./update.sh construise la nouvelle version AVANT de remplacer le
       # conteneur (bascule en quelques secondes, cf. docs/mise-a-jour.md).

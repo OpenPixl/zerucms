@@ -14,7 +14,7 @@
  *    `scripts/`, `docs/`, `.github/`) remplacés entièrement — anciens dossiers
  *    de modèles de contenu à la racine (`contenu-initial*`, avant `src/modeles/`)
  *    retirés —, fichiers de la
- *    racine écrasés. Jamais touchés : `src/content/`, `data/`, `.env`,
+ *    racine écrasés. Jamais touchés : `src/content/`, `data/`, `extensions/`, `.env`,
  *    `.releases/`, `dist`, et tout fichier ajouté à la racine ;
  * 4. `npm ci` puis construction de la nouvelle version À CÔTÉ
  *    (`.releases/<horodatage>`) — le site en ligne continue sur l'ancienne ;
@@ -45,7 +45,7 @@ const TEMPLATE_DIRS = ['scripts', 'docs', '.github', 'contenu-initial', 'contenu
 /** Entrées de `src/` appartenant à l'association : jamais remplacées. */
 const SRC_KEEP = new Set(['content']);
 /** À la racine : jamais touchés, même si l'archive en contient. */
-const ROOT_KEEP = new Set(['.env', 'data', '.releases', 'dist', 'node_modules', '.update', '.git', '.dockercfg']);
+const ROOT_KEEP = new Set(['.env', 'data', 'extensions', '.releases', 'dist', 'node_modules', '.update', '.git', '.dockercfg']);
 
 const etape = (m) => console.log(`→ ${m}`);
 function echec(message) {

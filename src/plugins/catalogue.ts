@@ -1,7 +1,9 @@
 /**
- * Plugins du modèle : volets du site que chaque association active ou non
- * (`plugins:` de `src/content/reglages.yaml` ; inactifs par défaut, sauf
- * `actifParDefaut`).
+ * Plugins du modèle : outils courants, livrés avec le CMS et proposés selon
+ * le type de structure, que chacune active ou non (`plugins:` de
+ * `src/content/reglages.yaml` ; inactifs par défaut, sauf `actifParDefaut`).
+ * Un développement propre à une structure est une **extension**
+ * (`extensions/<id>/`, `src/lib/extensions.ts`), jamais un plugin.
  *
  * Module pur (seulement des modules purs importés) : chargé par la config Astro, par
  * `src/config/site.ts` et dans le navigateur. Nouveau plugin = une entrée
@@ -10,7 +12,6 @@
  */
 import type { ChampPlugin } from './champs';
 import type { Structure } from '../lib/structure';
-import { ADRESSE_DEFAUT as RDV_ADRESSE_DEFAUT } from './rdv/lib/adresse';
 import { ADRESSE_DEFAUT as DEVIS_ADRESSE_DEFAUT } from './facturation/lib/adresse';
 
 /**
@@ -100,64 +101,6 @@ export const PLUGINS = {
 		icon: 'fa-clipboard-list',
 		doc: 'src/plugins/inscription/README.md',
 	},
-	rdv: {
-		label: 'Prise de rendez-vous',
-		description:
-			'Prise de rendez-vous en ligne : page publique, permanences dans le planning, encart d’accueil (réglages : src/content/rdv.yaml).',
-		icon: 'fa-calendar-check',
-		doc: 'src/plugins/rdv/README.md',
-		requis: [{ fichier: 'rdv.yaml', aide: 'Copier le modèle src/plugins/rdv/rdv.exemple.yaml puis l’adapter (adresse, textes, permanences).' }],
-		modele: { fichier: 'rdv.yaml', source: 'src/plugins/rdv/rdv.exemple.yaml' },
-		secrets: [
-			{
-				nom: 'GRIST_API_KEY_RDV',
-				label: 'Clé d’API Grist des rendez-vous',
-				type: 'cle',
-				aide: 'Facultatif si le plugin Adhésion est actif (sa clé sert alors). Conseillé : une clé limitée au document des RDV.',
-			},
-		],
-		env: [
-			{
-				nom: 'GRIST_API_KEY_RDV',
-				repli: 'GRIST_API_KEY',
-				aide: 'Clé d’API Grist, dans le .env : GRIST_API_KEY_RDV (clé limitée au document des RDV, conseillé) ou, à défaut, GRIST_API_KEY (celle de l’adhésion). Sans clé, aucun RDV ne peut être pris.',
-			},
-		],
-		reglages: {
-			fichier: 'rdv.yaml',
-			champs: [
-				{
-					cle: 'adresse',
-					label: 'Adresse de la page',
-					groupe: 'Page publique',
-					type: 'adresse',
-					defaut: RDV_ADRESSE_DEFAUT,
-					aide: 'Les liens déjà écrits vers l’ancienne adresse (actualités, pages) ne sont pas modifiés.',
-				},
-				{
-					cle: 'grist.url',
-					label: 'Adresse de l’instance Grist',
-					groupe: 'Document Grist',
-					type: 'url',
-					env: 'GRIST_BASE_URL',
-					obligatoire: true,
-					aide: 'Ex. https://grist.exemple.fr — vide : celle du .env, partagée avec l’adhésion.',
-				},
-				{
-					cle: 'grist.document',
-					label: 'Identifiant du document',
-					groupe: 'Document Grist',
-					type: 'identifiant',
-					env: 'GRIST_DOC_ID_RDV',
-					obligatoire: true,
-					aide: 'Dans l’adresse du document Grist : https://…/o/…/<identifiant>/…',
-				},
-				{ cle: 'grist.tables.beneficiaires', label: 'Table des bénéficiaires', groupe: 'Document Grist', type: 'table', env: 'GRIST_TABLE_BENEFICIAIRES', defaut: 'Beneficiaires' },
-				{ cle: 'grist.tables.rdv', label: 'Table des rendez-vous', groupe: 'Document Grist', type: 'table', env: 'GRIST_TABLE_RDV', defaut: 'RDV' },
-				{ cle: 'grist.tables.demarches', label: 'Table des démarches', groupe: 'Document Grist', type: 'table', env: 'GRIST_TABLE_DEMARCHES', defaut: 'Demarches' },
-			],
-		},
-	},
 	facturation: {
 		label: 'Devis et facturation',
 		description:
@@ -203,6 +146,13 @@ export const PLUGINS = {
 } as const satisfies Record<string, PluginInfo>;
 
 export type PluginId = keyof typeof PLUGINS;
+
+/**
+ * Anciens plugins devenus extensions (`extensions/<id>/`, cf.
+ * `src/lib/extensions.ts`) : leur clé sous `plugins:` de `reglages.yaml`,
+ * laissée par les sites qui les utilisaient, est ignorée.
+ */
+export const PLUGINS_DEVENUS_EXTENSIONS: readonly string[] = ['rdv'];
 
 export const PLUGIN_IDS = Object.keys(PLUGINS) as PluginId[];
 

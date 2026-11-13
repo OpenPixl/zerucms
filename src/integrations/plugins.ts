@@ -6,8 +6,8 @@
  *
  * Lit `reglages.yaml` directement (la config Astro ne charge pas `?raw`) ;
  * sa validation complète reste celle de `src/config/site.ts`, au build.
- * Fichiers surveillés (`reglages.yaml`, `rdv.yaml` pour son adresse) : en
- * dev, les modifier relance le serveur.
+ * Fichier surveillé (`reglages.yaml`) : en dev, le modifier relance le
+ * serveur.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -33,7 +33,6 @@ export default function plugins(): AstroIntegration {
 			'astro:config:setup': ({ config, injectRoute, addWatchFile, logger }) => {
 				const reglages = new URL('src/content/reglages.yaml', config.root);
 				addWatchFile(reglages);
-				addWatchFile(new URL('src/content/rdv.yaml', config.root));
 				const lus = lireReglages(reglages);
 				const actifs = resoudrePlugins(lus.plugins, lus.structure);
 				for (const plugin of PLUGIN_MANIFESTS) {

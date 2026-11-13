@@ -12,14 +12,16 @@
  *
  * Ajouter un type = une entrée dans `HOME_MODULES` + sa branche dans
  * `src/pages/index.astro`. Types apportés par un plugin : définis dans
- * `src/plugins/<id>/sections/definitions.ts` (champ `plugin`).
+ * `src/plugins/<id>/sections/definitions.ts` (champ `plugin`) ; par une
+ * extension : son `definitions.ts` (champ `extension`, composant fourni par
+ * son `site.ts`, cf. `src/lib/extensions.ts`).
  *
  * Module sans dépendance à Astro ni à Node : aussi utilisé par l'îlot Vue.
  */
 
 import { checkBlocField, type BlocField } from './blocs.ts';
 import { disponible, type PluginId } from '../plugins/index.ts';
-import { RDV_HOME_MODULES, RDV_TYPES_RENOMMES } from '../plugins/rdv/sections/definitions.ts';
+import { DEFINITIONS_EXTENSIONS } from './extensions.ts';
 
 export interface HomeField extends BlocField {
 	default: string;
@@ -34,6 +36,8 @@ export interface HomeModuleDef {
 	multiple?: boolean;
 	/** Apporté par un plugin : absent de l'éditeur et du rendu si celui-ci est inactif. */
 	plugin?: PluginId;
+	/** Apporté par une extension (posé par `src/lib/extensions.ts`) : de même. */
+	extension?: string;
 	fields: HomeField[];
 }
 
@@ -45,7 +49,7 @@ export interface HomeModule {
 
 const LIEN_HELP = 'Adresse du site (/adherer) ou externe (https://…).';
 
-export const HOME_MODULES = {
+const MODULES_DU_CMS = {
 	bandeau: {
 		label: 'Bandeau',
 		description: "Photo d'accueil avec grand titre, accroche et deux boutons.",
@@ -107,7 +111,6 @@ export const HOME_MODULES = {
 			{ name: 'lien-texte', label: 'Lien vers la page Activités', type: 'text', default: 'Accéder à la page', help: 'Vide = pas de lien.' },
 		],
 	},
-	...RDV_HOME_MODULES,
 	appel: {
 		label: "Appel à l'action",
 		description: 'Bandeau coloré avec un titre, un texte et un bouton (ex. « Envie de nous rejoindre ? »).',
@@ -158,7 +161,15 @@ export const HOME_MODULES = {
 	},
 } satisfies Record<string, HomeModuleDef>;
 
-export type HomeModuleType = keyof typeof HOME_MODULES;
+/** Modules de l'accueil : ceux du CMS, puis ceux des extensions installées (ajoutés après le module « Activités »). */
+export const HOME_MODULES: Record<string, HomeModuleDef> = (() => {
+	const entrees = Object.entries(MODULES_DU_CMS) as [string, HomeModuleDef][];
+	const i = entrees.findIndex(([type]) => type === 'activites');
+	entrees.splice(i, 0, ...Object.entries(DEFINITIONS_EXTENSIONS.accueil).filter(([type]) => !Object.hasOwn(MODULES_DU_CMS, type)));
+	return Object.fromEntries(entrees);
+})();
+
+export type HomeModuleType = keyof typeof MODULES_DU_CMS | (string & {});
 
 export function isHomeModuleType(value: unknown): value is HomeModuleType {
 	return typeof value === 'string' && Object.hasOwn(HOME_MODULES, value);
@@ -176,8 +187,8 @@ export function newHomeModule(type: HomeModuleType): HomeModule {
 }
 
 /** Accueil d'origine (sans réglage enregistré) ; module d'un plugin inactif omis. */
-export const DEFAULT_HOME: HomeModule[] = (['bandeau', 'actualites', 'rdv', 'activites', 'appel'] as const)
-	.filter((type) => disponible(homeModuleDef(type)))
+export const DEFAULT_HOME: HomeModule[] = ['bandeau', 'actualites', ...Object.keys(DEFINITIONS_EXTENSIONS.accueil), 'activites', 'appel']
+	.filter((type) => isHomeModuleType(type) && disponible(homeModuleDef(type)))
 	.map(newHomeModule);
 
 /**
@@ -186,13 +197,26 @@ export const DEFAULT_HOME: HomeModule[] = (['bandeau', 'actualites', 'rdv', 'act
  * vide gardé vide. Liens vérifiés (`isSafeUrl`) ; le contrôle des variables et
  * des liens Markdown est fait à l'écriture (`page-writer.ts`).
  */
-export function validateHomeModule(raw: unknown, position: number): { module?: HomeModule; errors: string[] } {
+/**
+ * `typesInconnus` : liste des types inconnus rencontrés, ignorés sans erreur
+ * (lecture du contenu au build : module d'une extension retirée ou pas
+ * encore installée). Sans elle (enregistrement), un type inconnu est refusé.
+ */
+export interface ValidationOptions {
+	typesInconnus?: string[];
+}
+
+export function validateHomeModule(raw: unknown, position: number, options: ValidationOptions = {}): { module?: HomeModule; errors: string[] } {
 	const where = `Accueil, module ${position}`;
 	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { errors: [`${where} : description invalide.`] };
 	const data = { ...(raw as Record<string, unknown>) };
 	// Type renommé depuis (contenu enregistré avec l'ancien nom).
-	if (typeof data.type === 'string' && Object.hasOwn(RDV_TYPES_RENOMMES, data.type)) data.type = RDV_TYPES_RENOMMES[data.type];
+	if (typeof data.type === 'string' && Object.hasOwn(DEFINITIONS_EXTENSIONS.typesRenommes, data.type)) data.type = DEFINITIONS_EXTENSIONS.typesRenommes[data.type];
 	if (!isHomeModuleType(data.type)) {
+		if (options.typesInconnus && typeof data.type === 'string') {
+			options.typesInconnus.push(data.type);
+			return { errors: [] };
+		}
 		return { errors: [`${where} : type inconnu « ${String(data.type)} » (connus : ${Object.keys(HOME_MODULES).join(', ')}).`] };
 	}
 	const def = homeModuleDef(data.type);
@@ -215,13 +239,13 @@ export function validateHomeModule(raw: unknown, position: number): { module?: H
 }
 
 /** Vérifie la liste des modules de l'accueil (types uniques non répétés). */
-export function validateHomeModules(raw: unknown): { modules: HomeModule[]; errors: string[] } {
+export function validateHomeModules(raw: unknown, options: ValidationOptions = {}): { modules: HomeModule[]; errors: string[] } {
 	if (!Array.isArray(raw)) return { modules: [], errors: ["Accueil : la liste des modules est invalide."] };
 	const errors: string[] = [];
 	const modules: HomeModule[] = [];
 	const seen = new Set<string>();
 	raw.forEach((item, i) => {
-		const { module, errors: moduleErrors } = validateHomeModule(item, i + 1);
+		const { module, errors: moduleErrors } = validateHomeModule(item, i + 1, options);
 		errors.push(...moduleErrors);
 		if (!module) return;
 		const def = homeModuleDef(module.type);

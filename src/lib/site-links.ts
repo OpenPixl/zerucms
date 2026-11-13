@@ -19,7 +19,7 @@ import { readCategorySources } from './category-writer';
 import { NEWS_SLUG, newsSourceDir, readNewsSource } from './news-writer';
 import { listPagesSource } from './page-writer';
 import { pluginActif } from '../plugins';
-import { RDV_HREF, RDV_NOM, rdvToggle } from '../plugins/rdv';
+import { pagesExtensions } from './extensions-site';
 import { ADHESION_HREF, FORMULAIRE_HREF, PRESENCE_HREF } from '../plugins/adhesion';
 import { INSCRIPTION_HREF } from '../plugins/inscription';
 
@@ -36,7 +36,7 @@ export interface SiteLinkGroup {
 	links: SiteLink[];
 }
 
-/** Pages applicatives du modèle (formulaires, services) : `form` = clé de `site.forms`, `closed` = fermée (plugin) ; signalées. */
+/** Pages applicatives (formulaires, services ; plugins et extensions) : `form` = clé de `site.forms`, `closed` = fermée ; signalées. */
 const SERVICE_PAGES: { title: string; href: string; form?: keyof typeof site.forms; closed?: boolean }[] = [
 	...(pluginActif('adhesion')
 		? [
@@ -45,7 +45,7 @@ const SERVICE_PAGES: { title: string; href: string; form?: keyof typeof site.for
 			]
 		: []),
 	...(pluginActif('inscription') ? [{ title: 'Inscription à une activité', href: INSCRIPTION_HREF, form: 'inscription' as const }] : []),
-	...(pluginActif('rdv') ? [{ title: RDV_NOM, href: RDV_HREF, closed: !rdvToggle().enabled }] : []),
+	...pagesExtensions(),
 	...(pluginActif('adhesion') ? [{ title: 'Je participe', href: PRESENCE_HREF }] : []),
 ];
 

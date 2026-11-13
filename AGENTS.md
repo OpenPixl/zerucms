@@ -292,7 +292,7 @@ formulaire de création se remplit (`takePendingImport()` au montage, prop
   (`/api/admin/comptes`, `/api/admin/sauvegardes`, `/api/admin/maintenance`, `/api/admin/version`, `/api/admin/association` et `/api/admin/charte` → `admin`, `/api/admin/actualites`,
   `/api/admin/publication`, `/api/admin/activites`, `/api/admin/annonces`, `/api/admin/pages`, `/api/admin/menus-deroulants`,
   `/api/admin/liens`, `/api/admin/pages-du-site` et `/api/admin/ordre-menu` →
-  `redacteur`, `/api/admin/facturation` → `admin`, `/api/admin/journal`, `/api/admin/plugins`, `/api/admin/installation` et `/api/admin/sauvegardes/restauration` → `superadmin` seul).
+  `redacteur`, `/api/admin/facturation` → `admin`, `/api/admin/journal`, `/api/admin/plugins`, `/api/admin/extensions`, `/api/admin/installation` et `/api/admin/sauvegardes/restauration` → `superadmin` seul).
 - **Journal des modifications** : `src/lib/journal.ts` (`logEvent()`,
   `<DATA_DIR>/journal/<AAAA>.jsonl`, ajout seul), appelé par chaque route
   d'admin et par `site-build.ts` (résultat des publications).
@@ -328,12 +328,11 @@ formulaire de création se remplit (`takePendingImport()` au montage, prop
   fichier du plugin, vide = clé retirée → `.env` ou défaut, repli affiché en
   gris) ; `savePlugin(id, actif, valeurs)` ; champ `type: 'adresse'` refusé
   si pris (`adresseOccupee()` de `page-writer.ts`, qui refuse aussi une page
-  à l'adresse d'un plugin actif : `src/lib/plugin-adresses.ts`) ; plugin RDV :
-  adresse + `grist:` (url, document, tables) de `rdv.yaml`, avant le `.env`
-  dans `lib/grist.ts`, clé d'API toujours dans le `.env` (`GRIST_API_KEY_RDV`
-  propre au plugin, sinon `GRIST_API_KEY` ; `env[].repli` du catalogue, la
-  page dit laquelle est utilisée) ; route
-  `/api/admin/plugins`) ; Mon compte (module Comptes ouvert sur sa
+  à l'adresse d'un plugin ou d'une extension actifs : `src/lib/plugin-adresses.ts`) ;
+  clé d'API toujours dans le `.env` (`env[].repli` du catalogue, la page dit
+  laquelle est utilisée) ; route `/api/admin/plugins`) ; **Extensions**
+  (`exclusive`, `superadmin` seul, même composant `genre="extension"` : voir
+  « Extensions » plus bas) ; Mon compte (module Comptes ouvert sur sa
   propre fiche : `AccountsModule.vue` prop `self`, via `props` du registre ;
   nom + email seuls, `GET`/`PUT /api/admin/mon-compte`, `readProfileFields()`,
   plus le changement de mot de passe : `PasswordModule.vue` intégré, aussi
@@ -505,17 +504,14 @@ couleur par famille d'activité.
 - `src/lib/agenda.ts` — types et données de repli. `AgendaSession` (jour,
   horaires, intitulé, `animators` et `location` facultatifs, `kind`, `note`
   facultative). `AGENDA_KIND_META` associe à chaque `kind` (`parcours`,
-  `fablab`, `espace-jeune`, `bidouille-repair`, `ateliers`, `rdv`) un
+  `fablab`, `espace-jeune`, `bidouille-repair`, `ateliers`, plus ceux des
+  extensions : `agenda` de leur `definitions.ts`, ex. `rdv`) un
   libellé, une icône Font Awesome et des classes / hex de couleur ; ajouter
-  un `kind` = ajouter une entrée ici (`kind: 'rdv'` = permanences du plugin
-  RDV ; `legend` d'une séance remplace le libellé de la légende). Les
-  permanences de prise de RDV (`permanences` de
-  `src/plugins/rdv/lib/permanences.ts`, `permanencesAffichees()` pour le
-  planning, vide si le plugin est inactif) sont lues dans `permanences:` de
-  `src/content/rdv.yaml` (validé : jours d'`AGENDA_DAYS`, une par jour,
-  heures « 09h00 » piles/demies dans 09h–20h ; liste vide = encart
-  `RdvCtaSection` absent) — dispositif géré à
-  part de la programmation de l'association, jamais dans Grist. `groupByDay()`
+  un `kind` = ajouter une entrée ici (`legend` d'une séance remplace le
+  libellé de la légende). Séances des extensions (ex. permanences de prise
+  de RDV, `permanences:` de `src/content/rdv.yaml`) : `agenda()` de leur
+  `site.ts`, `seancesExtensions()` de `src/lib/extensions-site.ts` — dispositif
+  géré à part de la programmation de l'association, jamais dans Grist. `groupByDay()`
   regroupe et trie les séances selon `AGENDA_DAYS`. Plus de planning figé
   (`weeklyAgenda` supprimé le 2026-10-09) : Grist injoignable = permanences
   seules + avertissement (`notice`).
@@ -613,6 +609,10 @@ RefList:Membres). Détail : [docs/api.md](docs/api.md).
 
 ### Plugins (volets activables)
 
+Outils **communs** livrés avec le CMS, proposés selon le type de structure ;
+un développement propre à une structure = une **extension** (section
+« Extensions » plus bas), jamais un plugin.
+
 `src/plugins/` — un dossier par plugin, `src/plugins/<id>/` (sous-dossiers
 `pages/`, `api/`, `formulaire/`, `sections/`, `admin/`, `lib/`, `images/`
 selon les besoins ; `plugin.ts` = manifeste, `index.ts` = ce que le reste
@@ -691,111 +691,65 @@ montants recalculés serveur (`lib/types.ts`, partagé avec l'îlot). PDF
 `LignesEditeur.vue`, `ClientForm.vue`, routes `admin/api/` en `POST
 { action }`, garde `admin`, `logEvent('facturation')`).
 
-### Prise de RDV (plugin `rdv`)
+### Extensions (développements propres à une structure)
 
-Plugin **générique** `src/plugins/rdv/` (doc : [src/plugins/rdv/README.md](src/plugins/rdv/README.md),
-schéma Grist attendu compris) ; **aucune référence à un dispositif dans le
-plugin** : tout le propre à l'asso est dans `src/content/rdv.yaml`
-(`lib/config.ts` : `rdvConfig`, zod, défauts génériques, modèle commenté
-`rdv.exemple.yaml` ; plugin actif sans ce fichier = build en échec) —
-`adresse` de la page (lue aussi par `plugin.ts` via fs pour `injectRoute`,
-format `lib/adresse.ts`), `ouvert` (+ `textes.fermeTitre/fermeMessage`,
-`rdvToggle()` → `<FormGate toggle>` ; plus de `site.forms` pour le RDV),
-`textes` (`nom`, `titre`, `description`, `intervenant`, `dejaVenu`,
-`urgence`, `consentement` ; `{duree}`/`{heure}`/`{intervenant}` remplis par
-`remplir()`), `encart` (textes par défaut de `RdvCtaSection`, `logo`
-facultatif dans `src/content/images/`), `planning` (titre + `legend`),
-`creneaux` (`duree` 15–60, `semaines`, `urgence`), `profil` (questions :
-`genre`, `commune`, `zone`, `trancheAge`, `statut` ; sans question de
-profil = étape 4 absente), `civilite`, `icones` (thématiques),
-`permanences`, `zones`. L'îlot reçoit ces réglages en props
-(`rdvFormProps()`, type `RdvFormReglages`), jamais le YAML. **Listes de
-choix lues dans le document Grist** (`lib/listes.ts`, `listChoices()`,
-cache 5 min, `GET /api/rdv/listes`) : thématiques (`Demarches.Thematique`,
-ordre de la colonne), genre, tranche d'âge, statut (`Beneficiaires`) ;
-revérifiées par `/api/rdv/prendre` (champs hors `profil` ignorés). Chemins
-ci-dessous relatifs au plugin. Page `pages/rendez-vous.astro`, formulaire
-`formulaire/RdvForm.vue` (`client:load`). Parcours en 5 étapes (même motif
-que `AdhesionForm.vue`) : démarche → créneau → vous (premier RDV ou déjà
-venu) → profil facultatif → consentement/envoi. Module d'accueil et bloc
-de type `rdv` (`sections/definitions.ts` ; ancien nom `rdv-conseiller`
-accepté à la lecture : `RDV_TYPES_RENOMMES`), champs vides = `encart:`.
+Un **plugin** (`src/plugins/<id>/`) est un outil commun livré avec le CMS,
+proposé selon le type de structure ; un développement **propre à une
+structure** est une **extension** : dépôt Git à part (ex.
+`OpenPixl/zerucms-rdv`, prise de RDV de numérik&Co), installé dans
+`extensions/<id>/` du seul site concerné (ignoré par git sauf
+`extensions/README.md`, conservé par `update.mjs` / `update.sh` comme
+`src/content/`, volume Docker `./extensions:/app/extensions` ajouté aux
+anciens `docker-compose.yml` par `migrer_volume_extensions` d'`update.sh`,
+exclu de l'image par `.dockerignore`). **Le cœur n'importe jamais une
+extension** : il découvre ses fichiers par `import.meta.glob` —
+`extension.json` (fiche au format du catalogue des plugins : `requis`,
+`modele` relatif à l'extension, `env`, `reglages`, plus `version`, `cms`
+= version minimale du CMS, `gardes` → `GUARDS` du middleware ; lue par
+`src/lib/extensions.ts` : `EXTENSIONS`, `extensionActive(id)`,
+`DEFINITIONS_EXTENSIONS`), `manifest.ts` (routes relatives à l'extension,
+`env`, `surveiller` ; chargé par `astro.config.mjs` via
+`chargerExtensions()` de `src/integrations/extensions.ts`, **sans import
+`@cms/…`**), `definitions.ts` (modules d'accueil, blocs, `typesRenommes`,
+familles d'`agenda`, libellés du `journal` ; navigateur aussi, fusionnés
+dans `HOME_MODULES` / `BLOC_TYPES` / `AGENDA_KIND_META` /
+`JournalModule.vue`, champ `extension` filtré par `disponible()`),
+`site.ts` (`src/lib/extensions-site.ts` : composants rendus par
+`index.astro` (prop `champs`) et `BlocView.astro` (prop `bloc`),
+`seancesExtensions()` pour `/activites`, `pagesExtensions()` pour le
+sitemap et `site-links.ts`), `admin.ts` (modules d'admin, `modules.ts`).
+Une extension importe le cœur par l'alias **`@cms/…`** (`vite.resolve.alias`
+d'`astro.config.mjs` + `paths` de `tsconfig.json`) ; Tailwind la lit par
+`@source "../../extensions"` (`global.css`). Installée = active,
+`extensions: { <id>: false }` de `reglages.yaml` la coupe (clé `plugins:
+rdv:` des anciens sites ignorée : `PLUGINS_DEVENUS_EXTENSIONS`). Logique
+unique d'installation **`scripts/extension.mjs`** (`verifierFiche`,
+`lireArchive` : `.zip` à plat ou avec un seul dossier, 20 Mo, chemins
+contrôlés ; `installerArchive` / `supprimerExtension` : ancienne version
+mise de côté dans `extensions/.ancienne-…`, `restaurer()` / `purger()` ;
+jamais de suppression du dossier `extensions/` lui-même) : CLI `npm run
+extension -- liste | install <zip> | supprimer <id>` et module
+**« Extensions »** (super admin, `exclusive` ; `PluginsModule.vue` prop
+`genre="extension"` : dépôt de l'archive, version, dossiers invalides,
+suppression en deux clics, même page de configuration ;
+`src/lib/extension-writer.ts` copie le `modele` s'il manque ; route
+`/api/admin/extensions` GET / PUT / POST zip / DELETE, garde
+`superadmin`, publication avec retour arrière, journal
+`extension.installation|modification|suppression` ; `plugin-writer.ts`
+`readExtensionsSource()` / `saveExtension()`, `plugin-adresses.ts` couvre
+aussi les adresses des extensions actives). L'empreinte de construction
+(`scripts/releases.mjs`) inclut `extensions/` : installer puis redémarrer
+reconstruit. Contenu citant une extension absente (module d'accueil, bloc) :
+ignoré au build avec un avertissement (`typesInconnus` de
+`validateHomeModules` / `validateBloc`, `content.config.ts`), refusé à
+l'enregistrement. Extension invalide ou CMS trop ancien = build en échec
+avec message. Détail : [docs/extensions.md](docs/extensions.md).
 
-- `lib/demarches.ts` — catalogue `Demarches` (Nom, Thematique, Icone,
-  Description, Documents) tenu **dans Grist** par l'asso. `Documents`
-  (une ligne par pièce) rappelé sur l'écran de confirmation seulement.
-  Étape 1 en deux temps : thématique (celles qui ont une démarche, ordre
-  Grist, icône `icones:`, aussi en repli d'une `Icone` vide) puis démarche.
-- `lib/creneaux.ts` — créneaux de `creneaux.duree` sur `creneaux.semaines`.
-  `creneaux.urgence: true` : premier créneau de chaque permanence =
-  **urgence** (`urgence`, `estCreneauUrgence()`), mention `textes.urgence`
-  encadrée au-dessus des horaires, réservable (`reservable`) seulement avec
-  une session de l'Espace Admin (`locals.user`, revérifié par
-  `/api/rdv/prendre`, 403 sinon).
-- Étape 3 « Vous » : **« C'est mon premier rendez-vous »** (civilité si
-  `genre` demandé — choix Grist libellés par `civilite:` —, nom,
-  coordonnées) ou **`textes.dejaVenu`** (un seul champ « Prénom et nom »,
-  fiche réutilisée telle quelle, étape 4 sautée — dernière étape « 4 »).
-- Zones (`zones:` de `rdv.yaml`, `label` = choix Grist `Zone_geographique`) :
-  `lib/zones.ts` côté serveur, prop `zones` de `RdvForm.vue`,
-  `deduireZone()` (`geographie.ts`), revalidées par `estZoneConnue()`.
-- `lib/beneficiaires.ts` — premier RDV : rapproche par **email OU
-  téléphone** (un des deux obligatoire, `validation.ts`) ou crée. Déjà
-  venu : `rechercherParNomComplet()` = « prénom nom » ou « nom prénom »
-  **exacts** (hors accents/casse/tirets, jamais partiel, un mot seul ne
-  suffit pas), ne renvoie que prénom/nom de la fiche et un indice masqué ;
-  `beneficiaireCorrespond()` revérifie à l'envoi (un id seul ne suffit pas).
-- `lib/reservation.ts` — revérifie la disponibilité puis écrit la ligne `RDV`.
-- Routes (`api/`, déclarées dans `plugin.ts`) : `GET /api/rdv/creneaux`,
-  `GET /api/rdv/demarches`, `GET /api/rdv/listes`, `GET /api/rdv/commune`,
-  `GET /api/rdv/beneficiaires` (`?q=<prénom nom>`), `POST /api/rdv/prendre`,
-  `GET /api/rdv/ics` (`?date=&heure=&demarche=<id>`, titre `textes.nom`,
-  lieu et documents recalculés côté serveur).
-- `lib/ics.ts` — événement d'agenda partagé par la route `.ics` et le QR
-  code (heure Europe/Paris convertie en UTC, durée `creneaux.duree`).
-- **Module « Rendez-vous »** (`admin/`, bureau + `animateur`, registre
-  `modules.ts` avec `plugin: 'rdv'` → masqué si le plugin est inactif,
-  `ADMIN_MODULES.filter(disponible)`) : `RdvModule.vue` (une semaine à la fois,
-  par jour, recherche texte + statut sur toutes les semaines) ; clic → `RdvEditeur.vue`, **second
-  panneau fixé à gauche du panneau des modules** (`sm:right-[36rem]`, dans le
-  DOM du panneau pour son piège de focus, Échap capturé sur `window`) :
-  bénéficiaire et son commentaire en lecture seule, créneau (créneaux libres
-  seulement + l'actuel) / démarche / statut, puis **compte rendu** :
-  colonnes facultatives de `RDV` listées dans `admin/suivi.ts` (`SUIVI` :
-  Lieu_reel, Materiel_utilise, Sous_thematique_demarche, Niveau_autonomie,
-  Oriente_autre_structure, Notes_accompagnement, Evaluation_satisfaction,
-  Suggestions_beneficiaire ; proposées si présentes avec le bon type, choix
-  lus dans Grist via `listColumns()`, ChoiceList écrites `['L', …]` ou
-  `null` ; `affichage: 'smileys'` = satisfaction en visages, `visage()` de
-  `admin/client.ts`, de la meilleure réponse à la pire). Créneau pris = tout RDV non « Annulé »
-  (`STATUTS_OCCUPANTS` de `lib/grist.ts`, page publique comme éditeur).
-  Serveur `admin/gestion.ts` (`listerRdv()`, `modifierRdv()` :
-  `creneauEstLibre(date, heure, sauf)`, lieu et thématiques recalculés),
-  routes `admin/api/` injectées par `plugin.ts` (`/api/admin/rdv`,
-  `/api/admin/rdv/[id]`, garde `animateur` dans `GUARDS`), écrit dans Grist
-  sans reconstruction, `logEvent('rdv.modification')`. Bouton « Supprimer »
-  de l'éditeur → `DELETE /api/admin/rdv/[id]` (`supprimerRdv()`,
-  `deleteRecord()` de `lib/grist.ts`), motif obligatoire
-  (`MOTIFS_SUPPRESSION`, « Autre » + précision), `logEvent('rdv.suppression')`
-  avec le RDV supprimé et le motif. Éditeur en 2 colonnes par requête de
-  conteneur (`@container` / `@3xl:grid-cols-2`). Liste d'une semaine à la
-  fois (chevrons ‹ ›, « Cette semaine » ; recherche texte — mots cumulés, dates jj/mm[/aa[aa]] — et/ou statut = toutes les semaines,
-  regroupées, clic → la semaine), bouton « PDF » de la semaine affichée → `GET /api/admin/rdv/pdf?semaine=`
-  (`admin/api/pdf.ts`, HTML de `admin/semaine-pdf.ts` : logo en data URI
-  `?inline`, A4 paysage, créneaux de `horairesDuJour()` de `lib/creneaux.ts`
-  + RDV non annulés : démarche, nom et message, sans coordonnées (RGPD) ; statut pour une
-  semaine terminée seulement) converti par `htmlToPdf()` de
-  `src/lib/gotenberg.ts` (Gotenberg, `isGotenbergEnabled()`, partagé avec le bulletin d'adhésion).
-  Zones qui défilent des panneaux d'admin : utilitaire `scrollbar-fin`
-  (`src/styles/global.css`, ascenseur fin). `request()` de
-  `src/components/admin/client.ts` exporté pour les modules de plugin.
-
-Pistes de suite non traitées (à reprendre si redemandé) :
-1. Collecte de l'évaluation par le bénéficiaire lui-même (aujourd'hui
-   saisie par l'équipe dans le compte rendu).
-2. Notification email/SMS de confirmation ou de rappel de RDV.
-3. ~~Vue admin~~ faite : module « Rendez-vous » (voir ci-dessus).
-4. Suppression de `Table1` (table Grist vide créée par défaut, sans impact).
+**Extension RDV** (prise de rendez-vous du dispositif conseiller numérique,
+ex-plugin `rdv` jusqu'à la 0.5.19) : dépôt `OpenPixl/zerucms-rdv` (local :
+`/home/xavier/www/zerucms-rdv`, notes de développement dans son
+`AGENTS.md`), copie de travail dans `extensions/rdv/` du site de dev ;
+réglages de la structure dans `src/content/rdv.yaml`.
 
 ## CI
 

@@ -135,7 +135,7 @@ ajoute la modification au lot en attente, publié plus tard en une fois :
   (`{ name, label, default, multiline? }`, variables `{{association.…}}`).
   **L'accueil** (`modules: true`) est une suite de **modules** :
   catalogue `src/lib/home-modules.ts` (`HOME_MODULES` : bandeau, actualites,
-  activites, rdv (plugin, `src/plugins/rdv/sections/definitions.ts`), appel, partenaires, texte ; champs au format
+  activites, appel, partenaires, texte, plus ceux des extensions installées (ex. `rdv` : `definitions.ts` de l'extension, [extensions.md](extensions.md)) ; champs au format
   des blocs, `default` par champ, `multiple` pour les types répétables),
   liste complète enregistrée dans `pages.accueil.modules` (valeurs
   explicites ; absente = `DEFAULT_HOME`, identique à `DEFAULT_HOME` = non
