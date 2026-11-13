@@ -55,10 +55,10 @@ La page **« Installation du site »** (étape 2) :
 | --- | --- |
 | **Structure** | **Association** ou **Auto-entrepreneur** : décide des plugins proposés, du vocabulaire, des mentions légales et du contenu d'exemple — voir [structure.md](structure.md) |
 | **Compte** | Compte administrateur du site (bureau de l'association, ou l'entrepreneur·e) : prénom et nom, identifiant, email facultatif, **mot de passe provisoire** proposé (bouton ↻ pour un autre). À noter et transmettre : il sera changé à la première connexion |
-| **Identité** | Nom (de l'association, ou nom commercial), email, téléphone, adresse ; **logo** facultatif (PNG, JPEG, WebP, SVG, 5 Mo). Les champs sont vides tant que l'identité est celle de démonstration. Le reste (présentation, réseaux, SIRET, mentions légales, couleurs) : **Paramètres → Association / Entreprise** |
+| **Identité** | Nom (de l'association, ou nom commercial), email, téléphone, adresse (rue sur 1 à 3 lignes — complément, bâtiment… —, gardées à l'affichage : pied de page, Contact, PDF ; puis code postal et ville) ; **logo** facultatif (PNG, JPEG, WebP, SVG, 5 Mo). Les champs sont vides tant que l'identité est celle de démonstration. Le reste (présentation, réseaux, SIRET, mentions légales, couleurs) : **Paramètres → Association / Entreprise** |
 | **Plugins** | Volets proposés à ce type de structure, **tous décochés** au départ. Cocher un plugin coche ceux qu'il requiert ; décocher retire ceux qui en dépendent |
 | **Réglages** | Pour chaque plugin coché : ses **secrets** (adresse de l'instance Grist, identifiant du document, clé d'API, service PDF…) et ses réglages (adresse de la page publique, document Grist du RDV…). Étape absente si aucun plugin coché n'a rien à régler |
-| **Contenu** | **Garder les exemples** (site rempli, textes à remplacer) ou **partir d'un site vide** |
+| **Contenu** | **Garder les exemples** (site rempli, textes à remplacer) ou **partir d'un site vide** (les catégories d'activités restent, pour créer les premières fiches ; vides, elles ne sont ni dans le plan du site ni indexées) |
 | **Installer** | Récapitulatif (avec le mot de passe provisoire), puis installation |
 
 4. **Installer le site** : le site passe en **maintenance** (page « en cours

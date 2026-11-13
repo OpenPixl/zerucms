@@ -128,7 +128,8 @@ const inlineInputClass = inputClass.replace('mt-1 ', '');
 				</div>
 				<div class="sm:col-span-2">
 					<label for="asso-street" class="champ-libelle">{{ entreprise ? 'Adresse' : 'Adresse du siège' }}</label>
-					<input id="asso-street" v-model="form.address.street" type="text" required placeholder="N° et rue" :class="inputClass" />
+					<textarea id="asso-street" v-model="form.address.street" rows="3" required placeholder="N° et rue&#10;Complément (bâtiment, étage…)" :class="inputClass"></textarea>
+					<p class="champ-aide">Jusqu'à 3 lignes, sans le code postal ni la ville : chaque retour à la ligne est gardé à l'affichage.</p>
 				</div>
 				<div>
 					<label for="asso-postal" class="champ-libelle">Code postal</label>

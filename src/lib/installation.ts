@@ -27,6 +27,7 @@ import { PLUGIN_IDS, PLUGINS, proposePour, requis, type PluginId, type PluginInf
 import { estStructure, type Structure } from './structure';
 import { FORMATS, normaliserChamp } from '../plugins/champs';
 import { readAssociationSource, saveAssociation } from './association-writer';
+import { ADRESSE_LIGNES_MAX, normaliserRue } from './association';
 import { isSuperadminAccount, isValidLogin, listAccounts, normalizeLogin, readAccount, saveAccount } from './auth/accounts';
 import { hashPassword, passwordProblem } from './auth/password';
 import type { SessionUser } from './auth/session';
@@ -227,7 +228,7 @@ function lireSaisie(raw: unknown): Saisie {
 			name: texte(a.name, 80),
 			email: texte(a.email, 120),
 			phone: texte(a.phone, 40),
-			street: texte(a.street, 120),
+			street: normaliserRue(a.street).slice(0, 200),
 			postalCode: texte(a.postalCode, 10),
 			city: texte(a.city, 80),
 		},
@@ -283,6 +284,7 @@ export async function installer(raw: unknown, user: SessionUser): Promise<Result
 	// 2. Identité : nom et coordonnées (le reste ne change pas ; écrit après le contenu d'exemple).
 	const a = saisie.association;
 	if (!a.name || !a.email || !a.phone || !a.street || !a.postalCode || !a.city) errors.push('Identité : nom, email, téléphone et adresse sont obligatoires.');
+	else if (a.street.split('\n').length > ADRESSE_LIGNES_MAX) errors.push(`Identité : adresse en ${ADRESSE_LIGNES_MAX} lignes au plus (sans le code postal ni la ville).`);
 	const logo = saisie.logo ? readBrandInput({ ...(await readBrandSource()), logo: saisie.logo, favicon: null, fonts: null }) : null;
 	if (logo && 'error' in logo) errors.push(logo.error);
 

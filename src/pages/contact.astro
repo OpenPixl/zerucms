@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import PageHeader from '../components/sections/PageHeader.astro';
 import Button from '../components/ui/Button.astro';
 import FormGate from '../components/forms/FormGate.astro';
-import { association, getFullAddress } from '../lib/association';
+import { association, getAddressLines } from '../lib/association';
 import { getSitePage } from '../lib/site-pages-content';
 
 // Page du site désactivable et textes réglés depuis le module « Pages ».
@@ -32,7 +32,7 @@ const { t } = page;
 			<ul class="mt-4 space-y-3 font-light text-gray-600">
 				<li><a href={`mailto:${association.email}`} class="hover:text-primary">{association.email}</a></li>
 				<li><a href={`tel:${association.phone.replace(/\s/g, '')}`} class="hover:text-primary">{association.phone}</a></li>
-				<li>{getFullAddress()}</li>
+				<li class="whitespace-pre-line">{getAddressLines().join('\n')}</li>
 			</ul>
 			<p class="mt-6 font-light text-gray-600">{t['coordonnees-texte']}</p>
 		</div>

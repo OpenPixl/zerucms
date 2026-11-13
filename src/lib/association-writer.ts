@@ -19,7 +19,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { isMap, isScalar, parseDocument, Scalar, YAMLMap, type Document } from 'yaml';
-import { parseAssociation, SOCIAL_NETWORKS, type Association } from './association';
+import { ADRESSE_LIGNES_MAX, normaliserRue, parseAssociation, SOCIAL_NETWORKS, type Association } from './association';
 import type { Applied } from './content-transaction';
 import { siteRoot } from './news-writer';
 import { isSafeUrl } from './safe-url';
@@ -69,6 +69,7 @@ function validate(input: Association): string[] {
 		if (required && !value) errors.push(`« ${label} » est obligatoire.`);
 		else if (value.length > max) errors.push(`« ${label} » est trop long (${max} caractères max).`);
 	}
+	if (input.address.street.split('\n').length > ADRESSE_LIGNES_MAX) errors.push(`« Adresse » : ${ADRESSE_LIGNES_MAX} lignes au plus (sans le code postal ni la ville).`);
 	if (input.email && !EMAIL.test(input.email)) errors.push("L'email de contact n'est pas une adresse valide.");
 	for (const { key, label } of SOCIAL_NETWORKS) {
 		const url = input.social[key] ?? '';
@@ -90,17 +91,24 @@ function ensureMap(doc: Document, path: string[]): YAMLMap {
 	return map;
 }
 
-/** Remplace une valeur en gardant son nœud (guillemets, commentaire de fin de ligne) ; nouvelle valeur entre guillemets simples. */
+/**
+ * Remplace une valeur en gardant son nœud (guillemets, commentaire de fin de
+ * ligne) ; nouvelle valeur entre guillemets simples. Texte sur plusieurs
+ * lignes (rue) : bloc `|-`, une ligne du fichier par ligne d'adresse.
+ */
 function setText(doc: Document, path: string[], value: string): void {
 	const parent = ensureMap(doc, path.slice(0, -1));
 	const key = path[path.length - 1];
 	const node = parent.get(key, true);
+	const multiligne = value.includes('\n');
 	if (isScalar(node)) {
 		node.value = value;
+		if (multiligne) node.type = Scalar.BLOCK_LITERAL;
+		else if (node.type === Scalar.BLOCK_LITERAL || node.type === Scalar.BLOCK_FOLDED) node.type = Scalar.QUOTE_SINGLE;
 		return;
 	}
 	const scalar = new Scalar(value);
-	scalar.type = Scalar.QUOTE_SINGLE;
+	scalar.type = multiligne ? Scalar.BLOCK_LITERAL : Scalar.QUOTE_SINGLE;
 	parent.set(key, scalar);
 }
 
@@ -133,7 +141,7 @@ export async function saveAssociation(input: Association): Promise<AssociationRe
 	};
 }
 
-/** Corps JSON du formulaire → `Association` (textes forcés, sans retour à la ligne, rognés ; rien n'est validé ici). */
+/** Corps JSON du formulaire → `Association` (textes forcés, sans retour à la ligne sauf la rue, rognés ; rien n'est validé ici). */
 export function readAssociationInput(raw: unknown): Association {
 	const obj = (v: unknown) => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {});
 	const text = (v: unknown) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '');
@@ -147,7 +155,7 @@ export function readAssociationInput(raw: unknown): Association {
 		description: text(r.description),
 		email: text(r.email),
 		phone: text(r.phone),
-		address: { street: text(address.street), postalCode: text(address.postalCode), city: text(address.city) },
+		address: { street: normaliserRue(address.street), postalCode: text(address.postalCode), city: text(address.city) },
 		social: Object.fromEntries(SOCIAL_NETWORKS.map(({ key }) => [key, text(social[key])])),
 		legal: {
 			registrationNumber: text(legal.registrationNumber),
