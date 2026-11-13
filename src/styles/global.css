@@ -4,6 +4,10 @@
 @import "@fortawesome/fontawesome-free/css/brands.css";
 @import "./forms.css";
 
+/* Extensions (extensions/<id>/, ignoré par git, donc pas détecté seul par
+   Tailwind) : leurs classes sont aussi produites. */
+@source "../../extensions";
+
 /* Couleurs par défaut du modèle : chaque association les remplace dans
    src/content/reglages.yaml (colors), injectées par les layouts (themeCss,
    src/config/site.ts). Garder ces valeurs alignées sur DEFAULTS.colors. */

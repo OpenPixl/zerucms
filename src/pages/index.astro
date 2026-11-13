@@ -10,17 +10,17 @@ import ActivitesSection from '../components/sections/ActivitesSection.astro';
 import ActualitesSection from '../components/sections/ActualitesSection.astro';
 import CtaSection from '../components/sections/CtaSection.astro';
 import PartenairesSection from '../components/sections/PartenairesSection.astro';
-import RdvCtaSection from '../plugins/rdv/sections/RdvCtaSection.astro';
 import TexteSection from '../components/sections/TexteSection.astro';
 import { accueilImage } from '../lib/site-images';
 import { applyPageVariablesText } from '../lib/page-variables';
 import { getSitePage, inactiveSiteHrefs } from '../lib/site-pages-content';
 import { homeModuleDef } from '../lib/home-modules';
 import { disponible } from '../plugins';
+import { composantAccueil } from '../lib/extensions-site';
 
 // Titre et description pour les moteurs de recherche : section « Référencement ».
 const { modules: enregistres = [], t } = await getSitePage('accueil');
-// Module apporté par un plugin inactif : ignoré (gardé dans le réglage, réapparaît si on le réactive).
+// Module apporté par un plugin ou une extension inactifs : ignoré (gardé dans le réglage, réapparaît si on le réactive).
 const modules = enregistres.filter((m) => disponible(homeModuleDef(m.type)));
 // Liens vers une page du site désactivée : masqués ('' et non undefined, qui
 // rendrait au composant son lien par défaut).
@@ -56,9 +56,6 @@ type Overlay = 'white' | 'black' | 'none';
 					limit={Number(m.nombre) || 3}
 				/>
 			)}
-			{m.type === 'rdv' && (
-				<RdvCtaSection eyebrow={txt(m.surtitre)} title={txt(m.titre)} description={txt(m.texte)} buttonLabel={txt(m["bouton-texte"])} />
-			)}
 			{m.type === 'activites' && (
 				<ActivitesSection title={txt(m.titre)} ctaLabel={txt(m['lien-texte'])} ctaHref={link('/activites')} />
 			)}
@@ -72,6 +69,12 @@ type Overlay = 'white' | 'black' | 'none';
 			)}
 			{m.type === 'partenaires' && <PartenairesSection title={txt(m.titre)} description={txt(m.texte)} />}
 			{m.type === 'texte' && <TexteSection title={txt(m.titre)} markdown={m.texte} />}
+			{homeModuleDef(m.type).extension && (() => {
+				// Module d'une extension : son composant (site.ts), champs aux variables remplacées.
+				const Composant = composantAccueil(m.type);
+				const champs = Object.fromEntries(Object.entries(m).map(([k, v]) => [k, k === 'type' ? v : txt(v)]));
+				return Composant ? <Composant champs={champs} /> : null;
+			})()}
 		</>
 	))}
 </Layout>

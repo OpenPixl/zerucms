@@ -70,9 +70,9 @@ configurée »), le reste du site fonctionne.
 | `GRIST_TABLE_ACTIVITES` | Table des activités (défaut `Activite`) — optionnel |
 | `GRIST_TABLE_SAISONS` | Table des saisons (défaut `Saisons`) — optionnel |
 | `GRIST_TABLE_PRESENCE` | Table de présence aux ateliers (défaut `Presence`) — optionnel |
-| `GRIST_DOC_ID_RDV` | Document Grist des RDV (plugin `rdv`) — optionnel, voir [le plugin](../src/plugins/rdv/README.md) |
-| `GRIST_API_KEY_RDV` | Clé API Grist propre au plugin `rdv` — **secret**, facultative (sinon `GRIST_API_KEY`) ; conseillée : limitée au document des RDV |
-| `GRIST_TABLE_BENEFICIAIRES` / `GRIST_TABLE_RDV` / `GRIST_TABLE_DEMARCHES` | Tables du document RDV (défauts `Beneficiaires`, `RDV`, `Demarches`) — optionnel |
+| `GRIST_DOC_ID_RDV` | Document Grist des RDV (extension `rdv`, déclarée par son `manifest.ts` si elle est installée) — voir son README (`extensions/rdv/README.md`) |
+| `GRIST_API_KEY_RDV` | Clé API Grist propre à l'extension `rdv` — **secret**, facultative (sinon `GRIST_API_KEY`) ; conseillée : limitée au document des RDV |
+| `GRIST_TABLE_BENEFICIAIRES` / `GRIST_TABLE_RDV` / `GRIST_TABLE_DEMARCHES` | Tables du document RDV (extension `rdv` ; défauts `Beneficiaires`, `RDV`, `Demarches`) — optionnel |
 | `GRIST_DOC_ID_FACTURATION` | Document Grist de la facturation (plugin `facturation`, auto-entrepreneur) — voir [facturation.md](facturation.md) |
 | `GRIST_API_KEY_FACTURATION` | Clé API Grist propre au plugin `facturation` — **secret**, facultative (sinon `GRIST_API_KEY`) |
 | `GOTENBERG_URL` | Instance Gotenberg pour le bulletin PDF et le PDF des semaines de RDV (module « Rendez-vous ») (ex. `http://gotenberg:3000`) — optionnel, voir [bulletin-pdf.md](bulletin-pdf.md) |
@@ -98,8 +98,9 @@ en `access: 'secret'` : le code les lit par
   est elle aussi figée au build — d'où `secret` partout.)
 
 Les variables propres à un plugin (document et tables Grist de l'adhésion,
-`BULLETIN_SECRET` : plugin `adhesion` ; document des RDV : plugin `rdv`)
-sont déclarées dans le manifeste du plugin (`src/plugins/<id>/plugin.ts`,
+`BULLETIN_SECRET` : plugin `adhesion`) sont déclarées dans le manifeste du
+plugin ; celles d'une extension (document des RDV : extension `rdv`) dans
+son `manifest.ts` ([extensions.md](extensions.md)) (`src/plugins/<id>/plugin.ts`,
 `env`) et ajoutées au même schéma, que le plugin soit actif ou non.
 
 **Secrets de l'installation** : les valeurs saisies dans l'assistant
@@ -173,11 +174,13 @@ Le process alimente **deux** tables, pas une :
 
 `Saison` est une **colonne formule** dans les deux ; de même `Tarif` / `Regle` (`Adhesions`) et `Eligible` / `Regle` (`Inscription`), ainsi que `Places_restantes` (`Activite`, décrément automatique). Ces colonnes ne sont **jamais écrites** par le code — Grist les calcule.
 
-## Prise de RDV (plugin `rdv`)
+## Prise de RDV (extension `rdv`)
 
-Document Grist distinct (`GRIST_DOC_ID_RDV`), tables `Beneficiaires`, `RDV`,
-`Demarches`. Parcours, routes `/api/rdv/*` et mapping :
-[src/plugins/rdv/README.md](../src/plugins/rdv/README.md) (schéma Grist attendu compris).
+Extension à part (dépôt `OpenPixl/zerucms-rdv`, installée dans
+`extensions/rdv/`, cf. [extensions.md](extensions.md)). Document Grist
+distinct (`GRIST_DOC_ID_RDV`), tables `Beneficiaires`, `RDV`, `Demarches`.
+Parcours, routes `/api/rdv/*` et mapping : son `README.md` (schéma Grist
+attendu compris).
 
 ## Planning hebdomadaire (Activite)
 
@@ -189,14 +192,15 @@ encadrant·e·s) — pas de table séparée : seules les lignes `Publiee = true`
 de la **saison en cours** sont retenues, et celles sans `Categorie_agenda`
 valide (colonne pas encore renseignée) sont ignorées.
 
-Les **permanences de prise de RDV** (plugin `rdv`) viennent de
-`permanences:` de `src/content/rdv.yaml` (plugin RDV : `permanencesAffichees()`,
-`src/plugins/rdv/index.ts`, vide si le plugin est inactif) — dispositif géré à part de la
-programmation de l'association, jamais dans `Activite`. La page les
-recombine : `[...permanencesAffichees(), ...(await fetchPlanningAgenda())]`.
+Les **séances des extensions** (ex. permanences de prise de RDV de
+l'extension `rdv`, lues dans `permanences:` de `src/content/rdv.yaml`)
+viennent de `agenda()` de leur `site.ts` (`seancesExtensions()`,
+`src/lib/extensions-site.ts`, rien si aucune extension active) — dispositif
+géré à part de la programmation de l'association, jamais dans `Activite`. La
+page les recombine : `[...(await seancesExtensions()), ...(await planningActivites())]`.
 
 Si Grist est injoignable (ou non configuré), la page n'affiche que les
-permanences de prise de RDV, avec un avertissement « planning
+séances des extensions, avec un avertissement « planning
 momentanément indisponible » (prop `notice` de `WeeklyAgenda`). Plus de
 planning figé de secours : il devenait faux sans que personne le voie.
 

@@ -161,8 +161,6 @@ blocs:
     style: info            # info, attention ou succes
     titre: "Bon à savoir"
     texte: "Un message à mettre en avant."
-  rdv:
-    type: rdv              # prise de rendez-vous, si le plugin est actif (titre et texte facultatifs)
   contact:
     type: bouton
     texte: "Nous contacter"
@@ -181,10 +179,6 @@ Premier paragraphe : l'essentiel en quelques phrases.
 [[bloc:prix]]
 
 [[bloc:a-savoir]]
-
-## Prendre rendez-vous
-
-[[bloc:rdv]]
 
 ## Une question ?
 

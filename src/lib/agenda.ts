@@ -1,11 +1,17 @@
 
-export type AgendaKind =
-	| 'parcours'
-	| 'fablab'
-	| 'espace-jeune'
-	| 'bidouille-repair'
-	| 'ateliers'
-	| 'rdv';
+import { DEFINITIONS_EXTENSIONS } from './extensions';
+
+/** Familles du CMS ; une extension en ajoute (`agenda` de son `definitions.ts`). */
+export type AgendaKind = 'parcours' | 'fablab' | 'espace-jeune' | 'bidouille-repair' | 'ateliers' | (string & {});
+
+/** Libellé, icône et couleurs d'une famille. `hex` : couleur CSS de la bordure (variable du thème pour les couleurs de l'association). */
+export interface AgendaKindMeta {
+	label: string;
+	icon: string;
+	dot: string;
+	text: string;
+	hex: string;
+}
 
 export interface AgendaSession {
 	/** Jour de la semaine (libellé affiché). */
@@ -39,11 +45,8 @@ export const AGENDA_DAYS = [
 	'Dimanche',
 ] as const;
 
-export const AGENDA_KIND_META: Record<
-	AgendaKind,
-	/** `hex` : couleur CSS de la bordure (variable du thème pour les couleurs de l'association). */
-	{ label: string; icon: string; dot: string; text: string; hex: string }
-> = {
+export const AGENDA_KIND_META: Record<AgendaKind, AgendaKindMeta> = {
+	...DEFINITIONS_EXTENSIONS.agenda,
 	parcours: {
 		label: 'Parcours initiation',
 		icon: 'fa-route',
@@ -74,14 +77,6 @@ export const AGENDA_KIND_META: Record<
 	},
 	ateliers: {
 		label: 'Ateliers',
-		icon: 'fa-calendar-check',
-		dot: 'bg-violet-500',
-		text: 'text-violet-600',
-		hex: '#8b5cf6',
-	},
-	// Permanences du plugin RDV (`src/plugins/rdv/`) : libellé de légende propre à l'asso (`legend`).
-	rdv: {
-		label: 'Rendez-vous',
 		icon: 'fa-calendar-check',
 		dot: 'bg-violet-500',
 		text: 'text-violet-600',

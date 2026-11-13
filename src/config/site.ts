@@ -1,6 +1,7 @@
 /**
  * Réglages du site : couleurs, polices, bouton « Adhérer », lien « Je participe »,
- * outils de partage, ouverture/fermeture des formulaires, plugins actifs.
+ * outils de partage, ouverture/fermeture des formulaires, plugins actifs,
+ * extensions désactivées.
  *
  * Les valeurs ci-dessous (`DEFAULTS`) sont celles du modèle. Chaque
  * association les remplace dans `src/content/reglages.yaml`, fichier qui lui
@@ -17,7 +18,7 @@ import { z } from 'astro/zod';
 import { parse as parseYaml } from 'yaml';
 import raw from '../content/reglages.yaml?raw';
 import { catalogueFont, DEFAULT_FONTS, FONT_FILE_PATTERN, FONT_NAME_MAX, FONT_WEIGHTS, type FontRole, type FontWeight } from '../lib/font-catalogue';
-import { actifParDefaut, PLUGIN_IDS, resoudrePlugins, type PluginId } from '../plugins/catalogue';
+import { actifParDefaut, PLUGIN_IDS, PLUGINS_DEVENUS_EXTENSIONS, resoudrePlugins, type PluginId } from '../plugins/catalogue';
 import { STRUCTURES } from '../lib/structure';
 
 export interface FormToggle {
@@ -140,7 +141,7 @@ const DEFAULTS = {
 	/**
 	 * Plugins actifs (`src/plugins/`, catalogue `src/plugins/catalogue.ts`) :
 	 * inactifs par défaut sauf `actifParDefaut` du catalogue (adhésion),
-	 * l'association active ceux qu'elle veut (`plugins: { rdv: true }`) ou en
+	 * l'association active ceux qu'elle veut (`plugins: { facturation: true }`) ou en
 	 * désactive (`adhesion: false`). Changer ce réglage demande une reconstruction.
 	 */
 	plugins: Object.fromEntries(PLUGIN_IDS.map((id) => [id, actifParDefaut(id)])) as Record<PluginId, boolean>,
@@ -206,7 +207,13 @@ const overridesSchema = z
 		presence: linkSchema,
 		share: z.strictObject(Object.fromEntries(Object.keys(DEFAULTS.share).map((k) => [k, bool])) as Record<ShareKey, z.ZodBoolean>).partial(),
 		forms: z.strictObject(Object.fromEntries(Object.keys(DEFAULTS.forms).map((k) => [k, formSchema])) as Record<FormKey, typeof formSchema>).partial(),
-		plugins: z.strictObject(Object.fromEntries(PLUGIN_IDS.map((id) => [id, bool])) as Record<PluginId, z.ZodBoolean>).partial(),
+		plugins: z.preprocess(
+			// Ancien plugin devenu extension (ex. `rdv`) : clé laissée par les sites existants, ignorée.
+			(v) => (v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !PLUGINS_DEVENUS_EXTENSIONS.includes(k))) : v),
+			z.strictObject(Object.fromEntries(PLUGIN_IDS.map((id) => [id, bool])) as Record<PluginId, z.ZodBoolean>).partial(),
+		),
+		/** Extensions installées (`extensions/<id>/`) : `false` désactive, absent = active. */
+		extensions: z.record(z.string(), bool, { error: 'liste « identifiant: true | false » attendue' }),
 		/** Type de structure (src/lib/structure.ts) : `association` (défaut) ou `entreprise`. */
 		structure: z.enum(STRUCTURES, { error: `${STRUCTURES.join(' ou ')} attendu` }),
 	})
@@ -241,6 +248,7 @@ export function parseReglages(text: string) {
 		) as Record<FormKey, FormToggle>,
 		// Valeurs écrites, sinon défauts ; inactif si un plugin requis l'est.
 		plugins: resoudrePlugins({ ...DEFAULTS.plugins, ...o.plugins }, structure),
+		extensions: (o.extensions ?? {}) as Record<string, boolean>,
 	};
 }
 

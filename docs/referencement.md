@@ -9,7 +9,7 @@ régler par association. Code : `src/lib/seo.ts`,
 | Élément | Où | Détail |
 | :--- | :--- | :--- |
 | `robots.txt` | `src/pages/robots.txt.ts` | Tout autorisé sauf `/espace-benevoles` et `/api/` ; donne l'adresse du sitemap |
-| `sitemap.xml` | `src/pages/sitemap.xml.ts` | Reconstruit à chaque publication : pages du site actives, adhésion, inscription (si ouverte), RDV, pages de contenu publiques, catégories et fiches d'activité publiées, actualités publiées (avec `lastmod`). Jamais de page réservée, de brouillon ni de page désactivée |
+| `sitemap.xml` | `src/pages/sitemap.xml.ts` | Reconstruit à chaque publication : pages du site actives, adhésion, inscription (si ouverte), pages des extensions actives (`pages()` de leur `site.ts`, ex. RDV), pages de contenu publiques, catégories et fiches d'activité publiées, actualités publiées (avec `lastmod`). Jamais de page réservée, de brouillon ni de page désactivée |
 | Une seule adresse par page | `trailingSlash: 'never'` (`astro.config.mjs`) | `/page/` redirige (301) vers `/page` ; liens, canonique, sitemap et RSS sans « / » final |
 | Adresse canonique | `SeoHead.astro` | `<link rel="canonical">` sur toutes les pages, domaine = `SITE_URL` |
 | Aperçus de partage | `SeoHead.astro` | Open Graph + `twitter:card` partout ; image = celle de la page, sinon photo d'accueil, sinon logo (hors SVG), recadrée 1,91:1 |

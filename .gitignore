@@ -45,3 +45,8 @@ pnpm-debug.log*
 # scripts/contenu-initial.mjs. Seul le guide des éditeurs est suivi.
 /src/content/*
 !/src/content/README.md
+
+# Extensions installées sur ce site (extensions/<id>/, docs/extensions.md) :
+# propres à chaque site, jamais dans le dépôt du CMS (sauf le README).
+/extensions/*
+!/extensions/README.md

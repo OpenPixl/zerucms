@@ -1,7 +1,7 @@
 /**
  * Plan du site pour les moteurs de recherche, produit à chaque construction
  * (donc à chaque publication) : pages du site actives, pages de service
- * (adhésion, inscription, RDV si le plugin est actif), pages de contenu publiques, catégories et
+ * (adhésion, inscription si le plugin est actif, pages des extensions actives), pages de contenu publiques, catégories et
  * fiches d'activité publiées (catégorie listée si elle en a au moins une),
  * actualités publiées (avec leur date).
  * Jamais : pages réservées, brouillons, pages désactivées. Adresses sans
@@ -16,7 +16,7 @@ import { getAllNews } from '../lib/news';
 import { absoluteUrl } from '../lib/seo';
 import { getSitePagesState } from '../lib/site-pages-content';
 import { pluginActif } from '../plugins';
-import { RDV_HREF } from '../plugins/rdv';
+import { pagesExtensions } from '../lib/extensions-site';
 import { ADHESION_HREF } from '../plugins/adhesion';
 import { INSCRIPTION_HREF } from '../plugins/inscription';
 
@@ -30,7 +30,9 @@ export const GET: APIRoute = async ({ site }) => {
 		...sitePages.map((p) => ({ path: p.href })),
 		...(pluginActif('adhesion') ? [{ path: ADHESION_HREF }] : []),
 		...(pluginActif('inscription') && settings.forms.inscription.enabled ? [{ path: INSCRIPTION_HREF }] : []),
-		...(pluginActif('rdv') ? [{ path: RDV_HREF }] : []),
+		...pagesExtensions()
+			.filter((p) => !p.closed)
+			.map((p) => ({ path: p.href })),
 		...(await getContentPages()).filter((p) => p.access === null).map((p) => ({ path: p.url })),
 		...(activitiesActive
 			? [

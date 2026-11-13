@@ -11,13 +11,16 @@
  * bouton dans un menu déroulant de la barre (`ADMIN_MENUS`, sous-liens côte à
  * côte), seulement si au moins deux de ses modules sont visibles. Module
  * apporté par un plugin (`plugin`, composant dans `src/plugins/<id>/admin/`) :
- * absent si le plugin est inactif sur le site en ligne.
+ * absent si le plugin est inactif sur le site en ligne. Module d'une
+ * extension : déclaré par son `admin.ts` (export par défaut, liste
+ * d'`AdminModule` sans `extension`, posé ici), placé avant « Facturation ».
  */
 import { defineAsyncComponent, type Component } from 'vue';
 import { hasAdminRights, type AuthGroup } from '../../lib/auth/groups';
 import { disponible, type PluginId } from '../../plugins';
 import { site } from '../../config/site';
 import { vocabulaire } from '../../lib/structure';
+import { idDuChemin } from '../../lib/extensions';
 
 /** Menus déroulants de la barre : libellé et icône du bouton qui regroupe les modules. */
 export const ADMIN_MENUS = {
@@ -45,7 +48,14 @@ export interface AdminModule {
 	props?: Record<string, unknown>;
 	/** Apporté par ce plugin : masqué s'il est inactif. */
 	plugin?: PluginId;
+	/** Apporté par cette extension : masqué si elle est inactive. */
+	extension?: string;
 }
+
+/** Modules des extensions installées (`extensions/<id>/admin.ts`). */
+const MODULES_EXTENSIONS: AdminModule[] = Object.entries(
+	import.meta.glob<AdminModule[]>('/extensions/*/admin.ts', { eager: true, import: 'default' }),
+).flatMap(([chemin, modules]) => modules.map((m) => ({ ...m, extension: idDuChemin(chemin) })));
 
 export const ADMIN_MODULES: AdminModule[] = [
 	{
@@ -88,14 +98,7 @@ export const ADMIN_MODULES: AdminModule[] = [
 		menu: 'contenu',
 		component: defineAsyncComponent(() => import('./modules/AnnoncesModule.vue')),
 	},
-	{
-		id: 'rendez-vous',
-		label: 'Rendez-vous',
-		icon: 'fa-calendar-check',
-		groups: ['animateur'],
-		plugin: 'rdv',
-		component: defineAsyncComponent(() => import('../../plugins/rdv/admin/RdvModule.vue')),
-	},
+	...MODULES_EXTENSIONS,
 	{
 		id: 'facturation',
 		label: 'Facturation',
@@ -150,6 +153,15 @@ export const ADMIN_MODULES: AdminModule[] = [
 		icon: 'fa-puzzle-piece',
 		groups: ['superadmin'],
 		exclusive: true,
+		component: defineAsyncComponent(() => import('./modules/PluginsModule.vue')),
+	},
+	{
+		id: 'extensions',
+		label: 'Extensions',
+		icon: 'fa-plug',
+		groups: ['superadmin'],
+		exclusive: true,
+		props: { genre: 'extension' },
 		component: defineAsyncComponent(() => import('./modules/PluginsModule.vue')),
 	},
 	{

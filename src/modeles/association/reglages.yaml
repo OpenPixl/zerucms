@@ -57,8 +57,8 @@ share:
 #                 planning lu dans Grist
 #   inscription → /inscription et bouton « S'inscrire » des activités
 #                 (requiert adhesion : inactive aussi sans elle)
-#   rdv         → prise de rendez-vous en ligne (page, permanences dans le
-#                 planning, encart d'accueil) ; se règle dans src/content/rdv.yaml
+# Développements propres à une structure : extensions (module « Extensions »),
+# pas des plugins.
 plugins: {adhesion: false, inscription: false}
 
 # Formulaires en ligne. enabled: false ferme le formulaire : à sa place

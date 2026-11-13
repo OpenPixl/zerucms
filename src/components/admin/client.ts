@@ -315,9 +315,13 @@ export const dropdownsApi = {
 		request<SaveResult>('DELETE', saveUrl(`/api/admin/menus-deroulants/${encodeURIComponent(folder)}`, options), { confirm: folder }),
 };
 
-/** Plugin du catalogue tel que le montre le module « Plugins » (cf. src/lib/plugin-writer.ts). */
+/** Plugin du catalogue (ou extension installée) tel que le montre le module « Plugins » / « Extensions » (cf. src/lib/plugin-writer.ts). */
 export interface PluginItem {
+	genre: 'plugin' | 'extension';
 	id: string;
+	/** Extension : version installée et auteur. */
+	version?: string;
+	auteur?: string;
 	label: string;
 	description: string;
 	icon: string;
@@ -351,6 +355,31 @@ export const pluginsApi = {
 		request<{ plugins: PluginItem[]; status: PublishStatus; availability: { ok: boolean; reason?: string } }>('GET', '/api/admin/plugins'),
 	update: (id: string, actif: boolean, valeurs: Record<string, string>, options?: SaveOptions) =>
 		request<SaveResult>('PUT', saveUrl('/api/admin/plugins', options), { id, actif, valeurs }),
+};
+
+/** Extensions installées (module « Extensions », super admin) : cf. src/pages/api/admin/extensions.ts. */
+export const extensionsApi = {
+	list: () =>
+		request<{
+			extensions: PluginItem[];
+			invalides: { id: string; erreurs: string[] }[];
+			versionCms: string;
+			status: PublishStatus;
+			availability: { ok: boolean; reason?: string };
+		}>('GET', '/api/admin/extensions'),
+	update: (id: string, actif: boolean, valeurs: Record<string, string>, options?: SaveOptions) =>
+		request<SaveResult>('PUT', saveUrl('/api/admin/extensions', options), { id, actif, valeurs }),
+	/** Corps = l'archive .zip telle quelle ; le site est reconstruit. */
+	install: async (file: File): Promise<SaveResult> => {
+		const res = await fetch('/api/admin/extensions', { method: 'POST', headers: { 'Content-Type': 'application/zip' }, body: file });
+		const data = await res.json().catch(() => null);
+		if (!res.ok) {
+			const fallback = res.status === 413 ? 'Archive trop volumineuse pour le serveur (erreur 413) : installez-la en ligne de commande (npm run extension -- install).' : `Erreur ${res.status}`;
+			throw new ApiError((data && data.error) || fallback, res.status);
+		}
+		return data as SaveResult;
+	},
+	remove: (id: string) => request<SaveResult>('DELETE', `/api/admin/extensions?id=${encodeURIComponent(id)}`),
 };
 
 export const associationApi = {

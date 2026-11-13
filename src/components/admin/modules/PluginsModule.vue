@@ -9,20 +9,38 @@
  * le fichier du plugin, puis reconstruit le site (suivi par
  * `usePublication`), ou rejoint les modifications en attente. Un plugin dont
  * un fichier requis manque ne peut être ni activé ni réglé.
+ *
+ * `genre="extension"` = module « Extensions » (extensions installées dans
+ * `extensions/`, src/lib/extensions.ts) : même page de configuration
+ * (`extensions.<id>: false` = désactivée), plus le dépôt d'une archive .zip
+ * (installation ou mise à jour), la suppression et les dossiers invalides.
  */
 import { computed, inject, onMounted, ref } from 'vue';
 import FormHeader from '../FormHeader.vue';
 import PublishButtons from '../PublishButtons.vue';
 import PublishStatus from '../PublishStatus.vue';
-import { ApiError, pluginsApi, type PluginChamp, type PluginItem } from '../client';
+import { ApiError, extensionsApi, pluginsApi, type PluginChamp, type PluginItem } from '../client';
 import { ADMIN_CONTEXT, iconButtonClass, inputClass, rememberOpenModule, takeModuleToReopen } from '../context';
 import { isDeferredSubmit } from '../lot';
 import { usePublication } from '../usePublication';
 import { normaliserChamp } from '../../../plugins/champs';
 
+const props = withDefaults(defineProps<{ genre?: 'plugin' | 'extension' }>(), { genre: 'plugin' });
+const ext = props.genre === 'extension';
+/** Vocabulaire du module. */
+const mot = ext
+	? { un: 'Extension', le: "l'extension", tous: 'Toutes les extensions', actif: 'Extension active', propre: "propre à l'extension", module: 'extensions' }
+	: { un: 'Plugin', le: 'le plugin', tous: 'Tous les plugins', actif: 'Plugin actif', propre: 'propre au plugin', module: 'plugins' };
+
 const { sessionExpired } = inject(ADMIN_CONTEXT)!;
 
 const plugins = ref<PluginItem[]>([]);
+/** Extensions : dossiers invalides de `extensions/`, version du CMS en place. */
+const invalides = ref<{ id: string; erreurs: string[] }[]>([]);
+const versionCms = ref('');
+/** Suppression demandée (second clic pour confirmer). */
+const suppression = ref(false);
+const fichier = ref<HTMLInputElement | null>(null);
 const availability = ref<{ ok: boolean; reason?: string }>({ ok: true });
 const loading = ref(true);
 const busy = ref(false);
@@ -40,6 +58,7 @@ function ouvrir(p: PluginItem) {
 	actif.value = p.actif;
 	valeurs.value = Object.fromEntries(p.champs.map((c) => [c.cle, c.valeur]));
 	error.value = '';
+	suppression.value = false;
 }
 
 function fermer() {
@@ -84,6 +103,17 @@ function fail(e: unknown) {
 
 async function load() {
 	try {
+		if (ext) {
+			const res = await extensionsApi.list();
+			plugins.value = res.extensions;
+			invalides.value = res.invalides;
+			versionCms.value = res.versionCms;
+			availability.value = res.availability;
+			receive(res.status);
+			if (ouvert.value) ouvrir(ouvert.value);
+			else if (ouvertId.value) fermer(); // supprimée
+			return;
+		}
 		const res = await pluginsApi.list();
 		plugins.value = res.plugins;
 		availability.value = res.availability;
@@ -97,7 +127,7 @@ async function load() {
 }
 
 const { status, following, receive, afterSave, publishLot, savedLabel, dismiss: dismissStatus, reloadIn, cancelReload } = usePublication({
-	module: 'plugins',
+	module: mot.module,
 	onSettled: load,
 	onError: fail,
 });
@@ -108,14 +138,47 @@ async function submit(plugin: PluginItem, event: Event) {
 	error.value = '';
 	busy.value = true;
 	try {
-		rememberOpenModule('plugins');
-		const result = await pluginsApi.update(plugin.id, actif.value, valeurs.value, { deferred: isDeferredSubmit(event) });
-		afterSave(`Plugin « ${plugin.label} »`, result);
+		rememberOpenModule(mot.module);
+		const result = await (ext ? extensionsApi : pluginsApi).update(plugin.id, actif.value, valeurs.value, { deferred: isDeferredSubmit(event) });
+		afterSave(`${mot.un} « ${plugin.label} »`, result);
 		if (result.deferred) await load();
 	} catch (e) {
 		fail(e);
 	} finally {
 		busy.value = false;
+	}
+}
+
+/** Extensions : archive .zip choisie → installée (ou mise à jour), puis site reconstruit. */
+async function installer() {
+	const file = fichier.value?.files?.[0];
+	if (!file) return;
+	error.value = '';
+	busy.value = true;
+	try {
+		rememberOpenModule(mot.module);
+		afterSave(`Installation de ${file.name}`, await extensionsApi.install(file));
+	} catch (e) {
+		fail(e);
+	} finally {
+		busy.value = false;
+		if (fichier.value) fichier.value.value = '';
+	}
+}
+
+async function supprimer(p: PluginItem) {
+	if (!suppression.value) return void (suppression.value = true);
+	error.value = '';
+	busy.value = true;
+	try {
+		rememberOpenModule(mot.module);
+		afterSave(`Suppression de l'extension « ${p.label} »`, await extensionsApi.remove(p.id));
+		fermer();
+	} catch (e) {
+		fail(e);
+	} finally {
+		busy.value = false;
+		suppression.value = false;
 	}
 }
 
@@ -139,13 +202,14 @@ onMounted(load);
 
 	<!-- Page de configuration d'un plugin : un seul formulaire -->
 	<form v-else-if="ouvert" @submit.prevent="submit(ouvert, $event)">
-		<FormHeader back="Tous les plugins" :title="ouvert.label" :editing="true" @back="fermer">
+		<FormHeader :back="mot.tous" :title="ouvert.label" :editing="true" @back="fermer">
 			<span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold" :class="etat(ouvert).classe">{{ etat(ouvert).texte }}</span>
 		</FormHeader>
 
 		<div class="space-y-4">
 			<p class="text-sm font-light text-gray-600">{{ ouvert.description }}</p>
 			<p class="text-xs text-gray-500">
+				<template v-if="ouvert.version">Version {{ ouvert.version }}<template v-if="ouvert.auteur"> · {{ ouvert.auteur }}</template> · </template>
 				Documentation : <code class="rounded bg-gray-100 px-1">{{ ouvert.doc }}</code> (identifiant
 				<code class="rounded bg-gray-100 px-1">{{ ouvert.id }}</code>)
 			</p>
@@ -175,9 +239,9 @@ onMounted(load);
 					:disabled="locked || (!ouvert.actif && (ouvert.manquants.length > 0 || ouvert.requisInactifs.length > 0))"
 				/>
 				<span>
-					<span class="block font-medium text-gray-900">Plugin actif</span>
+					<span class="block font-medium text-gray-900">{{ mot.actif }}</span>
 					<span class="block text-xs text-gray-500">
-						Inactif, le site n'a plus rien de ce plugin (page, encart, liens) ; ses réglages et son contenu sont gardés.
+						Inactif, le site n'a plus rien de {{ ext ? 'cette extension' : 'ce plugin' }} (page, encart, liens) ; ses réglages et son contenu sont gardés.
 					</span>
 					<span v-if="ouvert.dependants.length" class="block text-xs text-amber-800">
 						Le désactiver retire aussi : {{ ouvert.dependants.map((d) => d.label).join(', ') }}.
@@ -213,10 +277,10 @@ onMounted(load);
 				<li v-for="s in ouvert.secrets" :key="s.nom">
 					<i class="fa-solid fa-key mr-1" aria-hidden="true"></i>
 					Clé secrète (dans le .env, jamais ici) :
-					<template v-if="s.utilise === s.nom"><code class="rounded bg-gray-100 px-1">{{ s.nom }}</code>, propre au plugin.</template>
+					<template v-if="s.utilise === s.nom"><code class="rounded bg-gray-100 px-1">{{ s.nom }}</code>, {{ mot.propre }}.</template>
 					<template v-else-if="s.utilise">
 						<code class="rounded bg-gray-100 px-1">{{ s.utilise }}</code>, partagée ; ajouter
-						<code class="rounded bg-gray-100 px-1">{{ s.nom }}</code> pour une clé propre au plugin.
+						<code class="rounded bg-gray-100 px-1">{{ s.nom }}</code> pour une clé {{ mot.propre }}.
 					</template>
 					<template v-else>aucune.</template>
 				</li>
@@ -226,18 +290,56 @@ onMounted(load);
 		<p v-if="error" class="mt-6 alerte-erreur" role="alert">{{ error }}</p>
 		<div class="mt-6 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-5">
 			<PublishButtons :busy="busy" :disabled="locked || busy" />
+			<button
+				v-if="ext"
+				type="button"
+				class="bouton ml-auto"
+				:class="suppression ? 'bouton-danger' : 'bouton-danger-contour'"
+				:disabled="locked || busy"
+				@click="supprimer(ouvert)"
+			>
+				<i class="fa-solid fa-trash" aria-hidden="true"></i>{{ suppression ? 'Confirmer la suppression' : "Supprimer l'extension" }}
+			</button>
 		</div>
+		<p v-if="ext && suppression" class="mt-2 text-xs text-gray-500">
+			Le code de l'extension est retiré et le site reconstruit ; ses réglages
+			<template v-if="ouvert.fichierReglages">(<code>{{ ouvert.fichierReglages }}</code>)</template> et ses données restent.
+		</p>
 	</form>
 
 	<!-- Catalogue -->
 	<template v-else>
 		<p v-if="error" class="mb-4 alerte-erreur" role="alert">{{ error }}</p>
-		<ul class="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+		<template v-if="ext">
+			<p class="mb-4 text-sm font-light text-gray-600">
+				Les extensions sont des développements propres à une structure, installés à part (dossier
+				<code class="rounded bg-gray-100 px-1">extensions/</code>, conservé par les mises à jour). Une archive déjà
+				installée est remplacée par la nouvelle version.
+			</p>
+			<div class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-gray-300 p-4">
+				<label class="bouton bouton-primaire" :class="{ 'pointer-events-none opacity-60': locked || busy }">
+					<i class="fa-solid" :class="busy ? 'fa-spinner fa-spin' : 'fa-file-zipper'" aria-hidden="true"></i>
+					Installer une extension (.zip)
+					<input ref="fichier" type="file" accept=".zip,application/zip" class="sr-only" :disabled="locked || busy" @change="installer" />
+				</label>
+				<span class="text-xs text-gray-500">CMS {{ versionCms }} · le site est reconstruit après l'installation.</span>
+			</div>
+			<ul v-if="invalides.length" class="mb-4 space-y-1 alerte-erreur">
+				<li v-for="i in invalides" :key="i.id">
+					<i class="fa-solid fa-circle-xmark mr-1" aria-hidden="true"></i>
+					<code>extensions/{{ i.id }}/</code> : {{ i.erreurs.join(' ') }}
+				</li>
+			</ul>
+			<p v-if="!plugins.length" class="text-sm font-light text-gray-500">Aucune extension installée.</p>
+		</template>
+		<ul v-if="plugins.length" class="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
 			<li v-for="p in plugins" :key="p.id" class="flex items-center gap-3 px-4 py-3">
 				<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
 					<i class="fa-solid" :class="p.icon" aria-hidden="true"></i>
 				</span>
-				<span class="min-w-0 flex-1 font-heading text-sm text-gray-900">{{ p.label }}</span>
+				<span class="min-w-0 flex-1 font-heading text-sm text-gray-900">
+					{{ p.label }}<span v-if="p.version" class="ml-1.5 text-xs font-light text-gray-500">{{ p.version }}</span>
+				</span>
 				<span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold" :class="etat(p).classe">{{ etat(p).texte }}</span>
 				<button
 					type="button"

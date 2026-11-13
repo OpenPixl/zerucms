@@ -15,6 +15,7 @@
     "auth:user": "npm run -s build:cli && node dist/cli/auth-user.mjs",
     "build:cli": "esbuild scripts/auth-user.ts --bundle --platform=node --format=esm --log-level=warning \"--banner:js=import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=${ASTRO_OUT_DIR:-dist}/cli/auth-user.mjs",
     "contenu:init": "node scripts/contenu-initial.mjs",
+    "extension": "node scripts/extension.mjs",
     "postinstall": "node -e \"const f='./scripts/contenu-initial.mjs';require('fs').existsSync(f)&&import(f).then(m=>m.installerContenuInitial(process.cwd()))\""
   },
   "dependencies": {

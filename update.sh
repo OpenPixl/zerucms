@@ -128,6 +128,25 @@ migrer_image() {
 }
 migrer_image
 
+# Extensions (extensions/<id>/, docs/extensions.md) : docker-compose.yml d'avant
+# la 0.5.20 sans le volume ./extensions → ajouté juste après celui de
+# src/content (copie de l'original gardée). Sans lui, une extension installée
+# disparaîtrait au remplacement du conteneur.
+migrer_volume_extensions() {
+  grep -qE '^[[:space:]]*-[[:space:]]*\./extensions:/app/extensions' docker-compose.yml && return 0
+  grep -qE '^[[:space:]]*-[[:space:]]*\./src/content:/app/src/content' docker-compose.yml || return 0
+  etape "Volume des extensions ajouté à docker-compose.yml (./extensions)"
+  [ -f "docker-compose.yml.avant-$cible" ] || cp docker-compose.yml "docker-compose.yml.avant-$cible"
+  awk '{ print } /^[[:space:]]*-[[:space:]]*\.\/src\/content:\/app\/src\/content/ {
+    match($0, /^[[:space:]]*/); retrait = substr($0, 1, RLENGTH)
+    print retrait "# Extensions installées sur ce site (code propre, conservé d'\''une version à l'\''autre)."
+    print retrait "- ./extensions:/app/extensions"
+  }' docker-compose.yml > docker-compose.yml.tmp && mv docker-compose.yml.tmp docker-compose.yml
+  mkdir -p extensions
+  echo "  docker-compose.yml modifié (original : docker-compose.yml.avant-$cible)"
+}
+migrer_volume_extensions
+
 if [ "$pull" = 1 ]; then
   # Étiquettes de l'ancienne adresse : inutiles une fois migrées (les couches
   # de la version en ligne restent, sous la nouvelle étiquette).

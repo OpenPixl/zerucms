@@ -18,6 +18,7 @@ import { isAdmin } from './lib/auth/access';
 import type { AuthGroup } from './lib/auth/groups';
 import { isSameOrigin, jsonError } from './lib/auth/api';
 import { readSession } from './lib/auth/session';
+import { EXTENSIONS } from './lib/extensions';
 
 /** Routes réservées à certains groupes (en plus de la connexion). Tenir aligné avec `ADMIN_MODULES`. */
 const GUARDS: { prefix: string; groups: AuthGroup[]; message: string; noAdmin?: true }[] = [
@@ -26,8 +27,9 @@ const GUARDS: { prefix: string; groups: AuthGroup[]; message: string; noAdmin?: 
 	{ prefix: '/api/admin/installation', groups: ['superadmin'], message: "L'installation est réservée au super admin.", noAdmin: true },
 	{ prefix: '/api/admin/journal', groups: ['superadmin'], message: 'Le journal est réservé au super admin.', noAdmin: true },
 	{ prefix: '/api/admin/plugins', groups: ['superadmin'], message: 'La gestion des plugins est réservée au super admin.', noAdmin: true },
-	// Plugin RDV (routes ajoutées seulement s'il est actif).
-	{ prefix: '/api/admin/rdv', groups: ['animateur'], message: 'La gestion des rendez-vous est réservée au bureau et aux animateur·rice·s.' },
+	{ prefix: '/api/admin/extensions', groups: ['superadmin'], message: 'La gestion des extensions est réservée au super admin.', noAdmin: true },
+	// Extensions installées : `gardes` de leur extension.json (routes ajoutées seulement si elles sont actives).
+	...EXTENSIONS.flatMap((e) => (e.gardes ?? []).map((g) => ({ prefix: g.prefixe, groups: g.groupes, message: g.message }))),
 	// Plugin facturation (routes ajoutées seulement s'il est actif).
 	{ prefix: '/api/admin/facturation', groups: ['admin'], message: 'La facturation est réservée aux administrateur·rice·s.' },
 	{ prefix: '/api/admin/comptes', groups: ['admin'], message: 'La gestion des comptes est réservée au bureau.' },

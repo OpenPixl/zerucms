@@ -8,6 +8,7 @@
  * (module d'accueil, bloc de page, liens, plan du site…).
  */
 import { site } from '../config/site';
+import { extensionActive } from '../lib/extensions';
 import type { PluginId } from './catalogue';
 
 export type { PluginId } from './catalogue';
@@ -16,7 +17,10 @@ export function pluginActif(id: PluginId): boolean {
 	return site.plugins[id];
 }
 
-/** Élément d'un catalogue (module d'accueil, bloc…) : visible si le plugin qui l'apporte, s'il y en a un, est actif. */
-export function disponible(def: { plugin?: PluginId }): boolean {
-	return !def.plugin || pluginActif(def.plugin);
+/**
+ * Élément d'un catalogue (module d'accueil, bloc, module d'admin…) : visible
+ * si le plugin ou l'extension qui l'apporte, s'il y en a un, est actif.
+ */
+export function disponible(def: { plugin?: PluginId; extension?: string }): boolean {
+	return (!def.plugin || pluginActif(def.plugin)) && (!def.extension || extensionActive(def.extension));
 }

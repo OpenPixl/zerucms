@@ -1,9 +1,11 @@
 /**
- * Plugins depuis le module « Plugins » de l'Espace Admin (super admin
- * seul) : un enregistrement unique par plugin, fichiers changés en place
- * (`yaml` Document : commentaires et autres réglages gardés) :
- *  - activation : `plugins.<id>` de `src/content/reglages.yaml`, revalidé
- *    par `parseReglages()` ;
+ * Plugins et extensions depuis les modules « Plugins » et « Extensions » de
+ * l'Espace Admin (super admin seul) : un enregistrement unique par volet,
+ * fichiers changés en place (`yaml` Document : commentaires et autres
+ * réglages gardés) :
+ *  - activation : `plugins.<id>` de `src/content/reglages.yaml` (extension :
+ *    `extensions.<id>: false`, clé retirée = active), revalidé par
+ *    `parseReglages()` ;
  *  - réglages (`reglages.champs` du catalogue) dans le fichier du plugin
  *    (ex. `rdv.yaml`) : format du type de champ (`src/plugins/champs.ts`),
  *    champ vide = clé retirée (variable du `.env` ou défaut du modèle) ;
@@ -20,12 +22,13 @@ import { join } from 'node:path';
 import { getSecret } from 'astro:env/server';
 import { isMap, parseDocument, YAMLMap, type Document } from 'yaml';
 import { parseReglages } from '../config/site';
-import { PLUGIN_IDS, PLUGINS, proposePour, requis, type PluginId, type PluginInfo } from '../plugins/catalogue';
+import { PLUGIN_IDS, PLUGINS, proposePour, requis, type PluginInfo } from '../plugins/catalogue';
 import { FORMATS, normaliserChamp, type ChampPlugin } from '../plugins/champs';
 import { pluginActif } from '../plugins';
 import type { Applied } from './content-transaction';
 import { adresseOccupee } from './page-writer';
-import { adressesPluginsActifs, contentDir, valeurA } from './plugin-adresses';
+import { extensionActive, type ExtensionInfo } from './extensions';
+import { adressesPluginsActifs, contentDir, extensionsSources, valeurA } from './plugin-adresses';
 
 const reglagesFile = () => join(contentDir(), 'reglages.yaml');
 
@@ -40,7 +43,11 @@ export interface ChampState extends ChampPlugin {
 }
 
 export interface PluginState {
-	id: PluginId;
+	genre: 'plugin' | 'extension';
+	id: string;
+	/** Extension : version installée et auteur. */
+	version?: string;
+	auteur?: string;
 	label: string;
 	description: string;
 	icon: string;
@@ -50,9 +57,9 @@ export interface PluginState {
 	/** État du site en ligne (construit), différent tant que la modification n'est pas publiée. */
 	enLigne: boolean;
 	/** Plugins requis inactifs (`requiert` du catalogue) : activation impossible. */
-	requisInactifs: { id: PluginId; label: string }[];
+	requisInactifs: { id: string; label: string }[];
 	/** Plugins qui requièrent celui-ci : désactivés avec lui. */
-	dependants: { id: PluginId; label: string }[];
+	dependants: { id: string; label: string }[];
 	/** Fichiers requis absents : activation et réglages impossibles. */
 	manquants: { fichier: string; aide: string }[];
 	/** Secrets du `.env` absents et réglages obligatoires vides partout : signalés seulement. */
@@ -80,50 +87,83 @@ async function lireYaml(fichier: string): Promise<unknown> {
 	}
 }
 
+type Contexte = Pick<PluginState, 'genre' | 'id' | 'actif' | 'enLigne' | 'requisInactifs' | 'dependants' | 'propose'>;
+
+/** État d'un plugin ou d'une extension tel que le montre sa page de configuration. */
+async function etatVolet(info: PluginInfo | ExtensionInfo, ctx: Contexte): Promise<PluginState> {
+	const manquants = [];
+	for (const r of info.requis ?? []) if (!(await existe(r.fichier))) manquants.push({ ...r, fichier: `src/content/${r.fichier}` });
+	const data = info.reglages ? await lireYaml(info.reglages.fichier) : null;
+	const champs: ChampState[] = (info.reglages?.champs ?? []).map((c) => {
+		const lu = valeurA(data, c.cle);
+		const env = c.env ? (getSecret(c.env) as string | undefined) : undefined;
+		const repli = env || c.defaut || '';
+		return { ...c, valeur: typeof lu === 'string' ? lu : '', repli, source: env ? 'env' : c.defaut ? 'defaut' : 'aucune' };
+	});
+	const secrets = (info.env ?? []).map((e) => ({
+		nom: e.nom,
+		utilise: getSecret(e.nom) ? e.nom : e.repli && getSecret(e.repli) ? e.repli : null,
+	}));
+	const avertissements = [
+		...(info.env ?? []).filter((_, i) => !secrets[i].utilise).map((e) => ({ nom: e.nom, aide: e.aide })),
+		...champs
+			.filter((c) => c.obligatoire && !c.valeur && !c.repli)
+			.map((c) => ({ nom: c.label, aide: `à renseigner ici${c.env ? ` ou dans le .env (${c.env})` : ''} : ${ctx.genre === 'plugin' ? 'le plugin' : "l'extension"} ne peut pas fonctionner sans.` })),
+	];
+	const ext = ctx.genre === 'extension' ? (info as ExtensionInfo) : null;
+	return {
+		...ctx,
+		...(ext ? { version: ext.version, auteur: ext.auteur } : {}),
+		label: info.label,
+		description: info.description,
+		icon: info.icon,
+		doc: info.doc,
+		manquants,
+		avertissements,
+		secrets,
+		fichierReglages: info.reglages ? `src/content/${info.reglages.fichier}` : null,
+		champs,
+	};
+}
+
+async function lireReglagesSource() {
+	return parseReglages(await readFile(reglagesFile(), 'utf8').catch(() => ''));
+}
+
 export async function readPluginsSource(): Promise<PluginState[]> {
-	const { plugins, structure } = parseReglages(await readFile(reglagesFile(), 'utf8').catch(() => ''));
+	const { plugins, structure } = await lireReglagesSource();
 	return Promise.all(
-		PLUGIN_IDS.map(async (id) => {
-			const info: PluginInfo = PLUGINS[id];
-			const manquants = [];
-			for (const r of info.requis ?? []) if (!(await existe(r.fichier))) manquants.push({ ...r, fichier: `src/content/${r.fichier}` });
-			const data = info.reglages ? await lireYaml(info.reglages.fichier) : null;
-			const champs: ChampState[] = (info.reglages?.champs ?? []).map((c) => {
-				const lu = valeurA(data, c.cle);
-				const env = c.env ? (getSecret(c.env) as string | undefined) : undefined;
-				const repli = env || c.defaut || '';
-				return { ...c, valeur: typeof lu === 'string' ? lu : '', repli, source: env ? 'env' : c.defaut ? 'defaut' : 'aucune' };
-			});
-			const secrets = (info.env ?? []).map((e) => ({
-				nom: e.nom,
-				utilise: getSecret(e.nom) ? e.nom : e.repli && getSecret(e.repli) ? e.repli : null,
-			}));
-			const avertissements = [
-				...(info.env ?? []).filter((_, i) => !secrets[i].utilise).map((e) => ({ nom: e.nom, aide: e.aide })),
-				...champs
-					.filter((c) => c.obligatoire && !c.valeur && !c.repli)
-					.map((c) => ({ nom: c.label, aide: `à renseigner ici${c.env ? ` ou dans le .env (${c.env})` : ''} : le plugin ne peut pas fonctionner sans.` })),
-			];
-			return {
+		PLUGIN_IDS.map((id) =>
+			etatVolet(PLUGINS[id], {
+				genre: 'plugin',
 				id,
-				label: info.label,
-				description: info.description,
-				icon: info.icon,
-				doc: info.doc,
 				actif: plugins[id],
 				enLigne: pluginActif(id),
 				requisInactifs: requis(id)
 					.filter((r) => !plugins[r])
 					.map((r) => ({ id: r, label: PLUGINS[r].label })),
 				dependants: PLUGIN_IDS.filter((d) => requis(d).includes(id)).map((d) => ({ id: d, label: PLUGINS[d].label })),
-				manquants,
-				avertissements,
-				secrets,
-				fichierReglages: info.reglages ? `src/content/${info.reglages.fichier}` : null,
 				propose: proposePour(id, structure),
-				champs,
-			};
-		}),
+			}),
+		),
+	);
+}
+
+/** Extensions installées (dossier `extensions/`, fiche valide) et leur état. */
+export async function readExtensionsSource(): Promise<PluginState[]> {
+	const { extensions } = await lireReglagesSource();
+	return Promise.all(
+		extensionsSources().map(({ id, fiche }) =>
+			etatVolet(fiche, {
+				genre: 'extension',
+				id,
+				actif: extensions[id] !== false,
+				enLigne: extensionActive(id),
+				requisInactifs: [],
+				dependants: [],
+				propose: true,
+			}),
+		),
 	);
 }
 
@@ -161,13 +201,24 @@ async function documentDe(chemin: string): Promise<{ texte: string | null; doc: 
  * Enregistre l'état et les réglages d'un plugin : `{ actif, valeurs }`
  * (`valeurs` : clé du champ → saisie). Seuls les changements sont écrits.
  */
-export async function savePlugin(id: unknown, actif: unknown, valeurs: unknown): Promise<PluginResult> {
-	if (typeof id !== 'string' || !(PLUGIN_IDS as string[]).includes(id)) return { label: '', errors: ['Plugin inconnu.'] };
+export function savePlugin(id: unknown, actif: unknown, valeurs: unknown): Promise<PluginResult> {
+	return saveVolet('plugin', id, actif, valeurs);
+}
+
+/** Même chose pour une extension installée. */
+export function saveExtension(id: unknown, actif: unknown, valeurs: unknown): Promise<PluginResult> {
+	return saveVolet('extension', id, actif, valeurs);
+}
+
+async function saveVolet(genre: 'plugin' | 'extension', id: unknown, actif: unknown, valeurs: unknown): Promise<PluginResult> {
+	const nom = genre === 'plugin' ? 'Plugin' : 'Extension';
+	const states = genre === 'plugin' ? await readPluginsSource() : await readExtensionsSource();
+	const state = typeof id === 'string' ? states.find((p) => p.id === id) : undefined;
+	if (!state) return { label: '', errors: [`${nom} inconnu${genre === 'plugin' ? '' : 'e'}.`] };
 	if (typeof actif !== 'boolean') return { label: '', errors: ['État attendu : actif ou non.'] };
-	const pluginId = id as PluginId;
-	const info: PluginInfo = PLUGINS[pluginId];
+	const voletId = state.id;
+	const info: PluginInfo | ExtensionInfo = genre === 'plugin' ? PLUGINS[voletId as keyof typeof PLUGINS] : extensionsSources().find((e) => e.id === voletId)!.fiche;
 	const saisies = valeurs && typeof valeurs === 'object' ? (valeurs as Record<string, unknown>) : {};
-	const state = (await readPluginsSource()).find((p) => p.id === pluginId)!;
 
 	const errors: string[] = [];
 	const changes: string[] = [];
@@ -191,7 +242,7 @@ export async function savePlugin(id: unknown, actif: unknown, valeurs: unknown):
 		const nouvelle = nouveaux.find((n) => n.champ === champAdresse);
 		const adresse = (nouvelle ? nouvelle.valeur : champAdresse.valeur) || champAdresse.repli;
 		if (nouvelle || !state.actif) {
-			const autre = (await adressesPluginsActifs(pluginId)).some((a) => a.adresse.split('/')[1] === adresse.split('/')[1]);
+			const autre = (await adressesPluginsActifs(voletId)).some((a) => a.adresse.split('/')[1] === adresse.split('/')[1]);
 			if (autre || (await adresseOccupee(adresse))) errors.push(`L'adresse ${adresse} est déjà utilisée par une page du site.`);
 		}
 	}
@@ -221,7 +272,13 @@ export async function savePlugin(id: unknown, actif: unknown, valeurs: unknown):
 		if (actif !== state.actif) {
 			const lu = await documentDe(reglagesFile());
 			if ('erreur' in lu) return { label: '', errors: [lu.erreur] };
-			lu.doc.setIn(['plugins', pluginId], actif);
+			// Extension : absente = active, seule la désactivation est écrite.
+			if (genre === 'plugin') lu.doc.setIn(['plugins', voletId], actif);
+			else if (actif) {
+				lu.doc.deleteIn(['extensions', voletId]);
+				const rubrique = lu.doc.getIn(['extensions'], true);
+				if (isMap(rubrique) && rubrique.items.length === 0) lu.doc.deleteIn(['extensions']);
+			} else lu.doc.setIn(['extensions', voletId], false);
 			const texte = lu.doc.toString({ lineWidth: 0, flowCollectionPadding: false });
 			parseReglages(texte);
 			ecrits.push({ chemin: reglagesFile(), original: lu.texte });
@@ -244,7 +301,7 @@ export async function savePlugin(id: unknown, actif: unknown, valeurs: unknown):
 	}
 
 	return {
-		label: `Plugin « ${info.label} » : ${changes.join(', ')}`,
+		label: `${nom} « ${info.label} » : ${changes.join(', ')}`,
 		errors: [],
 		applied: { restore, purge: async () => {} },
 	};

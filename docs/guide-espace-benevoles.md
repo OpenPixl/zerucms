@@ -302,7 +302,7 @@ Les modules visibles dépendent de votre groupe :
 | Activités | ✅ | ✅ | ✅ | — |
 | Actualités | ✅ | ✅ | ✅ | — |
 | Annonces | ✅ | ✅ | ✅ | — |
-| Rendez-vous (si le plugin `rdv` est actif) | ✅ | ✅ | — | ✅ |
+| Rendez-vous (si l'extension `rdv` est installée) | ✅ | ✅ | — | ✅ |
 | Facturation (si le plugin `facturation` est actif) | ✅ | ✅ | — | — |
 | Association (menu Paramètres) | ✅ | ✅ | — | — |
 | Sauvegardes (menu Paramètres ; restauration : super admin) | ✅ | ✅ | — | — |
@@ -323,7 +323,7 @@ modifiées / supprimées, changements d'ordre, informations de l'association, r�
 chaque publication, comptes). Recherche par nom ou objet, connexions
 masquables, une page par année. Lecture seule.
 
-**Rendez-vous** (bureau et animateur·rice·s, si la prise de RDV est activée) :
+**Rendez-vous** (bureau et animateur·rice·s, si l'extension de prise de RDV est installée) :
 les rendez-vous pris en ligne, **une semaine à la fois** (ouvert sur la
 semaine en cours ; chevrons ‹ › pour la précédente ou la suivante, « Cette
 semaine » pour revenir), par jour. La recherche, en haut du module (nom,
@@ -356,10 +356,11 @@ précision obligatoire) ; la fiche du bénéficiaire reste. Échap ou la croix
 ferme l'éditeur. Chaque modification et chaque suppression (avec son motif)
 est notée dans le journal.
 
-**Plugins** (super admin seulement) : volets du site que l'association active
-ou non (aujourd'hui : adhésion et activités — adhésion en ligne,
-« Je participe », planning Grist —, inscription aux activités, toutes deux
-actives par défaut, et prise de rendez-vous en ligne). Désactiver
+**Plugins** (super admin seulement) : outils livrés avec le site que la
+structure active ou non, selon son type (association : adhésion et activités
+— adhésion en ligne, « Je participe », planning Grist —, inscription aux
+activités, toutes deux actives par défaut ; auto-entrepreneur : devis et
+facturation). Désactiver
 l'adhésion retire du site ses pages, le bouton « Adhérer », « Je participe »
 et les séances Grist du planning, **et l'inscription**, qui en a besoin (la
 page de l'adhésion le rappelle ; l'inscription ne peut pas être activée
@@ -369,19 +370,31 @@ plugin et son état (actif, inactif, ou activation / désactivation en attente
 de publication) ; l'icône **paramètres** (roue dentée) ouvre sa page de
 configuration, un seul formulaire : description, documentation, ce qui lui
 manque, la case **Plugin actif**, puis ses réglages par rubrique — pour la
-prise de RDV : **adresse de la page** (ex. `/rendez-vous`, refusée si une
+facturation : **adresse de la page** « Demander un devis » (refusée si une
 page du site l'utilise déjà ; les liens déjà écrits vers l'ancienne adresse
 ne changent pas) et **document Grist** (adresse de l'instance, identifiant du
-document, noms des tables ; un champ vide reprend la valeur du `.env`,
-affichée en gris ; la clé d'API reste dans le `.env`). En bas, **Enregistrer
+document ; un champ vide reprend la valeur du `.env`, affichée en gris ; la
+clé d'API reste dans le `.env`). En bas, **Enregistrer
 et publier**, qui reconstruit le site (ou rejoint les
 modifications en attente avec « Enregistrer sans publier »). Un plugin dont
-un fichier de réglages manque (ex. `src/content/rdv.yaml`) ne peut pas être
+un fichier de réglages manque (ex. `src/content/facturation.yaml`) ne peut pas être
 activé ; une clé secrète absente du `.env` est signalée, et la page dit
-laquelle est utilisée (prise de RDV : `GRIST_API_KEY_RDV`, clé limitée au
-document des RDV, sinon `GRIST_API_KEY`, celle de l'adhésion). Désactiver retire du site tout ce que le
+laquelle est utilisée. Désactiver retire du site tout ce que le
 plugin y ajoute, ses réglages sont gardés. Le changement est noté dans le
 journal.
+
+**Extensions** (super admin seulement) : développements propres à cette
+structure, installés à part du site (ex. prise de rendez-vous en ligne de
+numérik&Co) — jamais proposés aux autres structures. **Installer une
+extension (.zip)** : l'archive est vérifiée (dont la version du site qu'elle
+demande), installée, puis le site est reconstruit ; déposer une version plus
+récente la met à jour. La liste montre chaque extension, sa version et son
+état ; la roue dentée ouvre la même page de configuration que pour un plugin
+(case **Extension active**, réglages — pour la prise de RDV : adresse de la
+page, document Grist, noms des tables ; la clé d'API reste dans le `.env`) et
+le bouton **Supprimer l'extension** (deux clics ; ses réglages et ses données
+sont gardés pour une réinstallation). Chaque installation, modification et
+suppression est notée dans le journal. Détail : [extensions.md](extensions.md).
 
 ### Pages réservées
 
@@ -538,8 +551,8 @@ blocs :
 - **Page classique** : du texte mis en forme (titres `##`, listes, liens,
   tableaux) et une photo de couverture facultative ;
 - **Page enrichie** : la même chose, plus des **blocs** (grille de cartes,
-  encadré tarif, bouton, encadré d'information, prise de rendez-vous si le
-  plugin `rdv` est actif). « Ajouter un bloc » le crée et insère son marqueur
+  encadré tarif, bouton, encadré d'information, et ceux des extensions
+  installées, ex. prise de rendez-vous). « Ajouter un bloc » le crée et insère son marqueur
   `[[bloc:…]]` dans le texte à l'endroit du curseur ; le bloc s'affiche à
   cet endroit (on peut déplacer la ligne du marqueur). Sous les textes des
   blocs (cartes, encadré), « Insérer un lien vers une page du site » ; sous
@@ -581,7 +594,7 @@ page est fournie par le site, l'association règle le reste.
   `{{association.nom}}`… sont acceptées. Un texte vidé reprend sa valeur
   d'origine ; « rétablir les textes d'origine » les remet tous.
 - **L'accueil** est composé de **modules**, dans l'ordre d'affichage :
-  bandeau, dernières actualités, activités, prise de rendez-vous (plugin `rdv`), appel à
+  bandeau, dernières actualités, activités, prise de rendez-vous (extension `rdv`), appel à
   l'action, partenaires, texte libre. Le crayon de l'Accueil permet d'en
   **ajouter** (liste « Ajouter un module… » ; l'appel à l'action et le texte
   libre peuvent figurer plusieurs fois), d'en **retirer** (corbeille), de

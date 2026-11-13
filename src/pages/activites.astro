@@ -4,7 +4,7 @@ import PageHeader from '../components/sections/PageHeader.astro';
 import ActivitesSection from '../components/sections/ActivitesSection.astro';
 import WeeklyAgenda from '../components/sections/WeeklyAgenda.astro';
 import { association } from '../lib/association';
-import { permanencesAffichees } from '../plugins/rdv';
+import { seancesExtensions } from '../lib/extensions-site';
 import { planningActivites } from '../plugins/adhesion';
 
 import { getSitePage } from '../lib/site-pages-content';
@@ -18,9 +18,10 @@ if (!page.active) return new Response(null, { status: 404 });
 const { t } = page;
 
 // Séances lues dans Grist (plugin adhésion, aucune s'il est inactif) et
-// permanences (plugin RDV). Grist injoignable : pas de planning figé (il
-// deviendrait vite faux), les seules permanences et un avertissement.
-const permanences = permanencesAffichees();
+// celles des extensions (ex. permanences de prise de RDV). Grist injoignable :
+// pas de planning figé (il deviendrait vite faux), celles des extensions
+// seules et un avertissement.
+const permanences = await seancesExtensions();
 let sessions = permanences;
 let notice: string | undefined;
 try {

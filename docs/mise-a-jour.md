@@ -123,7 +123,7 @@ que le site utilise déjà, ajouter **avant** la mise à jour dans
 
 ```yaml
 plugins:
-  rdv: true
+  <id>: true
 ```
 
 Sinon le volet disparaît du site après la mise à jour. Les notes de version
@@ -136,10 +136,19 @@ pas écrit `adhesion: false` (retire aussi l'inscription) ou
 `inscription: false` sous `plugins:`, ou les désactive dans le module
 « Plugins ».
 
-**Prise de RDV (plugin `rdv`, version qui suit la 0.4.9)** — en plus de la
+**Prise de RDV devenue extension (0.5.20)** : le code de la prise de RDV
+n'est plus livré avec le CMS ; c'est l'extension `rdv` (dépôt
+`OpenPixl/zerucms-rdv`). Un site qui l'utilise l'installe dans
+`extensions/rdv/` — **avant** la mise à jour pour ne pas la couper (archive
+décompressée dans `extensions/`), ou après, depuis le module « Extensions ».
+`rdv.yaml` et le reste de `src/content/` ne changent pas ; `./update.sh`
+ajoute le volume `./extensions` au `docker-compose.yml`. Détail :
+[extensions.md](extensions.md#passage-de-la-prise-de-rdv-en-extension-0520).
+
+**Prise de RDV (plugin `rdv`, version qui suit la 0.4.9 — historique)** — en plus de la
 ligne ci-dessus, dans `src/content/` :
 
-1. créer `rdv.yaml` (modèle commenté : `src/plugins/rdv/rdv.exemple.yaml`) et
+1. créer `rdv.yaml` (modèle commenté : `rdv.exemple.yaml` de l'extension) et
    y reprendre les permanences de `conseiller-numerique.yaml` et les zones de
    `zones-geographiques.yaml`, puis supprimer ces deux fichiers ;
 2. retirer `forms.rdvConseillerNumerique` de `reglages.yaml` (l'ouverture se

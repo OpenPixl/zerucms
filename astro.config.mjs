@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig, envField } from 'astro/config';
 import { loadEnv } from 'vite';
+import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
 
@@ -16,6 +17,11 @@ import plugins from './src/integrations/plugins.ts';
 import maintenance from './src/integrations/maintenance.ts';
 import installation from './src/integrations/installation.ts';
 import { PLUGIN_MANIFESTS } from './src/plugins/manifests.ts';
+import extensions, { chargerExtensions, envExtensions } from './src/integrations/extensions.ts';
+
+// Extensions installées (extensions/<id>/, docs/extensions.md) : manifestes
+// lus une fois (variables d'environnement ci-dessous, routes par l'intégration).
+const EXTENSIONS = await chargerExtensions(new URL('./', import.meta.url));
 
 /**
  * Domaine public du site, propre à chaque association : `SITE_URL` dans le
@@ -77,13 +83,15 @@ export default defineConfig({
   // Usage : `import { GRIST_API_KEY } from 'astro:env/server'`. Doc : docs/api.md.
   env: {
     schema: {
-      // Grist — instance et clé partagées par les plugins adhésion et RDV
+      // Grist — instance et clé partagées par les plugins et les extensions
       GRIST_BASE_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
       GRIST_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       // Variables propres à chaque plugin (src/plugins/<id>/plugin.ts) :
-      // document et tables de l'adhésion, BULLETIN_SECRET, document des RDV…
+      // document et tables de l'adhésion, BULLETIN_SECRET, facturation…
       ...Object.assign({}, ...PLUGIN_MANIFESTS.map((p) => p.env)),
-      // Conversion HTML → PDF (src/lib/gotenberg.ts) : bulletin d'adhésion, semaine de RDV
+      // Variables des extensions installées (manifest.ts de chacune)
+      ...envExtensions(EXTENSIONS),
+      // Conversion HTML → PDF (src/lib/gotenberg.ts) : bulletin d'adhésion, devis et factures, extensions
       GOTENBERG_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
       GOTENBERG_USERNAME: envField.string({ context: 'server', access: 'secret', optional: true }),
       GOTENBERG_PASSWORD: envField.string({ context: 'server', access: 'secret', optional: true }),
@@ -101,6 +109,8 @@ export default defineConfig({
 
   vite: {
     plugins: [tailwindcss()],
+    // Alias du cœur pour les extensions (extensions/<id>/) : `@cms/lib/…` = `src/lib/…`.
+    resolve: { alias: { '@cms': fileURLToPath(new URL('./src', import.meta.url)) } },
     // `yaml` est aussi chargé dans le navigateur (dépôt de .md, module « Pages ») :
     // pré-optimisé au démarrage du dev, sinon Vite le découvre en cours de route
     // et l'îlot d'administration échoue (504 « Outdated Optimize Dep »).
@@ -114,5 +124,5 @@ export default defineConfig({
   // sitePages : retire du build le HTML des pages du site désactivées (404 réel).
   // buildInfo : empreinte du build (build-info.json), lue par scripts/start.mjs.
   // plugins : routes des plugins actifs (src/plugins/, `plugins:` de reglages.yaml).
-  integrations: [mdx(), vue(), sitePages(), buildInfo(), plugins(), maintenance(), installation()]
+  integrations: [mdx(), vue(), sitePages(), buildInfo(), plugins(), extensions(EXTENSIONS), maintenance(), installation()]
 });

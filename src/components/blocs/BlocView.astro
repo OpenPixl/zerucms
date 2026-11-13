@@ -1,13 +1,14 @@
 ---
 /**
  * Rendu d'un bloc de page enrichie (catalogue : `src/lib/blocs.ts`).
- * Ajouter un type de bloc = une entrée dans `BLOC_TYPES` + une branche ici.
+ * Ajouter un type de bloc = une entrée dans `BLOC_TYPES` + une branche ici
+ * (bloc d'une extension : composant fourni par son `site.ts`).
  * Les champs `markdown` passent par `renderMarkdownFragment` (HTML nettoyé).
  */
 import Button from '../ui/Button.astro';
-import RdvCtaSection from '../../plugins/rdv/sections/RdvCtaSection.astro';
 import type { Bloc } from '../../lib/blocs';
-import { pluginActif } from '../../plugins';
+import { BLOC_TYPES } from '../../lib/blocs';
+import { composantBloc } from '../../lib/extensions-site';
 import { renderMarkdownFragment, typographie } from '../../lib/markdown-fragment';
 
 interface Props {
@@ -67,11 +68,11 @@ const encart = ENCART_STYLES[field('style')] ?? ENCART_STYLES.info;
 	</div>
 )}
 
-{bloc.type === 'rdv' && pluginActif('rdv') && (
-	<div class="mt-8">
-		<RdvCtaSection title={field('titre') || undefined} description={field('texte') || undefined} />
-	</div>
-)}
+{BLOC_TYPES[bloc.type]?.extension && (() => {
+	// Bloc d'une extension : son composant (site.ts) ; extension inactive = rien.
+	const Composant = composantBloc(bloc.type);
+	return Composant ? <Composant bloc={bloc} /> : null;
+})()}
 
 <style>
 	/* Texte Markdown d'un bloc : listes et paragraphes compacts. */
