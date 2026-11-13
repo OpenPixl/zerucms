@@ -47,6 +47,7 @@ pnpm-debug.log*
 !/src/content/README.md
 
 # Extensions installées sur ce site (extensions/<id>/, docs/extensions.md) :
-# propres à chaque site, jamais dans le dépôt du CMS (sauf le README).
-/extensions/*
-!/extensions/README.md
+# propres à chaque site, jamais dans le dépôt du CMS (README suivi malgré tout).
+# Dossier entier ignoré, pas /extensions/* : sinon Tailwind (@source de
+# global.css) saute ces fichiers ignorés et les classes des extensions manquent.
+/extensions/
