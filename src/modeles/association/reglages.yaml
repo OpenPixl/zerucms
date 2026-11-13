@@ -19,12 +19,16 @@
 #   secondary  couleur secondaire : pied de page, survols
 #   accent     couleur d'accent : bouton « Adhérer », touches de couleur
 #   stripe     bande de couleurs sous l'en-tête (autant de couleurs que voulu)
+#   stripeEnabled  false = pas de bande (une ombre souligne alors l'en-tête)
 # Pensez au contraste : du texte blanc doit rester lisible sur ces couleurs.
+# Modèle neutre, noir et blanc : à remplacer par les couleurs de la structure
+# (Espace Admin → Paramètres → Association → Charte graphique).
 colors:
-  primary: '#2f7fc1'
-  secondary: '#1fa39e'
-  accent: '#7cb93f'
-  stripe: ['#4b4a9e', '#2f7fc1', '#1fa39e', '#7cb93f', '#e8b830', '#e2792f']
+  primary: '#2e2e2e'
+  secondary: '#2e2e2e'
+  accent: '#2e2e2e'
+  stripe: ['#2e2e2e']
+  stripeEnabled: false
 
 # Bouton mis en avant à droite de la barre de navigation.
 # enabled: false pour le masquer.

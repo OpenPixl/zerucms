@@ -5,6 +5,7 @@
  */
 import type { FontRole, FontWeight } from '../../lib/font-catalogue';
 import type { Structure } from '../../lib/structure';
+import type { TypeChamp } from '../../plugins/champs';
 import type { Association } from '../../lib/association';
 import type { AuthGroup } from '../../lib/auth/groups';
 import type { ThemeColors } from '../../config/site';
@@ -337,7 +338,7 @@ export interface PluginChamp {
 	cle: string;
 	label: string;
 	groupe: string;
-	type: string;
+	type: TypeChamp;
 	aide?: string;
 	env?: string;
 	valeur: string;

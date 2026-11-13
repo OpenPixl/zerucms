@@ -18,6 +18,7 @@ import { ApiError, pluginsApi, type PluginChamp, type PluginItem } from '../clie
 import { ADMIN_CONTEXT, iconButtonClass, inputClass, rememberOpenModule, takeModuleToReopen } from '../context';
 import { isDeferredSubmit } from '../lot';
 import { usePublication } from '../usePublication';
+import { normaliserChamp } from '../../../plugins/champs';
 
 const { sessionExpired } = inject(ADMIN_CONTEXT)!;
 
@@ -193,6 +194,7 @@ onMounted(load);
 							:id="`plugin-${ouvert.id}-${c.cle}`"
 							v-model.trim="valeurs[c.cle]"
 							type="text"
+							@blur="valeurs[c.cle] = normaliserChamp(c.type, valeurs[c.cle])"
 							spellcheck="false"
 							autocomplete="off"
 							:placeholder="repli(c)"

@@ -115,7 +115,8 @@ plugin.
    `src/content/` et champs modifiables dans la page de configuration du
    module : `cle` à points, `groupe`, `type` — `adresse` (page publique,
    contrôlée contre les pages du site), `url`, `identifiant`, `table`, formats
-   dans `src/plugins/champs.ts` —, `defaut`, `env` de repli, `obligatoire`).
+   dans `src/plugins/champs.ts`, saisie mise en forme par `normaliserChamp()`
+   (ex. `table` : « Démarches » → `Demarches`, comme l'identifiant Grist) —, `defaut`, `env` de repli, `obligatoire`).
    Le plugin lit ces valeurs dans son fichier avant le `.env`. Pour
    l'assistant d'installation : `secrets` (variables demandées, écrites dans
    `<DATA_DIR>/installation/secrets.env` ; `type` `url` / `identifiant` /

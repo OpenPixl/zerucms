@@ -8,14 +8,25 @@
    src/content/reglages.yaml (colors), injectées par les layouts (themeCss,
    src/config/site.ts). Garder ces valeurs alignées sur DEFAULTS.colors. */
 @theme {
-	--color-primary: #2f7fc1;
-	--color-secondary: #1fa39e;
-	--color-accent: #7cb93f;
+	--color-primary: #2e2e2e;
+	--color-secondary: #2e2e2e;
+	--color-accent: #2e2e2e;
 
 	/* Polices : remplacées au rendu par celles de reglages.yaml (polices:,
 	   fontsCss de src/lib/fonts.ts, injecté par les layouts). */
 	--font-heading: system-ui, sans-serif;
 	--font-body: system-ui, sans-serif;
+}
+
+/* Espace Admin : couleurs propres, indépendantes de la charte du site
+   (themeCss ne pose les siennes que sur :root). Îlot monté dans
+   #espace-benevoles (mount.ts) et page d'installation (.theme-admin,
+   InstallationLayout.astro). */
+#espace-benevoles,
+.theme-admin {
+	--color-primary: #2f7fc1;
+	--color-secondary: #1fa39e;
+	--color-accent: #7cb93f;
 }
 
 body {
