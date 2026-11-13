@@ -2,7 +2,8 @@
  * Plan du site pour les moteurs de recherche, produit à chaque construction
  * (donc à chaque publication) : pages du site actives, pages de service
  * (adhésion, inscription, RDV si le plugin est actif), pages de contenu publiques, catégories et
- * fiches d'activité publiées, actualités publiées (avec leur date).
+ * fiches d'activité publiées (catégorie listée si elle en a au moins une),
+ * actualités publiées (avec leur date).
  * Jamais : pages réservées, brouillons, pages désactivées. Adresses sans
  * « / » final, comme l'adresse canonique des pages (`src/lib/seo.ts`).
  */
@@ -24,6 +25,7 @@ const escapeXml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&
 export const GET: APIRoute = async ({ site }) => {
 	const sitePages = (await getSitePagesState()).filter((p) => p.active);
 	const activitiesActive = sitePages.some((p) => p.id === 'activites');
+	const activities = activitiesActive ? await getAllActivities() : [];
 	const entries: { path: string; lastmod?: string }[] = [
 		...sitePages.map((p) => ({ path: p.href })),
 		...(pluginActif('adhesion') ? [{ path: ADHESION_HREF }] : []),
@@ -32,8 +34,9 @@ export const GET: APIRoute = async ({ site }) => {
 		...(await getContentPages()).filter((p) => p.access === null).map((p) => ({ path: p.url })),
 		...(activitiesActive
 			? [
-					...categories.map((c) => ({ path: `/activites/${c.slug}` })),
-					...(await getAllActivities()).map((a) => ({ path: `/activites/${a.category}/${a.slug}` })),
+					// Catégorie sans fiche (site neuf sans exemples) : page vide, non référencée.
+					...categories.filter((c) => activities.some((a) => a.category === c.slug)).map((c) => ({ path: `/activites/${c.slug}` })),
+					...activities.map((a) => ({ path: `/activites/${a.category}/${a.slug}` })),
 				]
 			: []),
 		...(await getAllNews()).map((n) => ({ path: n.href, lastmod: n.publishAt })),

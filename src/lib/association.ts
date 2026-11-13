@@ -23,13 +23,30 @@ const optional = z
 
 const required = z.string({ error: 'champ obligatoire' }).trim().min(1, 'champ obligatoire');
 
+/** Lignes de la rue (n° et voie, complément, bâtiment…) avant code postal et ville. */
+export const ADRESSE_LIGNES_MAX = 3;
+
+/**
+ * Saisie de la rue mise en forme : une ligne par retour à la ligne (au plus
+ * `ADRESSE_LIGNES_MAX`, vérifié par le schéma), espaces resserrés, lignes
+ * vides retirées. Partagé par le module Association et l'installation.
+ */
+export function normaliserRue(v: unknown): string {
+	if (typeof v !== 'string') return '';
+	return v
+		.split(/\r?\n/)
+		.map((l) => l.replace(/\s+/g, ' ').trim())
+		.filter(Boolean)
+		.join('\n');
+}
+
 const schema = z.object({
 	name: required,
 	description: required,
 	email: required,
 	phone: required,
 	address: z.object({
-		street: required,
+		street: required.refine((v) => v.split('\n').length <= ADRESSE_LIGNES_MAX, `${ADRESSE_LIGNES_MAX} lignes au plus`),
 		postalCode: required,
 		city: required,
 	}),
@@ -88,6 +105,12 @@ export function parseAssociation(text: string): Association {
 
 export const association = parseAssociation(raw);
 
+/** Adresse ligne par ligne (rue sur 1 à 3 lignes, puis code postal et ville) : affichages sur plusieurs lignes. */
+export function getAddressLines(): string[] {
+	return [...association.address.street.split('\n'), `${association.address.postalCode} ${association.address.city}`];
+}
+
+/** Adresse sur une ligne, séparée par des virgules (texte courant, données structurées). */
 export function getFullAddress(): string {
-	return `${association.address.street}, ${association.address.postalCode} ${association.address.city}`;
+	return getAddressLines().join(', ');
 }

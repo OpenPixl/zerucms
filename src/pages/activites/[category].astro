@@ -20,6 +20,7 @@ const activities = await getActivitiesByCategory(category.slug);
 <Layout
 	title={`${category.label} · ${association.name}`}
 	description={`Découvrez les activités de la catégorie ${category.label} proposées par ${association.name}.`}
+	noindex={activities.length === 0}
 	breadcrumbs={[
 		{ label: 'Accueil', href: '/' },
 		{ label: 'Activités', href: '/activites' },

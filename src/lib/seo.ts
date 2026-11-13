@@ -36,7 +36,7 @@ export function organizationJsonLd(site: URL | undefined, logoUrl: string): Json
 		telephone: association.phone,
 		address: {
 			'@type': 'PostalAddress',
-			streetAddress: association.address.street,
+			streetAddress: association.address.street.replace(/\n/g, ', '),
 			postalCode: association.address.postalCode,
 			addressLocality: association.address.city,
 			addressCountry: 'FR',

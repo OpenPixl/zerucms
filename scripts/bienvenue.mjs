@@ -72,7 +72,7 @@ export function pageBienvenue() {
 </head>
 <body>
 <main>
-	<p class="etapes">Installation · étape 1 sur 2</p>
+	<p class="etapes">Installation · votre compte</p>
 	<h1>Bienvenue sur votre nouveau site</h1>
 	<p>Commencez par créer votre compte d'administration. Il a tous les droits
 	sur le site. Vous paramétrerez ensuite votre structure (nom, logo,

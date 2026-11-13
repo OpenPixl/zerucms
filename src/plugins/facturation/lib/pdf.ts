@@ -7,7 +7,7 @@
  *
  * Code serveur uniquement.
  */
-import { association, getFullAddress } from '../../../lib/association';
+import { association, getAddressLines } from '../../../lib/association';
 import { site } from '../../../config/site';
 import { facturationConfig } from './config';
 import { euros, montantLigne, type Client, type Devis, type Facture } from './types';
@@ -90,7 +90,7 @@ export function documentHtml(d: DocumentPdf, client: Client | null): string {
 		<div class="emetteur">
 			<strong>${e(association.name)}</strong><br>
 			${legal.president ? `${e(legal.president)} — entrepreneur individuel (EI)<br>` : 'Entrepreneur individuel (EI)<br>'}
-			${e(getFullAddress())}<br>
+			${getAddressLines().map(e).join('<br>')}<br>
 			${e(association.email)} · ${e(association.phone)}<br>
 			${legal.siretNumber ? `SIRET ${e(legal.siretNumber)}` : 'SIRET : à compléter'}
 		</div>
