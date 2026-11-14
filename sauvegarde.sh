@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sauvegarde de ce qui appartient à l'association (docs/sauvegarde.md) :
-# archive ZIP de src/content/ + comptes et journal de l'Espace Admin (data/),
+# archive ZIP de src/content/, extensions/ + comptes et journal de l'Espace Admin (data/),
 # rangée dans data/sauvegardes/. Le .env n'y est jamais.
 #
 #   ./sauvegarde.sh                 nouvelle sauvegarde

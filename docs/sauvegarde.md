@@ -9,8 +9,9 @@ serveur, nouveau serveur, retour en arrière après une erreur).
 | Dans l'archive | Pas dans l'archive |
 | --- | --- |
 | `src/content/` : pages, actualités, activités, annonces, images, polices, réglages (`*.yaml`) | `.env` et `data/installation/secrets.env` (secrets : `AUTH_SECRET`, clés Grist…) — à garder à part |
+| `extensions/` : extensions installées (docs/extensions.md), depuis la 0.5.22 | |
 | `data/accounts/` : comptes de l'Espace Admin | `data/publication/` (état des publications), `data/installation/installation.json` ; les données rangées dans **Grist** (adhésions, RDV, devis et factures) : à sauvegarder côté Grist |
-| `data/journal/` : journal des modifications | les sauvegardes elles-mêmes, le code du modèle (dont `src/content/README.md`, jamais remplacé par une restauration) |
+| `data/journal/` : journal des modifications | les sauvegardes elles-mêmes, le code du modèle (dont `src/content/README.md` et `extensions/README.md`, jamais remplacés par une restauration), les dossiers cachés d'`extensions/` (versions mises de côté par l'installeur) |
 
 Chaque archive porte un fichier `sauvegarde.json` : date, version du modèle,
 nom de l'association, motif, auteur·rice. Les archives sont rangées sur le
@@ -36,7 +37,7 @@ Super admin seul :
 
 - **Restaurer** (icône ↺, puis « Restaurer et publier » ; ou dépôt avec la
   case cochée) : le site passe en **mode maintenance**, `src/content/`, les
-  comptes et le journal sont **remplacés** par ceux de l'archive, puis le
+  extensions, les comptes et le journal sont **remplacés** par ceux de l'archive, puis le
   site est reconstruit. Pendant ce temps, toutes les pages affichent « Site
   en maintenance » avec une **barre de progression** (étapes du build, pages
   créées, images, redémarrage) qui se recharge seule quand le site revient ;
@@ -125,8 +126,16 @@ En ligne de commande, la même rotation : `./sauvegarde.sh "motif" --garder 5`.
   bureau, restauration = super admin seul).
 - Une archive n'est acceptée que si elle contient `sauvegarde.json` (format
   `numerik-sauvegarde`) et `src/content/association.yaml`, et seulement des
-  fichiers sous `src/content/`, `data/accounts/`, `data/journal/` (aucun
-  chemin en `..`). Taille maximale : 500 Mo.
+  fichiers sous `src/content/`, `extensions/<id>/…` (identifiant valide,
+  aucun nom en « . » ; seulement si le manifeste porte `extensions: true`),
+  `data/accounts/`, `data/journal/` (aucun chemin en `..`). Taille
+  maximale : 500 Mo.
+- Extensions : une archive créée depuis la 0.5.22 avec le dossier
+  `extensions/` présent (`extensions: true` dans `sauvegarde.json` ; Docker :
+  volume monté) remet `extensions/` dans son état — extension absente
+  de l'archive = retirée ; une archive plus ancienne laisse `extensions/`
+  tel quel. Le code d'une extension s'exécute sur le serveur : ne restaurer
+  que des archives de confiance (restauration réservée au super admin).
 - Archive déposée : nom d'origine gardé (motif compris), `-2`, `-3`… si
   le nom existe déjà.
 - Restauration en place : seuls les fichiers différents sont réécrits, les

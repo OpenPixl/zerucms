@@ -45,7 +45,8 @@ seul dossier (`rdv/extension.json`).
 
 Le dossier `extensions/` n'est **jamais** touché par une mise à jour du CMS
 (`update.mjs`, `update.sh`, `git pull` : ignoré par git), comme
-`src/content/`. Une extension qui demande un CMS plus récent que celui en
+`src/content/`, et il est compris dans les **sauvegardes** (docs/sauvegarde.md,
+depuis la 0.5.22 : restaurer remet les extensions de l'archive). Une extension qui demande un CMS plus récent que celui en
 place est refusée à l'installation ; une extension invalide fait échouer la
 construction avec un message clair (le site en ligne reste celui d'avant).
 
