@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Restauration d'une sauvegarde (docs/sauvegarde.md) : REMPLACE src/content/
-# et les comptes + journal de l'Espace Admin par ceux de l'archive, puis
+# Restauration d'une sauvegarde (docs/sauvegarde.md) : REMPLACE src/content/,
+# extensions/ et les comptes + journal de l'Espace Admin par ceux de l'archive, puis
 # redémarre le site pour le reconstruire. L'état courant est d'abord
 # sauvegardé (data/sauvegardes/…-avant-restauration.zip).
 #

@@ -2,7 +2,7 @@
  * Module « Sauvegardes » (bureau, garde dans `src/middleware.ts`) :
  *  - GET  : archives de `<DATA_DIR>/sauvegardes/` (la plus récente d'abord),
  *           restauration possible ou non (publication, lot en attente) ;
- *  - POST : `{ motif? }` → nouvelle archive de `src/content/` + comptes et
+ *  - POST : `{ motif? }` → nouvelle archive de `src/content/`, `extensions/` + comptes et
  *           journal (`scripts/sauvegarde.mjs`).
  */
 import type { APIRoute } from 'astro';

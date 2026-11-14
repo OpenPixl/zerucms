@@ -1,6 +1,7 @@
 /**
  * Sauvegarde et restauration de ce qui appartient à l'association, façon
- * Grav : une archive ZIP de `src/content/` (contenu du site) et de
+ * Grav : une archive ZIP de `src/content/` (contenu du site), de
+ * `extensions/` (extensions installées, docs/extensions.md) et de
  * `<DATA_DIR>/accounts` + `<DATA_DIR>/journal` (comptes de l'Espace Admin,
  * journal). Le `.env` (secrets) n'y est jamais.
  *
@@ -8,7 +9,9 @@
  * `./data`, conservé d'une version à l'autre). Chaque archive porte
  * `sauvegarde.json` (format, date, version du modèle, association, motif).
  *
- * Restaurer = remplacer : `src/content/`, `accounts/` et `journal/` sont
+ * Restaurer = remplacer : `src/content/`, `extensions/` (archives qui la
+ * contiennent : manifeste `extensions: true`, depuis la 0.5.22, dossier
+ * présent à la sauvegarde ; sinon on n'y touche pas), `accounts/` et `journal/` sont
  * mis dans l'état de l'archive (fichiers différents réécrits, fichiers en
  * trop supprimés ; les dossiers eux-mêmes restent : ce sont des volumes sous
  * Docker, et le serveur de dev ne perd pas sa surveillance). Une sauvegarde « avant-restauration » de
@@ -36,6 +39,7 @@ import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { dossierModele } from './contenu-initial.mjs';
+import { EXTENSION_ID } from './extension.mjs';
 
 export const FORMAT = 'numerik-sauvegarde';
 /** Nom d'une archive : minuscules, chiffres, tirets, `.zip`. */
@@ -45,6 +49,13 @@ export const TAILLE_MAX = 500 * 1024 * 1024;
 const MANIFESTE = 'sauvegarde.json';
 /** Sous-dossiers de DATA_DIR sauvegardés (pas `publication/`, ni les sauvegardes elles-mêmes). */
 const DONNEES = ['accounts', 'journal'];
+/**
+ * `extensions/` : fichiers du modèle (README) jamais sauvegardés ni touchés ;
+ * dossiers cachés (`.ancienne-…`, `.supprimee-…`, `.installation-…` de
+ * `scripts/extension.mjs`) ignorés.
+ */
+const EXTENSIONS = 'extensions';
+const FICHIERS_DU_MODELE_EXTENSIONS = new Set(['README.md']);
 /** Fichiers déjà compressés : stockés tels quels (plus rapide, même taille). */
 const DEJA_COMPRESSE = /\.(jpe?g|png|webp|gif|avif|woff2?|zip|gz|pdf|mp4|webm)$/i;
 
@@ -60,13 +71,17 @@ export function dossierSauvegardes(dataDir = dossierDonnees()) {
 
 // --- Lecture des fichiers ------------------------------------------------------
 
-/** Fichiers d'un dossier (récursif), chemins relatifs avec « / ». */
-function fichiersDe(dir) {
+/**
+ * Fichiers d'un dossier (récursif), chemins relatifs avec « / ».
+ * `sansCaches` : sauter fichiers et dossiers dont le nom commence par « . ».
+ */
+function fichiersDe(dir, { sansCaches = false } = {}) {
 	if (!existsSync(dir)) return [];
 	const out = [];
 	const walk = (d) => {
 		for (const entry of readdirSync(d, { withFileTypes: true })) {
 			const full = join(d, entry.name);
+			if (sansCaches && entry.name.startsWith('.')) continue;
 			if (entry.isDirectory()) {
 				if (entry.name === '.tmp-publication') continue;
 				walk(full);
@@ -130,6 +145,9 @@ function etatCourant(root, dataDir) {
 		}
 	};
 	ajouter(content, 'src/content');
+	for (const rel of fichiersDe(join(root, EXTENSIONS), { sansCaches: true })) {
+		if (!FICHIERS_DU_MODELE_EXTENSIONS.has(rel)) files[`${EXTENSIONS}/${rel}`] = readFileSync(join(root, EXTENSIONS, rel));
+	}
 	for (const d of DONNEES) ajouter(join(dataDir, d), `data/${d}`);
 	return files;
 }
@@ -168,6 +186,10 @@ function archiver(root, files, { motif = '', par = '' } = {}) {
 		motif: String(motif ?? ''),
 		par: String(par ?? ''),
 		fichiers: nbFichiers,
+		// Dossier présent (sous Docker : volume monté) : l'archive dit l'état
+		// des extensions, la restauration le remettra. Sinon (ancien
+		// docker-compose sans le volume), elle n'y touchera pas.
+		extensions: existsSync(join(root, EXTENSIONS)),
 		empreinte: empreinte(files),
 	};
 	const entrees = { [MANIFESTE]: strToU8(JSON.stringify(manifeste, null, 2)) };
@@ -298,7 +320,7 @@ export function verifierArchive(zip) {
 	})() : null;
 	if (!manifeste || manifeste.format !== FORMAT) throw new Error("Ce fichier n'est pas une sauvegarde du site (sauvegarde.json absent).");
 	if (!entries['src/content/association.yaml']) throw new Error('Sauvegarde incomplète : src/content/association.yaml absent.');
-	const autorises = ['src/content/', ...DONNEES.map((d) => `data/${d}/`)];
+	const autorises = ['src/content/', `${EXTENSIONS}/`, ...DONNEES.map((d) => `data/${d}/`)];
 	const fichiers = {};
 	for (const [name, data] of Object.entries(entries)) {
 		if (name === MANIFESTE || name.endsWith('/')) continue;
@@ -308,6 +330,14 @@ export function verifierArchive(zip) {
 		}
 		if (!autorises.some((a) => name.startsWith(a))) throw new Error(`Fichier inattendu dans l'archive : ${name}`);
 		if (name.startsWith('src/content/') && FICHIERS_DU_MODELE.has(name.slice('src/content/'.length))) continue;
+		if (name.startsWith(`${EXTENSIONS}/`)) {
+			const rel = name.slice(EXTENSIONS.length + 1);
+			if (FICHIERS_DU_MODELE_EXTENSIONS.has(rel)) continue;
+			if (!manifeste.extensions) throw new Error(`Fichier inattendu dans l'archive : ${name}`);
+			if (!EXTENSION_ID.test(parts[1]) || parts.length < 3 || parts.some((p) => p.startsWith('.'))) {
+				throw new Error(`Fichier d'extension refusé dans l'archive : ${name}`);
+			}
+		}
 		fichiers[name] = data;
 	}
 	return { manifeste, fichiers };
@@ -323,8 +353,9 @@ export function verifierArchive(zip) {
  * @param {string} dir dossier cible
  * @param {Map<string, Uint8Array>} voulus chemin relatif (« / ») → octets
  * @param {Set<string>} garder fichiers de premier niveau jamais touchés
+ * @param {{ sansCaches?: boolean }} options `sansCaches` : fichiers et dossiers « .… » jamais touchés
  */
-function synchroniserDossier(dir, voulus, garder = new Set()) {
+function synchroniserDossier(dir, voulus, garder = new Set(), { sansCaches = false } = {}) {
 	mkdirSync(dir, { recursive: true });
 	for (const [rel, data] of voulus) {
 		const cible = join(dir, rel);
@@ -335,12 +366,12 @@ function synchroniserDossier(dir, voulus, garder = new Set()) {
 		mkdirSync(dirname(cible), { recursive: true });
 		writeFileSync(cible, data);
 	}
-	for (const rel of fichiersDe(dir)) {
+	for (const rel of fichiersDe(dir, { sansCaches })) {
 		if (!voulus.has(rel) && !garder.has(rel)) rmSync(join(dir, rel), { force: true });
 	}
 	const elaguer = (d) => {
 		for (const entry of readdirSync(d, { withFileTypes: true })) {
-			if (!entry.isDirectory()) continue;
+			if (!entry.isDirectory() || (sansCaches && entry.name.startsWith('.'))) continue;
 			const full = join(d, entry.name);
 			elaguer(full);
 			if (!readdirSync(full).length) rmSync(full, { recursive: true, force: true });
@@ -349,15 +380,21 @@ function synchroniserDossier(dir, voulus, garder = new Set()) {
 	elaguer(dir);
 }
 
-function ecrire(root, dataDir, fichiers) {
+/**
+ * Écrit un état (chemin dans l'archive → octets). `avecExtensions` : met
+ * aussi `extensions/` dans cet état (sinon le laisse tel quel : archive
+ * d'avant la 0.5.22).
+ */
+function ecrire(root, dataDir, fichiers, avecExtensions) {
 	const cibles = [
 		{ prefixe: 'src/content/', dir: join(root, 'src', 'content'), garder: FICHIERS_DU_MODELE },
+		...(avecExtensions ? [{ prefixe: `${EXTENSIONS}/`, dir: join(root, EXTENSIONS), garder: FICHIERS_DU_MODELE_EXTENSIONS, sansCaches: true }] : []),
 		...DONNEES.map((d) => ({ prefixe: `data/${d}/`, dir: join(dataDir, d), garder: new Set() })),
 	];
-	for (const { prefixe, dir, garder } of cibles) {
+	for (const { prefixe, dir, garder, sansCaches } of cibles) {
 		const voulus = new Map();
 		for (const [name, data] of Object.entries(fichiers)) if (name.startsWith(prefixe)) voulus.set(name.slice(prefixe.length), data);
-		synchroniserDossier(dir, voulus, garder);
+		synchroniserDossier(dir, voulus, garder, { sansCaches });
 	}
 }
 
@@ -396,9 +433,9 @@ export function restaurerSauvegarde(zip, { root = racineSite(), dataDir = dossie
 	const { manifeste, fichiers } = verifierArchive(zip);
 	const securite = securiser(root, dataDir, par);
 	try {
-		ecrire(root, dataDir, fichiers);
+		ecrire(root, dataDir, fichiers, Boolean(manifeste.extensions));
 	} catch (err) {
-		ecrire(root, dataDir, securite.etat);
+		ecrire(root, dataDir, securite.etat, true);
 		throw new Error(`Restauration impossible (${err.message}) : l'état précédent a été remis.`);
 	}
 	return {
@@ -420,7 +457,7 @@ export function etatPrecedentGarde(r) {
 
 /** Remet l'état d'avant une restauration (publication en échec) : `precedent` d'un résultat de `restaurerSauvegarde`. */
 export function annulerRestauration(precedent, { root = racineSite(), dataDir = dossierDonnees(root) } = {}) {
-	ecrire(root, dataDir, precedent);
+	ecrire(root, dataDir, precedent, true);
 }
 
 // --- Ligne de commande --------------------------------------------------------
@@ -466,7 +503,7 @@ async function main(args) {
 		const { manifeste, fichiers } = verifierArchive(zip);
 		console.log(`Sauvegarde : ${basename(chemin)}`);
 		console.log(`  association « ${manifeste.association} », créée le ${manifeste.creeLe}, modèle ${manifeste.modele}, ${Object.keys(fichiers).length} fichiers`);
-		console.log('  ⚠️  Remplace TOUT src/content/ et les comptes + journal de l’Espace Admin.');
+		console.log(`  ⚠️  Remplace TOUT src/content/${manifeste.extensions ? ', les extensions installées' : ''} et les comptes + journal de l’Espace Admin.`);
 		if (!oui) {
 			const rl = createInterface({ input: process.stdin, output: process.stdout });
 			const reponse = await rl.question('  Taper « oui » pour restaurer : ');

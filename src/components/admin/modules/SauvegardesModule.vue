@@ -2,7 +2,7 @@
 /**
  * Module « Sauvegardes » (bureau ; restauration : super admin seul), façon
  * Grav : archives ZIP de ce qui appartient à l'association — `src/content/`
- * + comptes et journal de l'Espace Admin — rangées sur le serveur
+ * + `extensions/` + comptes et journal de l'Espace Admin — rangées sur le serveur
  * (`<DATA_DIR>/sauvegardes/`). Créer, télécharger, déposer une archive venue
  * d'ailleurs, supprimer, restaurer (remplace tout puis republie le site ;
  * l'état courant est sauvegardé d'abord). Serveur : `scripts/sauvegarde.mjs`
@@ -145,7 +145,7 @@ const taille = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)
 	/>
 	<p class="mb-4 text-sm font-light text-gray-600">
 		Une sauvegarde est une archive <strong>.zip</strong> de tout ce qui appartient à l'association : contenu du site (pages,
-		actualités, activités, images, réglages) et comptes + journal de l'Espace Admin. Les secrets du serveur (fichier
+		actualités, activités, images, réglages), extensions installées et comptes + journal de l'Espace Admin. Les secrets du serveur (fichier
 		<code>.env</code>) n'y sont jamais. Gardez-en une copie hors du serveur.
 	</p>
 	<p v-if="error" class="mb-4 alerte-erreur" role="alert">{{ error }}</p>
@@ -181,7 +181,7 @@ const taille = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)
 			<span>
 				Restaurer l'archive dès son dépôt (migration d'un site)
 				<span class="block text-xs font-light text-gray-500">
-					Le contenu, les comptes et le journal sont remplacés sans autre confirmation ; le site passe en maintenance le temps
+					Le contenu, les extensions, les comptes et le journal sont remplacés sans autre confirmation ; le site passe en maintenance le temps
 					de sa reconstruction. L'état actuel est sauvegardé d'abord, sauf s'il l'est déjà ou s'il s'agit du contenu de
 					démonstration d'un site neuf.
 				</span>
@@ -239,7 +239,7 @@ const taille = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)
 			<div v-if="restoring === s.nom" class="mt-3 alerte-attention" role="alert">
 				<p class="font-semibold">Restaurer « {{ s.nom }} » ?</p>
 				<p class="mt-1">
-					Tout le contenu du site, les comptes et le journal de l'Espace Admin seront <strong>remplacés</strong> par ceux de
+					Tout le contenu du site, les extensions, les comptes et le journal de l'Espace Admin seront <strong>remplacés</strong> par ceux de
 					l'archive ({{ s.association }}, {{ dateFr(s.date) }}), puis le site sera reconstruit : il est en maintenance
 					pendant ce temps (page avec barre de progression). L'état actuel est d'abord sauvegardé (« avant-restauration »,
 					qui apparaîtra dans la liste ; sauf s'il l'est déjà) : vous pourrez y revenir. Les comptes étant ceux de

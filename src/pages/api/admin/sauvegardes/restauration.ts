@@ -2,7 +2,7 @@
  * Restauration d'une sauvegarde (super admin seul, garde dans `src/middleware.ts`) :
  *  - POST : `{ nom, confirm: <nom> }` → site en **mode maintenance**
  *           (`scripts/maintenance.mjs` : page avec progression pour tous les
- *           visiteurs), `src/content/`, comptes et journal remplacés par
+ *           visiteurs), `src/content/`, `extensions/`, comptes et journal remplacés par
  *           l'archive (état courant sauvegardé d'abord, sauf s'il l'est déjà
  *           ou si c'est le contenu de démonstration : `restaurerSauvegarde`),
  *           puis reconstruction du site ; si elle échoue, l'état précédent est

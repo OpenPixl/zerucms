@@ -18,7 +18,9 @@ force-push) est décidé par le mainteneur : ne pas le changer sans accord.
 
 Sauvegarde / restauration d'un site (façon Grav) : `./sauvegarde.sh`,
 `./restauration.sh <zip>` ou module « Sauvegardes » — ZIP (`fflate`) de
-`src/content/` + `data/accounts` + `data/journal` dans
+`src/content/` + `extensions/` (hors README et dossiers « . » ; restaurée
+seulement si le manifeste porte `extensions: true`, archives ≥ 0.5.22) +
+`data/accounts` + `data/journal` dans
 `data/sauvegardes/`, logique unique `scripts/sauvegarde.mjs` ; restaurer =
 synchroniser en place (fichiers différents réécrits, en trop supprimés,
 jamais de dossier vidé : volumes, surveillance du dev), état courant sauvegardé avant. `update.sh` /
