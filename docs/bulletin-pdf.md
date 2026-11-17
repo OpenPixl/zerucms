@@ -56,7 +56,7 @@ l'adhésion.
 | `GOTENBERG_URL` | `.env` / `.env.example` / `src/env.d.ts` | URL de l'instance Gotenberg, **serveur uniquement**. Ex. `http://gotenberg:3000`. |
 | `GOTENBERG_USERNAME` / `GOTENBERG_PASSWORD` | idem | **Optionnel** : auth HTTP Basic si l'instance Gotenberg en exige une. Envoyées en en-tête `Authorization: Basic` seulement si les **deux** sont renseignées. |
 | `BULLETIN_SECRET` | idem | Secret HMAC de signature du jeton d'accès (chaîne aléatoire longue). |
-| `COLS.adhesion.bulletinHtml` | `src/plugins/adhesion/lib/grist.ts` | Pointe sur la colonne Formule `Formule` de la table `Adhesions` (HTML complet). |
+| `COLS.adhesion.bulletinHtml` | `src/lib/grist-asso/grist.ts` | Pointe sur la colonne Formule `Formule` de la table `Adhesions` (HTML complet). |
 | `src/plugins/adhesion/lib/bulletin.ts` | lib serveur | `isBulletinEnabled()`, `signBulletinToken()` / `verifyBulletinToken()` (HMAC-SHA256), `htmlToPdf()` (appel Gotenberg). |
 | `src/plugins/adhesion/api/bulletin.ts` | route API `GET`, `prerender = false` | Le relais décrit plus haut. |
 | `/api/adhesion/cotisation` | route API | Ajoute `bulletinToken` à sa réponse JSON (`AdhesionResult`) quand `isBulletinEnabled()`. |

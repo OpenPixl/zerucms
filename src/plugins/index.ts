@@ -18,6 +18,14 @@ export function pluginActif(id: PluginId): boolean {
 }
 
 /**
+ * Outil d'un plugin allumé (`outils` du catalogue, interrupteurs du module
+ * « Plugins ») : faux si le plugin est inactif.
+ */
+export function outilActif(id: PluginId, outil: string): boolean {
+	return site.outils[id]?.[outil] === true;
+}
+
+/**
  * Élément d'un catalogue (module d'accueil, bloc, module d'admin…) : visible
  * si le plugin ou l'extension qui l'apporte, s'il y en a un, est actif.
  */

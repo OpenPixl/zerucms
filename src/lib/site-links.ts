@@ -18,10 +18,11 @@ import { listActivitySources } from './activity-writer';
 import { readCategorySources } from './category-writer';
 import { NEWS_SLUG, newsSourceDir, readNewsSource } from './news-writer';
 import { listPagesSource } from './page-writer';
-import { pluginActif } from '../plugins';
+import { outilActif, pluginActif } from '../plugins';
 import { pagesExtensions } from './extensions-site';
-import { ADHESION_HREF, FORMULAIRE_HREF, PRESENCE_HREF } from '../plugins/adhesion';
-import { INSCRIPTION_HREF } from '../plugins/inscription';
+import { ADHESION_HREF, FORMULAIRE_HREF } from '../plugins/adhesion';
+import { INSCRIPTION_HREF } from '../plugins/activites';
+import { PRESENCE_HREF } from '../plugins/presence';
 
 export interface SiteLink {
 	title: string;
@@ -44,9 +45,9 @@ const SERVICE_PAGES: { title: string; href: string; form?: keyof typeof site.for
 				{ title: "Formulaire d'adhésion", href: FORMULAIRE_HREF, form: 'adhesion' as const },
 			]
 		: []),
-	...(pluginActif('inscription') ? [{ title: 'Inscription à une activité', href: INSCRIPTION_HREF, form: 'inscription' as const }] : []),
+	...(outilActif('activites', 'inscription') ? [{ title: 'Inscription à une activité', href: INSCRIPTION_HREF, form: 'inscription' as const }] : []),
 	...pagesExtensions(),
-	...(pluginActif('adhesion') ? [{ title: 'Je participe', href: PRESENCE_HREF }] : []),
+	...(pluginActif('presence') ? [{ title: 'Je participe', href: PRESENCE_HREF }] : []),
 ];
 
 const frenchDate = (iso: string) => {

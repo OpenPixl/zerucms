@@ -28,6 +28,21 @@ export interface SecretPlugin {
 	genere?: boolean;
 }
 
+/**
+ * Outil d'un plugin : partie qui s'allume ou s'éteint seule, plugin actif
+ * (interrupteurs de sa page de configuration, `outils.<plugin>.<outil>` de
+ * `reglages.yaml`, absent = allumé). Éteint, ses pages et routes ne sont pas
+ * construites (`outil` des routes du manifeste) et le site masque ce qu'il
+ * y ajoute (`outilActif()` de `src/plugins/index.ts`).
+ */
+export interface OutilPlugin {
+	id: string;
+	label: string;
+	description: string;
+	/** Icône Font Awesome. */
+	icon: string;
+}
+
 export interface PluginInfo {
 	label: string;
 	description: string;
@@ -36,6 +51,13 @@ export interface PluginInfo {
 	 * associations utilisent) ; `plugins: { <id>: false }` le désactive.
 	 */
 	actifParDefaut?: boolean;
+	/**
+	 * Plugin issu d'un autre (0.5.23 : activités et présence sortis de
+	 * l'adhésion) : sans valeur écrite pour lui dans `reglages.yaml`, il prend
+	 * celle écrite pour `heriteDe` (un site qui avait coupé l'adhésion ne voit
+	 * pas apparaître les deux autres).
+	 */
+	heriteDe?: string;
 	/**
 	 * Plugins dont celui-ci se sert (routes, code) : il n'est actif que s'ils le
 	 * sont tous, et c'est le seul dossier d'un autre plugin qu'il peut importer.
@@ -46,6 +68,8 @@ export interface PluginInfo {
 	 * autre type, il est inactif et caché (module « Plugins », assistant).
 	 */
 	structures?: readonly Structure[];
+	/** Outils allumés ou éteints un à un, le plugin actif (absent = aucun). */
+	outils?: readonly OutilPlugin[];
 	/** Icône Font Awesome (module « Plugins » de l'Espace Admin). */
 	icon: string;
 	/** Documentation du plugin (chemin dans le projet). */
@@ -72,34 +96,76 @@ export interface PluginInfo {
 
 export const PLUGINS = {
 	adhesion: {
-		label: 'Adhésion et activités',
+		label: 'Adhésion',
 		description:
-			'Adhésion en ligne et bulletin PDF, présence (« Je participe »), planning des activités lu dans Grist.',
+			'Adhésion en ligne (/adherer) : nouvelle adhésion ou renouvellement, membres rattachés, cotisation, bulletin PDF, bouton « Adhérer » de la barre de navigation. Lit le document Grist de l’association.',
 		actifParDefaut: true,
 		structures: ['association'],
 		icon: 'fa-id-card',
 		doc: 'src/plugins/adhesion/README.md',
 		env: [
-			{ nom: 'GRIST_API_KEY', aide: 'Clé d’API Grist du document de l’adhésion, dans le .env. Sans clé, les formulaires (adhésion, inscription, présence) et le planning Grist ne fonctionnent pas.' },
-			{ nom: 'GRIST_DOC_ID', aide: 'Identifiant du document Grist de l’adhésion, dans le .env.' },
+			{ nom: 'GRIST_API_KEY', aide: 'Clé d’API Grist du document de l’association, dans le .env.' },
+			{ nom: 'GRIST_DOC_ID', aide: 'Identifiant du document Grist de l’association (adhésion, activités, présence), dans le .env.' },
 		],
 		secrets: [
 			{ nom: 'GRIST_BASE_URL', label: 'Adresse de l’instance Grist', type: 'url', obligatoire: true, aide: 'Ex. https://grist.exemple.fr' },
-			{ nom: 'GRIST_DOC_ID', label: 'Identifiant du document de l’adhésion', type: 'identifiant', obligatoire: true, aide: 'Dans l’adresse du document Grist : https://…/o/…/<identifiant>/…' },
+			{ nom: 'GRIST_DOC_ID', label: 'Identifiant du document de l’association', type: 'identifiant', obligatoire: true, aide: 'Dans l’adresse du document Grist : https://…/o/…/<identifiant>/… (le même pour l’adhésion, les activités et la présence)' },
 			{ nom: 'GRIST_API_KEY', label: 'Clé d’API Grist', type: 'cle', obligatoire: true, aide: 'Grist → Paramètres du compte → Clé d’API.' },
 			{ nom: 'GOTENBERG_URL', label: 'Adresse du service PDF (Gotenberg)', type: 'url', aide: 'Facultatif : bulletin d’adhésion en PDF. Ex. http://gotenberg:3000' },
 			{ nom: 'BULLETIN_SECRET', label: 'Secret du lien de bulletin', type: 'cle', genere: true },
 		],
 	},
-	inscription: {
-		label: 'Inscription aux activités',
+	activites: {
+		label: 'Activités',
 		description:
-			'Page /inscription et bouton « S’inscrire » des fiches d’activité : adhérent·e ou personne extérieure, liste d’attente, préinscription. Requiert le plugin Adhésion (même document Grist).',
+			'Planning de la semaine sur la page /activites et inscription en ligne aux activités, lus dans le document Grist de l’association. Chaque outil s’allume ou s’éteint ici.',
 		actifParDefaut: true,
-		requiert: ['adhesion'],
+		heriteDe: 'adhesion',
 		structures: ['association'],
-		icon: 'fa-clipboard-list',
-		doc: 'src/plugins/inscription/README.md',
+		icon: 'fa-calendar-week',
+		doc: 'src/plugins/activites/README.md',
+		outils: [
+			{
+				id: 'planning',
+				label: 'Planning des activités',
+				description: 'Calendrier de la semaine sur la page /activites, lu dans la table Grist « Activite ».',
+				icon: 'fa-calendar-week',
+			},
+			{
+				id: 'inscription',
+				label: 'Inscription aux activités',
+				description: 'Page /inscription et bouton « S’inscrire » des fiches d’activité : adhérent·e ou personne extérieure, liste d’attente, préinscription.',
+				icon: 'fa-clipboard-list',
+			},
+		],
+		env: [
+			{ nom: 'GRIST_API_KEY', aide: 'Clé d’API Grist du document de l’association, dans le .env.' },
+			{ nom: 'GRIST_DOC_ID', aide: 'Identifiant du document Grist de l’association (adhésion, activités, présence), dans le .env.' },
+		],
+		secrets: [
+			{ nom: 'GRIST_BASE_URL', label: 'Adresse de l’instance Grist', type: 'url', obligatoire: true, aide: 'Ex. https://grist.exemple.fr' },
+			{ nom: 'GRIST_DOC_ID', label: 'Identifiant du document de l’association', type: 'identifiant', obligatoire: true, aide: 'Dans l’adresse du document Grist : https://…/o/…/<identifiant>/… (le même pour l’adhésion, les activités et la présence)' },
+			{ nom: 'GRIST_API_KEY', label: 'Clé d’API Grist', type: 'cle', obligatoire: true, aide: 'Grist → Paramètres du compte → Clé d’API.' },
+		],
+	},
+	presence: {
+		label: 'Présence « Je participe »',
+		description:
+			'Page /je-participe et son lien rapide sur téléphone : pendant une séance, chaque membre inscrit·e signale sa présence (ou son absence), écrite dans la table Grist « Presence ».',
+		actifParDefaut: true,
+		heriteDe: 'adhesion',
+		structures: ['association'],
+		icon: 'fa-hand',
+		doc: 'src/plugins/presence/README.md',
+		env: [
+			{ nom: 'GRIST_API_KEY', aide: 'Clé d’API Grist du document de l’association, dans le .env.' },
+			{ nom: 'GRIST_DOC_ID', aide: 'Identifiant du document Grist de l’association (adhésion, activités, présence), dans le .env.' },
+		],
+		secrets: [
+			{ nom: 'GRIST_BASE_URL', label: 'Adresse de l’instance Grist', type: 'url', obligatoire: true, aide: 'Ex. https://grist.exemple.fr' },
+			{ nom: 'GRIST_DOC_ID', label: 'Identifiant du document de l’association', type: 'identifiant', obligatoire: true, aide: 'Dans l’adresse du document Grist : https://…/o/…/<identifiant>/… (le même pour l’adhésion, les activités et la présence)' },
+			{ nom: 'GRIST_API_KEY', label: 'Clé d’API Grist', type: 'cle', obligatoire: true, aide: 'Grist → Paramètres du compte → Clé d’API.' },
+		],
 	},
 	facturation: {
 		label: 'Devis et facturation',
@@ -154,6 +220,16 @@ export type PluginId = keyof typeof PLUGINS;
  */
 export const PLUGINS_DEVENUS_EXTENSIONS: readonly string[] = ['rdv'];
 
+/**
+ * Anciens plugins devenus outils d'un autre (0.5.23 : `inscription` → outil
+ * du plugin `activites`) : leur clé sous `plugins:` de `reglages.yaml` vaut
+ * pour l'outil tant que `outils:` n'en dit rien ; réécrite à l'enregistrement
+ * du plugin dans le module « Plugins ».
+ */
+export const PLUGINS_DEVENUS_OUTILS: Readonly<Record<string, { plugin: PluginId; outil: string }>> = {
+	inscription: { plugin: 'activites', outil: 'inscription' },
+};
+
 export const PLUGIN_IDS = Object.keys(PLUGINS) as PluginId[];
 
 /** État d'un plugin quand `reglages.yaml` n'en dit rien. */
@@ -167,6 +243,11 @@ export function proposePour(id: PluginId, structure: Structure): boolean {
 	return !structures || structures.includes(structure);
 }
 
+/** Outils du plugin `id` (catalogue). */
+export function outilsDe(id: PluginId): readonly OutilPlugin[] {
+	return (PLUGINS[id] as PluginInfo).outils ?? [];
+}
+
 /** Plugins requis par `id` (`requiert`). */
 export function requis(id: PluginId): PluginId[] {
 	return [...((PLUGINS[id] as PluginInfo).requiert ?? [])] as PluginId[];
@@ -174,13 +255,44 @@ export function requis(id: PluginId): PluginId[] {
 
 /**
  * Plugins réellement actifs d'après `plugins:` de `reglages.yaml` : valeur
- * écrite, sinon `actifParDefaut` ; inactif s'il n'est pas proposé au type
+ * écrite, sinon celle de `heriteDe`, sinon `actifParDefaut` ; inactif s'il n'est pas proposé au type
  * de structure (`structure:`) ou si un plugin requis l'est.
  */
 export function resoudrePlugins(lus: Partial<Record<string, unknown>>, structure: Structure = 'association'): Record<PluginId, boolean> {
-	const voulu = (id: PluginId) =>
-		proposePour(id, structure) && (typeof lus[id] === 'boolean' ? (lus[id] as boolean) : actifParDefaut(id));
+	const ecrit = (id: string) => (typeof lus[id] === 'boolean' ? (lus[id] as boolean) : undefined);
+	const voulu = (id: PluginId) => {
+		const parent = (PLUGINS[id] as PluginInfo).heriteDe;
+		return proposePour(id, structure) && (ecrit(id) ?? (parent ? ecrit(parent) : undefined) ?? actifParDefaut(id));
+	};
 	const actif = (id: PluginId, vus: PluginId[] = []): boolean =>
 		voulu(id) && requis(id).every((r) => !vus.includes(r) && actif(r, [...vus, id]));
 	return Object.fromEntries(PLUGIN_IDS.map((id) => [id, actif(id)])) as Record<PluginId, boolean>;
+}
+
+/**
+ * Outils allumés de chaque plugin : `outils.<plugin>.<outil>` de
+ * `reglages.yaml`, sinon l'ancienne clé `plugins.<ancien>`
+ * (`PLUGINS_DEVENUS_OUTILS`), sinon allumé ; tous éteints si le plugin est
+ * inactif (`actifs`, cf. `resoudrePlugins()`).
+ */
+export function resoudreOutils(
+	lusPlugins: Partial<Record<string, unknown>>,
+	lusOutils: Partial<Record<string, unknown>>,
+	actifs: Record<PluginId, boolean>,
+): Record<PluginId, Record<string, boolean>> {
+	const ancienne = (plugin: PluginId, outil: string) => {
+		const cle = Object.keys(PLUGINS_DEVENUS_OUTILS).find((k) => PLUGINS_DEVENUS_OUTILS[k].plugin === plugin && PLUGINS_DEVENUS_OUTILS[k].outil === outil);
+		return cle && typeof lusPlugins[cle] === 'boolean' ? (lusPlugins[cle] as boolean) : undefined;
+	};
+	return Object.fromEntries(
+		PLUGIN_IDS.map((id) => {
+			const lus = (lusOutils[id] && typeof lusOutils[id] === 'object' ? lusOutils[id] : {}) as Record<string, unknown>;
+			return [
+				id,
+				Object.fromEntries(
+					outilsDe(id).map((o) => [o.id, actifs[id] && (typeof lus[o.id] === 'boolean' ? (lus[o.id] as boolean) : (ancienne(id, o.id) ?? true))]),
+				),
+			];
+		}),
+	) as Record<PluginId, Record<string, boolean>>;
 }

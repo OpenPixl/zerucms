@@ -3,7 +3,7 @@ import { Image } from 'astro:assets';
 import Button from '../ui/Button.astro';
 import { association } from '../../lib/association';
 import { inlineMarkdownHtml } from '../../lib/inline-markdown';
-import { lienAdhesionIndisponible } from '../../plugins/adhesion';
+import { lienPluginIndisponible } from '../../lib/liens-plugins';
 
 interface Props {
 	title?: string;
@@ -75,7 +75,7 @@ const overlayClass = {
 		/>
 		<div class="mt-8 flex flex-wrap items-center justify-center gap-4">
 			{primaryHref && primaryLabel && <Button href={primaryHref} variant="primary">{primaryLabel}</Button>}
-			{secondaryHref && secondaryLabel && !lienAdhesionIndisponible(secondaryHref) && <Button href={secondaryHref} variant="outline">{secondaryLabel}</Button>}
+			{secondaryHref && secondaryLabel && !lienPluginIndisponible(secondaryHref) && <Button href={secondaryHref} variant="outline">{secondaryLabel}</Button>}
 		</div>
 	</div>
 </section>

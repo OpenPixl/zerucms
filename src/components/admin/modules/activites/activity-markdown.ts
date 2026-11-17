@@ -7,7 +7,7 @@
  * src/lib/activity-writer.ts) ; l'adresse, l'ordre et la photo restent dans
  * le formulaire. Le serveur revalide tout à l'enregistrement.
  */
-import { TYPES_ACTIVITE_INSCRIPTION } from '../../../../plugins/adhesion/lib/choices';
+import { TYPES_ACTIVITE_INSCRIPTION } from '../../../../lib/grist-asso/choices';
 import { contentKindProblem } from '../../content-import';
 import { buildMarkdownFile, downloadMarkdown, keyWarnings, parseMarkdownFile, textField } from '../../markdown-file';
 

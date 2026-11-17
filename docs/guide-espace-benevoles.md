@@ -143,7 +143,7 @@ compte), après le changement de mot de passe, une fenêtre **« Installation
 du site »** s'ouvre :
 
 0. **Structure** : **Association** ou **Auto-entrepreneur**. Ce choix décide
-   des plugins proposés (adhésion et inscription pour une association,
+   des plugins proposés (adhésion, activités et présence pour une association,
    devis et facturation pour un auto-entrepreneur, rendez-vous pour les
    deux), du vocabulaire de l'Espace Admin (module « Association » ou
    « Entreprise »), des mentions légales (RNA et président·e, ou SIRET et
@@ -156,8 +156,9 @@ du site »** s'ouvre :
    logo. Le reste (présentation, réseaux, mentions légales, couleurs) :
    **Paramètres → Association**.
 3. **Plugins** : tous décochés au départ ; cochez les volets utiles
-   (Adhésion, Inscription, Rendez-vous). Cocher un plugin coche ceux qu'il
-   requiert.
+   (ex. Adhésion, Activités, Présence). Cocher un plugin coche ceux qu'il
+   requiert. Les outils du plugin Activités (planning, inscription) sont
+   allumés : on les éteint ensuite un à un dans le module **Plugins**.
 4. **Réglages** des plugins cochés : adresse et identifiant du document
    Grist, clé d'API… Les **secrets** (clés, identifiants) sont gardés sur le
    serveur dans `data/installation/secrets.env` (droits 600, jamais dans
@@ -357,19 +358,21 @@ ferme l'éditeur. Chaque modification et chaque suppression (avec son motif)
 est notée dans le journal.
 
 **Plugins** (super admin seulement) : outils livrés avec le site que la
-structure active ou non, selon son type (association : adhésion et activités
-— adhésion en ligne, « Je participe », planning Grist —, inscription aux
-activités, toutes deux actives par défaut ; auto-entrepreneur : devis et
-facturation). Désactiver
-l'adhésion retire du site ses pages, le bouton « Adhérer », « Je participe »
-et les séances Grist du planning, **et l'inscription**, qui en a besoin (la
-page de l'adhésion le rappelle ; l'inscription ne peut pas être activée
-sans elle). Désactiver l'inscription seule retire la page `/inscription` et
-le bouton « S'inscrire » des fiches d'activité. La liste montre chaque
+structure active ou non, selon son type (association : **Adhésion**
+— pages `/adherer`, bouton « Adhérer » —, **Activités** et **Présence « Je
+participe »**, tous trois actifs par défaut et indépendants ;
+auto-entrepreneur : devis et facturation). Le plugin Activités a deux
+**outils**, chacun avec son **interrupteur** dans la page de configuration
+(rubrique « Outils ») : **planning des activités** (calendrier de la page
+Activités) et **inscription aux activités** (page `/inscription`, bouton
+« S'inscrire » des fiches). Éteindre un outil le retire du site, le reste
+du plugin restant en place ; désactiver le plugin éteint les deux. Le
+calendrier éteint, la page Activités ne montre plus que les fiches (sauf
+permanences d'une extension, comme la prise de RDV). La liste montre chaque
 plugin et son état (actif, inactif, ou activation / désactivation en attente
 de publication) ; l'icône **paramètres** (roue dentée) ouvre sa page de
 configuration, un seul formulaire : description, documentation, ce qui lui
-manque, la case **Plugin actif**, puis ses réglages par rubrique — pour la
+manque, la case **Plugin actif**, les interrupteurs de ses outils, puis ses réglages par rubrique — pour la
 facturation : **adresse de la page** « Demander un devis » (refusée si une
 page du site l'utilise déjà ; les liens déjà écrits vers l'ancienne adresse
 ne changent pas) et **document Grist** (adresse de l'instance, identifiant du
@@ -693,6 +696,19 @@ d'inscription en présélectionnant les activités Grist correspondantes :
   d'inscription est fermé.
 
 Détail : [inscription.md](inscription.md#présélection).
+
+#### Annoncer une activité (onglet « Partage »)
+
+En modification, l'onglet **Partage** de la fiche propose **Créer
+l'actualité et publier** (ou **Créer sans publier**) : une actualité datée
+du jour est créée à partir de la fiche **enregistrée** (titre, résumé,
+catégorie, texte, photo). Sur le site, elle se termine par **Voir
+l'activité** et **S'inscrire** (si le bouton est possible pour cette
+fiche). Enregistrez d'abord les modifications de la fiche en cours.
+
+Les actualités déjà créées depuis la fiche sont listées sous le bouton ;
+elles se retouchent ou se suppriment dans le module **Actualités** (le lien
+vers l'activité est gardé).
 
 #### Modifier, réordonner, supprimer
 

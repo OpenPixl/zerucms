@@ -13,7 +13,7 @@ import type {
 	MembreEtat,
 	MembrePayload,
 	Mode,
-} from '../../lib/types';
+} from '../../../../lib/grist-asso/types';
 
 const props = defineProps<{
 	mode: Mode;

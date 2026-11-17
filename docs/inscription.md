@@ -10,10 +10,12 @@ activité, ou directement à l'adresse `/inscription`.
 > aussi inscrire à des activités au passage. Les deux formulaires écrivent
 > dans la même table Grist `Inscription`.
 
-> Plugin **`inscription`** (actif par défaut, requiert le plugin `adhesion`) :
-> code dans `src/plugins/inscription/`, voir [son README](../src/plugins/inscription/README.md).
-> `plugins: { inscription: false }` dans `reglages.yaml` retire la page et
-> le bouton « S'inscrire » des fiches.
+> Outil **« Inscription aux activités »** du plugin `activites` (allumé par
+> défaut) : code dans `src/plugins/activites/` (`pages/inscription.astro`,
+> `api/`, `formulaire/`), voir [son README](../src/plugins/activites/README.md).
+> L'éteindre (interrupteur du module « Plugins », ou
+> `outils: { activites: { inscription: false } }` dans `reglages.yaml`)
+> retire la page et le bouton « S'inscrire » des fiches.
 
 ## Le parcours en 3 étapes
 
@@ -42,7 +44,7 @@ La personne choisit son profil :
 
 Activités Grist (table `Activite`) de la **saison en cours** et de **type
 `Séances`, `Ateliers` ou `Atelier CN`** (`TYPES_ACTIVITE_INSCRIPTION` dans
-`src/plugins/adhesion/lib/choices.ts`) : parcours, FabLab, ateliers et ateliers du
+`src/lib/grist-asso/choices.ts`) : parcours, FabLab, ateliers et ateliers du
 Conseiller Numérique. Pour un·e non-adhérent·e, l'animateur·rice formalise
 l'adhésion ensuite. Route : `GET /api/inscription/offre`.
 
@@ -218,17 +220,18 @@ présence (voir [api.md](api.md)).
 
 | Élément | Rôle |
 | :--- | :--- |
-| `src/plugins/inscription/pages/inscription.astro` | Page `/inscription` ; monte l'îlot Vue dans un `<FormGate form="inscription">`. |
-| `src/plugins/inscription/formulaire/InscriptionForm.vue` | Îlot `client:load` : enchaînement des étapes, relais des paramètres `?activite=`/`?type=`, tarif mis en avant, appels API. |
-| `src/plugins/inscription/formulaire/EtapeProfil.vue` | Étape 1 : choix adhérent·e / extérieur·e, recherche ou saisie, choix parmi les homonymes. |
-| `src/plugins/inscription/formulaire/EtapeActivite.vue` | Étape 2 : liste des activités, tarif adhérent·e / non-adhérent·e, places restantes, « Complet », mode préinscription. |
-| `src/plugins/inscription/formulaire/EtapeRecap.vue` | Étape 3 : confirmation, liste d'attente, tarif, rappel du règlement. |
+| `src/plugins/activites/pages/inscription.astro` | Page `/inscription` ; monte l'îlot Vue dans un `<FormGate form="inscription">`. |
+| `src/plugins/activites/formulaire/InscriptionForm.vue` | Îlot `client:load` : enchaînement des étapes, relais des paramètres `?activite=`/`?type=`, tarif mis en avant, appels API. |
+| `src/plugins/activites/formulaire/EtapeProfil.vue` | Étape 1 : choix adhérent·e / extérieur·e, recherche ou saisie, choix parmi les homonymes. |
+| `src/plugins/activites/formulaire/EtapeActivite.vue` | Étape 2 : liste des activités, tarif adhérent·e / non-adhérent·e, places restantes, « Complet », mode préinscription. |
+| `src/plugins/activites/formulaire/EtapeRecap.vue` | Étape 3 : confirmation, liste d'attente, tarif, rappel du règlement. |
 | `src/pages/activites/[category]/[slug].astro` | Bouton « S'inscrire » (condition `activity.inscription && isFormOpen('inscription')`). |
 | `src/lib/activites.ts` | Champs `inscription` (`frontmatter.inscription !== false`) et `inscriptionHref` (construit depuis `activiteGrist` / `typeGrist`). |
-| `src/plugins/adhesion/lib/activite-option.ts` | Ligne `Activite` → option (tarifs, places), partagé avec le parcours d'adhésion. |
+| `src/lib/grist-asso/activite-option.ts` | Ligne `Activite` → option (tarifs, places), partagé avec le parcours d'adhésion. |
 
-Routes API utilisées (communes avec le parcours d'adhésion, client
-`adhesionApi` de `src/plugins/adhesion/formulaire/adhesion/client.ts`, détail dans
+Routes API utilisées (communes avec le parcours d'adhésion,
+`src/lib/grist-asso/api/`, client `membresApi` de
+`src/lib/grist-asso/client.ts`, détail dans
 [api.md](api.md)) :
 
 | Route | Méthode | Usage dans ce formulaire |

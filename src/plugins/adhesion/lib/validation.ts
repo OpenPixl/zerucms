@@ -2,8 +2,8 @@
  * Validation côté client (messages inline). Le serveur revalide de toute façon
  * (voir membre-fields.ts) — ceci ne sert qu'à guider la saisie.
  */
-import { GENRE_CHOICES } from './choices';
-import type { ContactPayload, MembrePayload } from './types';
+import { GENRE_CHOICES } from '../../../lib/grist-asso/choices';
+import type { ContactPayload, MembrePayload } from '../../../lib/grist-asso/types';
 
 import type { Errors } from '../../../lib/http';
 export type { Errors };

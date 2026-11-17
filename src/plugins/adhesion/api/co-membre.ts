@@ -9,8 +9,8 @@ import {
 	TABLES,
 	updateRecord,
 	updateRecords,
-} from '../lib/grist';
-import { membreFieldsForGrist, validateMembrePayload } from '../lib/membre-fields';
+} from '../../../lib/grist-asso/grist';
+import { membreFieldsForGrist, validateMembrePayload } from '../../../lib/grist-asso/membre-fields';
 import { json } from '../../../lib/http';
 
 export const prerender = false;

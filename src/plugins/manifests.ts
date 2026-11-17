@@ -7,7 +7,8 @@
 import type { envField } from 'astro/config';
 import type { PluginId } from './catalogue';
 import adhesion from './adhesion/plugin';
-import inscription from './inscription/plugin';
+import activites from './activites/plugin';
+import presence from './presence/plugin';
 import facturation from './facturation/plugin';
 
 export interface PluginManifest {
@@ -16,8 +17,10 @@ export interface PluginManifest {
 	 * Routes ajoutées si le plugin est actif ; `entrypoint` relatif à la racine
 	 * du projet. Fonction de la racine : une adresse peut venir d'un fichier
 	 * de l'association (lu sans `?raw`, la config Astro ne le charge pas).
+	 * `outil` : route d'un outil du plugin (`outils` du catalogue), ajoutée
+	 * seulement s'il est allumé.
 	 */
-	routes: (root: URL) => { pattern: string; entrypoint: string }[];
+	routes: (root: URL) => { pattern: string; entrypoint: string; outil?: string }[];
 	/**
 	 * Variables d'environnement du plugin, déclarées qu'il soit actif ou non
 	 * (son code est toujours vérifié par `astro check`). Toutes facultatives.
@@ -25,4 +28,4 @@ export interface PluginManifest {
 	env: Record<string, ReturnType<typeof envField.string>>;
 }
 
-export const PLUGIN_MANIFESTS: PluginManifest[] = [adhesion, inscription, facturation];
+export const PLUGIN_MANIFESTS: PluginManifest[] = [adhesion, activites, presence, facturation];

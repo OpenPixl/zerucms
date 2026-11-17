@@ -18,7 +18,7 @@ import type {
 	MembrePayload,
 	MembreRecherche,
 	Mode,
-} from '../../lib/types';
+} from '../../../../lib/grist-asso/types';
 
 defineProps<{
 	/** Partenaires où régler sa cotisation (`relais: true` de `src/content/partenaires.yaml`). */

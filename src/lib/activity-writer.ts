@@ -28,7 +28,7 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Document, parseDocument } from 'yaml';
-import { TYPES_ACTIVITE_INSCRIPTION } from '../plugins/adhesion/lib/choices';
+import { TYPES_ACTIVITE_INSCRIPTION } from './grist-asso/choices';
 import { categories } from './categories';
 import { contentTransaction, type Applied } from './content-transaction';
 import { checkBody, COVER_ERROR, siteRoot, slugify, writeCover, type CoverChange } from './news-writer';

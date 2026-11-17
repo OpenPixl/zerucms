@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { DISPO_ATTENTE } from '../../lib/choices';
-import type { ActiviteOption, GroupeMembre, InscriptionLigne } from '../../lib/types';
-import { formatPrix } from './format';
+import { DISPO_ATTENTE } from '../../../../lib/grist-asso/choices';
+import type { ActiviteOption, GroupeMembre, InscriptionLigne } from '../../../../lib/grist-asso/types';
+import { formatPrix } from '../../../../lib/grist-asso/format';
 
 const props = defineProps<{
 	options: ActiviteOption[];

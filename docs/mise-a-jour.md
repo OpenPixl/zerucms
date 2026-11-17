@@ -117,7 +117,7 @@ sont présents, sinon Node seul) ; `--docker` / `--node` pour l'imposer.
 `SITE_URL` doit être dans le `.env`.
 
 ⚠️ **Plugins** (volets activables, [src/plugins/README.md](../src/plugins/README.md)) :
-ils sont inactifs par défaut (sauf l'adhésion et l'inscription). Quand une version transforme en plugin un volet
+ils sont inactifs par défaut (sauf l'adhésion). Quand une version transforme en plugin un volet
 que le site utilise déjà, ajouter **avant** la mise à jour dans
 `src/content/reglages.yaml` :
 
@@ -135,6 +135,18 @@ présence et planning Grist restent en place. Une association qui n'en veut
 pas écrit `adhesion: false` (retire aussi l'inscription) ou
 `inscription: false` sous `plugins:`, ou les désactive dans le module
 « Plugins ».
+
+**Adhésion, Activités, Présence (0.5.23)** : l'ancien plugin `adhesion`
+est découpé en trois plugins indépendants, actifs par défaut : `adhesion`
+(adhésion en ligne), `activites` (outils **planning** de `/activites` et
+**inscription** aux activités, chacun avec son interrupteur dans la page de
+configuration du module « Plugins », écrit sous `outils:` de
+`reglages.yaml`) et `presence` (« Je participe ») ; le plugin `inscription`
+n'existe plus. Rien à faire : sans valeur écrite, `activites` et
+`presence` suivent `adhesion` (un site qui l'avait coupé les garde
+coupés), un ancien `inscription: false` sous `plugins:` éteint l'outil
+inscription ; le premier enregistrement depuis le module « Plugins »
+écrit ces états explicitement.
 
 **Prise de RDV devenue extension (0.5.20)** : le code de la prise de RDV
 n'est plus livré avec le CMS ; c'est l'extension `rdv` (dépôt

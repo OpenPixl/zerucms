@@ -5,9 +5,9 @@ import {
 	GristError,
 	listRecords,
 	TABLES,
-} from '../lib/grist';
+} from '../../../lib/grist-asso/grist';
 import { json, toNumberOrNull } from '../../../lib/http';
-import type { CotisationOption } from '../lib/types';
+import type { CotisationOption } from '../../../lib/grist-asso/types';
 
 export const prerender = false;
 

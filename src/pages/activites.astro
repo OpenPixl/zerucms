@@ -5,7 +5,7 @@ import ActivitesSection from '../components/sections/ActivitesSection.astro';
 import WeeklyAgenda from '../components/sections/WeeklyAgenda.astro';
 import { association } from '../lib/association';
 import { seancesExtensions } from '../lib/extensions-site';
-import { planningActivites } from '../plugins/adhesion';
+import { planningActivites, planningAffiche } from '../plugins/activites';
 
 import { getSitePage } from '../lib/site-pages-content';
 
@@ -17,7 +17,8 @@ const page = await getSitePage('activites');
 if (!page.active) return new Response(null, { status: 404 });
 const { t } = page;
 
-// Séances lues dans Grist (plugin adhésion, aucune s'il est inactif) et
+// Séances lues dans Grist (outil « Planning » du plugin activités, aucune s'il
+// est éteint ou le plugin inactif) et
 // celles des extensions (ex. permanences de prise de RDV). Grist injoignable :
 // pas de planning figé (il deviendrait vite faux), celles des extensions
 // seules et un avertissement.
@@ -33,6 +34,9 @@ try {
 		'Le planning des activités est momentanément indisponible. ' +
 		'Contactez-nous pour connaître les horaires des séances.';
 }
+// Calendrier affiché si l'outil « Planning » est allumé, ou pour les séances
+// des extensions (ex. permanences de prise de RDV) s'il y en a.
+const agendaVisible = planningAffiche() || sessions.length > 0;
 ---
 
 <Layout
@@ -48,7 +52,7 @@ try {
 	/>
 	<ActivitesSection showHeading={false} />
 
-	<WeeklyAgenda sessions={sessions} notice={notice} class="border-t border-gray-100" />
+	{agendaVisible && <WeeklyAgenda sessions={sessions} notice={notice} class="border-t border-gray-100" />}
 
 	<section class="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
 		<h2 class="text-2xl text-gray-900">{t['bas-titre']}</h2>

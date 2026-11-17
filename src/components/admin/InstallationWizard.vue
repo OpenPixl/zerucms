@@ -78,8 +78,19 @@ const requisManquants = (p: InstallationPlugin) => p.requiert.filter((r) => !plu
 /** Plugins proposés au type de structure choisi. */
 const proposes = computed(() => (etat.value?.plugins ?? []).filter((p) => !p.structures.length || p.structures.includes(structure.value)));
 const actifs = computed(() => proposes.value.filter((p) => plugins.value[p.id] && !requisManquants(p).length));
+/**
+ * Secrets à saisir pour chaque plugin coché : un secret commun à plusieurs
+ * (ex. document Grist de l'association : adhésion, activités, présence)
+ * n'est demandé qu'une fois, dans le premier qui en a besoin.
+ */
+const secretsAffiches = computed(() => {
+	const vus = new Set<string>();
+	return Object.fromEntries(
+		actifs.value.map((p) => [p.id, p.secrets.filter((s) => !vus.has(s.nom) && vus.add(s.nom))]),
+	) as Record<string, InstallationPlugin['secrets']>;
+});
 /** Plugins actifs ayant quelque chose à régler. */
-const aRegler = computed(() => actifs.value.filter((p) => p.secrets.length || p.champs.length));
+const aRegler = computed(() => actifs.value.filter((p) => secretsAffiches.value[p.id].length || p.champs.length));
 
 function basculer(p: InstallationPlugin) {
 	plugins.value[p.id] = !plugins.value[p.id];
@@ -381,7 +392,7 @@ const reload = () => window.location.reload();
 					<i class="fa-solid mr-1.5 text-primary" :class="p.icon" aria-hidden="true"></i>{{ p.label }}
 				</legend>
 				<div class="space-y-4">
-					<div v-for="s in p.secrets" :key="s.nom">
+					<div v-for="s in secretsAffiches[p.id]" :key="s.nom">
 						<label :for="`inst-${s.nom}`" :class="libelleChamp">
 							{{ s.label }}
 							<span v-if="!s.obligatoire" class="font-light text-gray-500">(facultatif)</span>

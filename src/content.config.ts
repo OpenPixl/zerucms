@@ -55,6 +55,11 @@ const news = defineCollection({
 			cover: image().optional(),
 			/** Légende de la photo sur la page de détail (défaut : « Photo : <association> »). */
 			imageCredit: z.string().optional(),
+			/**
+			 * Activité liée (nom du dossier de la fiche) : actualité créée depuis
+			 * l'onglet « Partage » d'une activité, terminée par « S'inscrire ».
+			 */
+			activite: z.string().optional(),
 		}),
 });
 

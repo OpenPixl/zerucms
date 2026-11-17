@@ -115,12 +115,15 @@ Nouvelle variable : l'ajouter à `env.schema` (`astro.config.mjs`) — ou à
 
 ## Formulaire d'adhésion
 
-> Adhésion, présence et planning Grist forment le plugin `adhesion` (actif
-> par défaut) : code dans `src/plugins/adhesion/`, routes `/api/adhesion/*`
-> et `/api/presence/*` ajoutées seulement s'il est actif — voir [son
-> README](../src/plugins/adhesion/README.md). L'inscription à une activité
-> est le plugin `inscription` (routes `/api/inscription/*`, requiert
-> l'adhésion) : [son README](../src/plugins/inscription/README.md).
+> Trois plugins indépendants lisent le document Grist de l'association
+> (actifs par défaut) : `adhesion` (`/adherer`, routes `/api/adhesion/*`,
+> [README](../src/plugins/adhesion/README.md)), `activites` (planning de
+> `/activites` et inscription : `/inscription`, `/api/inscription/*`,
+> [README](../src/plugins/activites/README.md)) et `presence`
+> (`/je-participe`, `/api/presence/*`, [README](../src/plugins/presence/README.md)).
+> Code commun (client Grist, types, routes `/api/adhesion/membre`, `membres`,
+> `inscription`) : `src/lib/grist-asso/`, routes ajoutées dès qu'un des
+> plugins qui s'en sert est actif.
 
 > Vue fonctionnelle du parcours (schéma + étape par étape, pour former des
 > utilisateurs) : [adhesion-parcours.md](adhesion-parcours.md). Ci-dessous, le
@@ -144,9 +147,9 @@ Nouvelle variable : l'ajouter à `env.schema` (`astro.config.mjs`) — ou à
 
 Les appels réseau passent par `src/plugins/adhesion/formulaire/adhesion/client.ts`.
 
-### Routes API (`src/plugins/adhesion/api/`)
+### Routes API (`src/plugins/adhesion/api/`, `src/lib/grist-asso/api/`, `src/plugins/activites/api/`, `src/plugins/presence/api/`)
 
-Toutes en `prerender = false`. Elles ne parlent à Grist qu'à travers `src/plugins/adhesion/lib/grist.ts`.
+Toutes en `prerender = false`. Elles ne parlent à Grist qu'à travers `src/lib/grist-asso/grist.ts`.
 
 | Route | Méthode | Rôle |
 | :--- | :--- | :--- |
@@ -185,7 +188,7 @@ attendu compris).
 ## Planning hebdomadaire (Activite)
 
 `src/pages/activites.astro` (`prerender = false`) lit à chaque requête la
-table **`Activite`** via `src/plugins/adhesion/lib/planning.ts`
+table **`Activite`** via `src/plugins/activites/lib/planning.ts`
 (`fetchPlanningAgenda()`) et l'affiche avec `WeeklyAgenda.astro`. Chaque
 ligne `Activite` est déjà un créneau précis (jour, horaires, lieu,
 encadrant·e·s) — pas de table séparée : seules les lignes `Publiee = true`
@@ -205,7 +208,7 @@ momentanément indisponible » (prop `notice` de `WeeklyAgenda`). Plus de
 planning figé de secours : il devenait faux sans que personne le voie.
 
 Colonnes du planning sur `Activite` (mapping `COLS.activite` dans
-`src/plugins/adhesion/lib/grist.ts`), en plus de celles déjà utilisées par
+`src/lib/grist-asso/grist.ts`), en plus de celles déjà utilisées par
 l'adhésion (`Nom`, `Saison`…) :
 
 | Colonne | Type Grist | Rôle |
@@ -222,11 +225,11 @@ l'adhésion (`Nom`, `Saison`…) :
 
 ## Présence (« Je participe »)
 
-`/je-participe` (îlot Vue `src/plugins/adhesion/formulaire/presence/PresenceForm.vue`, `client:load`) permet à un membre de signaler sa présence — ou son absence — à la séance en cours, sans système de connexion : l'identification se fait par sélection dans une liste (recherche par nom, route déjà publique `/api/adhesion/membres`), mémorisée ensuite en `localStorage` sur l'appareil (`changerMembre()` permet de ré-choisir, ex. appareil partagé).
+`/je-participe` (îlot Vue `src/plugins/presence/formulaire/PresenceForm.vue`, `client:load`) permet à un membre de signaler sa présence — ou son absence — à la séance en cours, sans système de connexion : l'identification se fait par sélection dans une liste (recherche par nom, route déjà publique `/api/adhesion/membres`), mémorisée ensuite en `localStorage` sur l'appareil (`changerMembre()` permet de ré-choisir, ex. appareil partagé).
 
 ### Détection de la séance en cours
 
-`fetchSeancesCourantes(membreId)` (`src/plugins/adhesion/lib/presence.ts`) reprend les lignes `Activite` publiées de la saison en cours (mêmes critères que le planning), **restreintes à celles où le membre a une `Inscription`** (table `Inscription`, cf. parcours d'adhésion), et ne retient que celles dont l'horaire couvre l'instant présent (marge de 15 min avant le début, jusqu'à la fin). 0, 1 ou plusieurs séances peuvent correspondre à la fois (ex. deux créneaux qui se chevauchent) — la page affiche alors un bouton « Je participe » / « Je ne pourrai pas venir » par séance candidate. `enregistrerPresence()` revérifie cette inscription avant d'écrire (au cas où la liste affichée serait périmée) et renvoie `non-inscrit` sinon.
+`fetchSeancesCourantes(membreId)` (`src/plugins/presence/lib/presence.ts`) reprend les lignes `Activite` publiées de la saison en cours (mêmes critères que le planning), **restreintes à celles où le membre a une `Inscription`** (table `Inscription`, cf. parcours d'adhésion), et ne retient que celles dont l'horaire couvre l'instant présent (marge de 15 min avant le début, jusqu'à la fin). 0, 1 ou plusieurs séances peuvent correspondre à la fois (ex. deux créneaux qui se chevauchent) — la page affiche alors un bouton « Je participe » / « Je ne pourrai pas venir » par séance candidate. `enregistrerPresence()` revérifie cette inscription avant d'écrire (au cas où la liste affichée serait périmée) et renvoie `non-inscrit` sinon.
 
 ### Table `Presence`
 
@@ -241,7 +244,7 @@ Une ligne par **séance** (`Activite` × `Date`, calculée côté serveur = aujo
 
 `enregistrerPresence()` relit la ligne de la séance (ou la crée si absente), vérifie que le membre n'est pas déjà dans la liste visée (`Presents` ou `Absents`) puis réécrit la liste complète — pas d'opération atomique « ajouter un élément » côté API Grist. Suffisant pour une petite association ; pas garanti à l'abri d'une double-écriture si deux personnes valident à la même seconde.
 
-### Routes API (`src/plugins/adhesion/api/presence/`)
+### Routes API (`src/plugins/presence/api/`)
 
 | Route | Méthode | Rôle |
 | :--- | :--- | :--- |
@@ -250,9 +253,9 @@ Une ligne par **séance** (`Activite` × `Date`, calculée côté serveur = aujo
 
 ### Mapping Grist — le seul point à ajuster
 
-`src/plugins/adhesion/lib/grist.ts` centralise tout ce qui dépend du schéma : `TABLES` (défauts = `Membres` / `Adhesions` / `Inscription` / `Cotisation` / `Activite` / `Saisons` / `Presence`, surchargeables par variables d'environnement), `COLS`, les valeurs de listes de choix (`GENRE_CHOICES`, `ROLE_*`, `STATUT_IMPAYE`, `DISPO_*`), et les helpers `dateToEpochSeconds` / `refList` / `parseRefList` / `currentSaisonId`.
+`src/lib/grist-asso/grist.ts` centralise tout ce qui dépend du schéma : `TABLES` (défauts = `Membres` / `Adhesions` / `Inscription` / `Cotisation` / `Activite` / `Saisons` / `Presence`, surchargeables par variables d'environnement), `COLS`, les valeurs de listes de choix (`GENRE_CHOICES`, `ROLE_*`, `STATUT_IMPAYE`, `DISPO_*`), et les helpers `dateToEpochSeconds` / `refList` / `parseRefList` / `currentSaisonId`.
 
-`src/plugins/adhesion/lib/membre-fields.ts` porte la validation + conversion d'un membre **côté serveur** (partagée par `membre` et `co-membre`). `src/plugins/adhesion/lib/validation.ts` porte la validation **côté client** (`validateMembre` / `validateContact` / `validateRenouvellement`) : champs obligatoires, format courriel / code postal / téléphone (10 chiffres, au moins un des deux), date de naissance non future et plausible. Les composants passent le résultat à `MembreFields` via la prop `errors` et bloquent l'envoi tant qu'il reste une erreur ; le serveur revalide systématiquement.
+`src/lib/grist-asso/membre-fields.ts` porte la validation + conversion d'un membre **côté serveur** (partagée par `membre` et `co-membre`). `src/plugins/adhesion/lib/validation.ts` porte la validation **côté client** (`validateMembre` / `validateContact` / `validateRenouvellement`) : champs obligatoires, format courriel / code postal / téléphone (10 chiffres, au moins un des deux), date de naissance non future et plausible. Les composants passent le résultat à `MembreFields` via la prop `errors` et bloquent l'envoi tant qu'il reste une erreur ; le serveur revalide systématiquement.
 
 ### Bulletin d'adhésion en PDF
 

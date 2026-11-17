@@ -9,10 +9,10 @@ import {
 	refList,
 	STATUT_IMPAYE,
 	TABLES,
-} from '../lib/grist';
+} from '../../../lib/grist-asso/grist';
 import { isBulletinEnabled, signBulletinToken } from '../lib/bulletin';
 import { json, toNumberOrNull } from '../../../lib/http';
-import type { AdhesionResult, GroupeMembre } from '../lib/types';
+import type { AdhesionResult, GroupeMembre } from '../../../lib/grist-asso/types';
 
 export const prerender = false;
 

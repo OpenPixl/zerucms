@@ -53,13 +53,19 @@ share:
 # sur un site neuf : on les choisit dans l'assistant d'installation, puis
 # dans le module « Plugins » de l'Espace Admin. Changer une valeur demande
 # de reconstruire le site.
-#   adhesion    → adhésion en ligne et bulletin PDF, « Je participe »,
-#                 planning lu dans Grist
-#   inscription → /inscription et bouton « S'inscrire » des activités
-#                 (requiert adhesion : inactive aussi sans elle)
+#   adhesion  → adhésion en ligne (/adherer) et bulletin PDF
+#   activites → planning de la page /activites et inscription en ligne
+#   presence  → « Je participe » (/je-participe)
 # Développements propres à une structure : extensions (module « Extensions »),
 # pas des plugins.
-plugins: {adhesion: false, inscription: false}
+plugins: {adhesion: false, activites: false, presence: false}
+
+# Outils d'un plugin actif, à éteindre un à un (false ; absent = allumé),
+# aussi depuis sa page de configuration du module « Plugins ». Ex. :
+#   outils:
+#     activites:
+#       planning: false     → calendrier de la page /activites
+#       inscription: false  → /inscription et bouton « S'inscrire »
 
 # Formulaires en ligne. enabled: false ferme le formulaire : à sa place
 # s'affiche un encart avec closedTitle et closedMessage.
