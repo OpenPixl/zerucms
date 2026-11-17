@@ -1,8 +1,8 @@
 # Les plugins
 
 Un **plugin** est un outil courant, livré avec le CMS, qu'une structure
-active ou non selon son type (association ou auto-entrepreneur) : adhésion,
-inscription, facturation… Tout son code est rangé dans un seul dossier,
+active ou non selon son type (association ou auto-entrepreneur) : adhésion
+et activités, facturation… Tout son code est rangé dans un seul dossier,
 `src/plugins/<id>/`, et il ne laisse aucune trace dans le site quand il est
 inactif.
 
@@ -13,8 +13,9 @@ qui l'utilise — voir [docs/extensions.md](../../docs/extensions.md).
 
 | Plugin | Dossier | Contenu |
 | :--- | :--- | :--- |
-| `adhesion` | [`adhesion/`](adhesion/README.md) | Adhésion en ligne et bulletin PDF, présence, planning Grist — **actif par défaut**, associations seulement |
-| `inscription` | [`inscription/`](inscription/README.md) | Inscription aux activités (`/inscription`, bouton « S'inscrire ») — **actif par défaut**, requiert `adhesion`, associations seulement |
+| `adhesion` | [`adhesion/`](adhesion/README.md) | Adhésion en ligne et bulletin PDF — **actif par défaut**, associations seulement |
+| `activites` | [`activites/`](activites/README.md) | Outils : planning Grist de `/activites`, inscription aux activités — **actif par défaut**, associations seulement |
+| `presence` | [`presence/`](presence/README.md) | « Je participe » (`/je-participe`) — **actif par défaut**, associations seulement |
 | `facturation` | [`facturation/`](facturation/README.md) | Devis et factures dans Grist, PDF, page « Demander un devis » — **auto-entrepreneur seulement** |
 
 ## Activer ou désactiver un plugin
@@ -33,14 +34,38 @@ plugins:
 
 **Les plugins sont inactifs par défaut** : si rien n'est écrit, le volet
 n'existe pas sur le site. Exception : ceux marqués `actifParDefaut` dans le
-catalogue (aujourd'hui `adhesion` et `inscription`), présents tant que
+catalogue (aujourd'hui `adhesion`, `activites`, `presence`), présents tant que
 `reglages.yaml` ne dit pas `false`. Un plugin qui en **requiert** un autre
-(`requiert` du catalogue : `inscription` → `adhesion`) est inactif quand
+(`requiert` du catalogue, aucun aujourd'hui) est inactif quand
 celui-ci l'est, quoi que dise son propre réglage ; le module « Plugins »
 refuse de l'activer avant et prévient qu'en désactivant le premier, on
 retire aussi le second. Changer la valeur demande de **reconstruire** le site
 (`npm start` le fait tout seul au démarrage quand `src/content/` a changé ; en
 dev, le serveur redémarre de lui-même).
+
+### Outils d'un plugin
+
+Un plugin qui regroupe plusieurs outils (`outils` du catalogue : planning
+et inscription pour `activites`) les allume ou les
+éteint un à un, le plugin restant actif : interrupteurs de sa page de
+configuration (module « Plugins »), ou à la main :
+
+```yaml
+outils:
+  activites:
+    planning: false
+```
+
+Absent = allumé ; plugin inactif = tous éteints. Un outil éteint est traité
+comme un plugin inactif : ses routes (`outil` de la route dans le manifeste)
+ne sont pas construites, le reste du site le teste par
+`outilActif('<plugin>', '<outil>')` (`index.ts` du dossier) ou une fonction
+du plugin. Un ancien plugin devenu outil (`PLUGINS_DEVENUS_OUTILS` :
+`inscription`) garde sa clé `plugins.<ancien>` jusqu'au premier
+enregistrement depuis le module, qui la réécrit sous `outils:`. Un plugin
+**issu d'un autre** (`heriteDe` : `activites` et `presence`, sortis
+d'`adhesion` en 0.5.23) prend, sans valeur écrite, celle de l'autre ; le
+premier enregistrement d'un plugin depuis le module écrit son état.
 
 ⚠️ Avant de passer un site existant à une version qui introduit un plugin,
 ajouter `plugins: <id>: true` à son `reglages.yaml` s'il utilisait déjà ce
@@ -99,9 +124,12 @@ Un dossier vide n'est pas créé : chaque plugin n'a que ceux dont il a besoin.
 
 Un plugin n'importe jamais le dossier d'un autre, sauf celui d'un plugin
 qu'il **requiert** (`requiert` du catalogue : il est alors sûr qu'il est
-actif) — ainsi `inscription` utilise le code et les routes d'`adhesion`. Ce
+actif). Ce
 qui sert à des plugins indépendants
-vit dans `src/lib/` — `http.ts` (`json`, `normalize`, type `Errors`),
+vit dans `src/lib/` — `grist-asso/` (document Grist de l'association,
+commun à `adhesion`, `activites` et `presence` : client, types, routes
+communes déclarées par `routesGristAsso()` dans chaque manifeste et ajoutées
+une seule fois), `http.ts` (`json`, `normalize`, type `Errors`),
 `grist-error.ts` (`GristError`), `gotenberg.ts` (conversion HTML → PDF).
 Les variables Grist communes (`GRIST_BASE_URL`, `GRIST_API_KEY`) et Gotenberg
 sont déclarées dans `astro.config.mjs` ; le reste, dans le manifeste de chaque

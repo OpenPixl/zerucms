@@ -97,6 +97,8 @@ export interface ActivitySourceView extends ActivityInput {
 	cover: string | null;
 	/** Aperçu de la photo actuelle (site construit). */
 	coverUrl: string | null;
+	/** Actualités créées depuis l'onglet « Partage » (sources, brouillons compris). */
+	actualites: { slug: string; title: string; publishAt: string; isPublish: boolean; href: string }[];
 }
 
 /** Catégorie d'activités (`src/content/activites/_categories.yaml`), cf. src/lib/categories.ts. */
@@ -334,7 +336,19 @@ export interface PluginItem {
 	avertissements: { nom: string; aide: string }[];
 	secrets: { nom: string; utilise: string | null }[];
 	fichierReglages: string | null;
+	/** Outils du plugin, allumés ou éteints un à un (cf. `OutilState`). */
+	outils: PluginOutil[];
 	champs: PluginChamp[];
+}
+
+/** Outil d'un plugin (interrupteur de sa page de configuration). */
+export interface PluginOutil {
+	id: string;
+	label: string;
+	description: string;
+	icon: string;
+	actif: boolean;
+	enLigne: boolean;
 }
 
 /** Réglage d'un plugin (cf. `ChampState`, src/lib/plugin-writer.ts) : `valeur` du fichier, `repli` si vide. */
@@ -353,8 +367,8 @@ export interface PluginChamp {
 export const pluginsApi = {
 	list: () =>
 		request<{ plugins: PluginItem[]; status: PublishStatus; availability: { ok: boolean; reason?: string } }>('GET', '/api/admin/plugins'),
-	update: (id: string, actif: boolean, valeurs: Record<string, string>, options?: SaveOptions) =>
-		request<SaveResult>('PUT', saveUrl('/api/admin/plugins', options), { id, actif, valeurs }),
+	update: (id: string, actif: boolean, valeurs: Record<string, string>, options?: SaveOptions, outils?: Record<string, boolean>) =>
+		request<SaveResult>('PUT', saveUrl('/api/admin/plugins', options), { id, actif, valeurs, outils }),
 };
 
 /** Extensions installées (module « Extensions », super admin) : cf. src/pages/api/admin/extensions.ts. */
@@ -444,6 +458,9 @@ export const activitiesApi = {
 		request<SaveResult>('PUT', saveUrl(`/api/admin/activites/${slug}`, options), { activity, cover }),
 	remove: (slug: string, options?: SaveOptions) =>
 		request<SaveResult>('DELETE', saveUrl(`/api/admin/activites/${slug}`, options), { confirm: slug }),
+	/** Onglet « Partage » : actualité créée depuis la fiche enregistrée. */
+	createNews: (slug: string, options?: SaveOptions) =>
+		request<SaveResult>('POST', saveUrl(`/api/admin/activites/${slug}/actualite`, options)),
 	/** Nouvel ordre des fiches (par catégorie) et/ou des catégories, en une publication. */
 	saveOrder: (levels: Record<string, string[]>, categories: string[] | null, options?: SaveOptions) =>
 		request<SaveResult>('PUT', saveUrl('/api/admin/activites/ordre', options), { levels, categories: categories ?? undefined }),

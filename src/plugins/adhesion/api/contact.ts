@@ -5,7 +5,7 @@ import {
 	GristError,
 	ROLE_CONTACT,
 	TABLES,
-} from '../lib/grist';
+} from '../../../lib/grist-asso/grist';
 import { isNonEmptyString, json } from '../../../lib/http';
 
 export const prerender = false;

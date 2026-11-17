@@ -1,0 +1,21 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import PageHeader from '../../../components/sections/PageHeader.astro';
+import PresenceForm from '../formulaire/PresenceForm.vue';
+import { association } from '../../../lib/association';
+---
+
+<Layout
+	title={`Je participe · ${association.name}`}
+	description="Signalez votre présence ou votre absence à l'atelier du moment."
+	noindex
+	breadcrumbs={[{ label: 'Accueil', href: '/' }, { label: 'Je participe' }]}
+>
+	<PageHeader
+		slot="page-header"
+		title="Je participe à mon atelier"
+		description="Indiquez votre présence — ou prévenez de votre absence — pour la séance en cours."
+	/>
+
+	<PresenceForm client:load />
+</Layout>

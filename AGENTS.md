@@ -148,6 +148,11 @@ Fonctionnement technique :
   `page-writer.ts`), routes `/api/admin/activites*` (`ordre` = glisser-déposer
   ou flèches ↑/↓ par catégorie, `order` renuméroté 1, 2, 3…). Adresse (dossier) fixée à la
   création ; changer de catégorie change l'URL et place la fiche en dernier.
+  Onglet **Partage** (modification) : actualité dédiée créée depuis la fiche
+  enregistrée (`src/lib/activity-news.ts`, `POST /api/admin/activites/<slug>/actualite`,
+  `activite: <slug>` dans son en-tête, lien gardé par `updateNews`) ; la page
+  de l'actualité se termine par « Voir l'activité » + « S'inscrire »
+  (`lienInscription()` de `src/plugins/activites/index.ts`, fiche publiée seulement).
   **Catégories** gérées dans le même module (`CategoryForm.vue`,
   `src/lib/category-writer.ts`, routes `/api/admin/activites/categories*`,
   ordre avec celui des fiches dans `ordre`) : fichier de l'asso
@@ -520,7 +525,7 @@ couleur par famille d'activité.
 - **Source du planning affiché sur `/activites`** : la table Grist
   `Activite` elle-même (chaque ligne est déjà un créneau précis : jour,
   horaires, lieu, encadrant·e·s), lue à chaque requête par
-  `fetchPlanningAgenda()` (`src/plugins/adhesion/lib/planning.ts`) et recombinée
+  `fetchPlanningAgenda()` (`src/plugins/activites/lib/planning.ts`) et recombinée
   avec `conseillerNumerique`. Seules les lignes `Publiee = true` de la
   saison en cours, avec une `Categorie_agenda` renseignée, et qui ont lieu
   dans la semaine en cours (`Ouverture` = date de 1re séance, puis
@@ -572,7 +577,7 @@ icônes font 24 px et sont centrées verticalement. Détail :
 
 ### Inscription en ligne à une activité
 
-Plugin `inscription` (voir ci-dessous). Page `/inscription`, îlot Vue `src/plugins/inscription/formulaire/InscriptionForm.vue`
+Outil `inscription` du plugin `activites` (voir ci-dessous). Page `/inscription`, îlot Vue `src/plugins/activites/formulaire/InscriptionForm.vue`
 (`client:load`), gardé par `<FormGate form="inscription">`. 3 étapes :
 profil (adhérent·e retrouvé·e par nom + prénom via
 `/api/adhesion/membre` `mode:'renouvellement'`, ou extérieur·e → fiche
@@ -598,13 +603,13 @@ responsable du foyer pour un membre rattaché. Détail : [docs/inscription.md](d
 
 ### Présence (« Je participe »)
 
-Page `/je-participe` (lien de menu, `src/config/site.ts`), îlot Vue
-`src/plugins/adhesion/formulaire/presence/PresenceForm.vue`. Sans système de connexion :
+Plugin `presence` (voir ci-dessous). Page `/je-participe` (lien de menu, `src/config/site.ts`), îlot Vue
+`src/plugins/presence/formulaire/PresenceForm.vue`. Sans système de connexion :
 un membre se retrouve par recherche de nom (réutilise la route publique
 `/api/adhesion/membres`), mémorisé ensuite en `localStorage` sur
 l'appareil. La page détecte la (les) séance(s) en cours parmi les lignes
 `Activite` publiées (`fetchSeancesCourantes()`,
-`src/plugins/adhesion/lib/presence.ts`) et propose un bouton « Je participe » /
+`src/plugins/presence/lib/presence.ts`) et propose un bouton « Je participe » /
 « Je ne pourrai pas venir » par séance candidate — écrit dans la table
 Grist `Presence` (une ligne par séance, `Presents` / `Absents` en
 RefList:Membres). Détail : [docs/api.md](docs/api.md).
@@ -621,14 +626,25 @@ selon les besoins ; `plugin.ts` = manifeste, `index.ts` = ce que le reste
 du site en utilise). Catalogue `src/plugins/catalogue.ts` (`PLUGINS`, sans
 dépendance), réglage `plugins: { <id>: true }` de `reglages.yaml`
 (`site.plugins`, **inactif par défaut** sauf `actifParDefaut: true` du
-catalogue — `adhesion`, `inscription` —, pour les sites existants : le
+catalogue — `adhesion`, `activites`, `presence` —, pour les sites existants : le
 `reglages.yaml` de démonstration les met à `false`, un site neuf démarre
 sans aucun plugin ; `requiert: ['<id>']` = inactif si
 le plugin requis l'est, et seul dossier d'un autre plugin importable ;
 `resoudrePlugins()` du catalogue, lu par `site.ts` et
 `src/integrations/plugins.ts` ; module « Plugins » : activation refusée si
 un requis est inactif, `requisInactifs` / `dependants` de
-`plugin-writer.ts` ; changer = reconstruire),
+`plugin-writer.ts` ; changer = reconstruire). **Outils** d'un plugin
+(`outils` du catalogue, `OutilPlugin`) : allumés / éteints un à un, plugin
+actif, par les interrupteurs de sa page de configuration
+(`src/components/admin/Interrupteur.vue`, `savePlugin(id, actif, valeurs,
+outils)`) ; `outils: { <plugin>: { <outil>: false } }` de `reglages.yaml`,
+absent = allumé (`resoudreOutils()`, `site.outils`) ; route d'un outil =
+`outil` dans le manifeste, non construite s'il est éteint ;
+`outilActif(plugin, outil)` (`src/plugins/index.ts`) ailleurs. Ancien
+plugin devenu outil : `PLUGINS_DEVENUS_OUTILS` (`plugins.inscription`
+reconnu, réécrit sous `outils:` au premier enregistrement) ; plugin issu
+d'un autre : `heriteDe` (sans valeur écrite, prend celle de l'autre ;
+écrite au premier enregistrement d'un plugin),
 `pluginActif(id)` / `disponible(def)` (`src/plugins/index.ts`, aussi dans
 le navigateur). Routes d'un plugin **jamais dans `src/pages/`** : ajoutées
 par `src/integrations/plugins.ts` (`injectRoute`, d'après
@@ -646,32 +662,43 @@ partagés par les plugins, hors de leurs dossiers : `src/lib/http.ts`
 (`GristError`), `src/lib/gotenberg.ts` (`htmlToPdf`) — un plugin n'importe
 jamais le dossier d'un autre. Détail : [src/plugins/README.md](src/plugins/README.md).
 
-### Adhésion et activités (plugin `adhesion`, actif par défaut)
+### Adhésion, Activités, Présence (plugins `adhesion`, `activites`, `presence`)
 
-`src/plugins/adhesion/` (doc : [src/plugins/adhesion/README.md](src/plugins/adhesion/README.md)) :
-adhésion en ligne + bulletin PDF (`/adherer`, `/adherer/formulaire`),
-présence (`/je-participe`), planning Grist de `/activites` — tout ce qui
-lit le document Grist de
-l'adhésion (`GRIST_DOC_ID`, tables `Membres`, `Adhesions`, `Activite`…,
-`BULLETIN_SECRET` : `env` du manifeste). Pages `pages/`, routes `api/`
-(`/api/adhesion/*`, `/api/presence/*`, liste `API` de `plugin.ts`), îlots
-`formulaire/{adhesion,presence}/`, serveur `lib/`. Reste du site
-via `index.ts` : `planningActivites()` (vide si inactif),
-`lienAdhesionIndisponible(href)` (masque les liens vers ses pages : bouton
-CTA et « Je participe » du `Header`, boutons `Hero` / `CtaSection`),
-`ADHESION_HREF`… (plan du site, `SERVICE_PAGES`). Désactiver :
-`plugins: { adhesion: false }` (retire aussi l'inscription).
+Trois plugins **indépendants**, actifs par défaut (associations), qui lisent
+le **document Grist de l'association** (`GRIST_DOC_ID`, tables `Membres`,
+`Adhesions`, `Activite`, `Inscription`, `Presence`… : `ENV_GRIST_ASSO`).
+Jusqu'à la 0.5.22, un seul plugin `adhesion` (+ `inscription`) : `heriteDe:
+'adhesion'` pour `activites` et `presence`, `PLUGINS_DEVENUS_OUTILS` pour
+`plugins.inscription`.
 
-**Plugin `inscription`** (actif par défaut, **requiert `adhesion`**) :
-`src/plugins/inscription/` (doc : [src/plugins/inscription/README.md](src/plugins/inscription/README.md)),
-page `/inscription`, routes `/api/inscription/{offre,preinscription,participant-exterieur}`,
-îlot `formulaire/InscriptionForm.vue` + `formulaire/client.ts`
-(`inscriptionApi`, et `adhesionApi` / `get` / `post` du plugin adhésion :
-`/api/adhesion/membre` et `/api/adhesion/inscription` restent à l'adhésion,
-le formulaire d'adhésion inscrit aussi à une activité). Reste du site :
-`inscriptionEnLigne()` (`index.ts`) pour le bouton « S'inscrire » des
-fiches, `pluginActif('inscription')` pour les réglages d'inscription du
-module « Activités », `INSCRIPTION_HREF` (plan du site, `SERVICE_PAGES`).
+- **Code commun** `src/lib/grist-asso/` : client Grist et colonnes
+  (`grist.ts`, seul endroit à modifier si le schéma change), `types.ts`,
+  `choices.ts`, `membre-fields.ts`, `activite-option.ts`, `format.ts`,
+  client navigateur `client.ts` (`get`, `post`, `membresApi`), routes
+  communes `api/{membre,membres,inscription}.ts` (adresses historiques
+  `/api/adhesion/*`), `manifeste.ts` (`routesGristAsso(...)`,
+  `ENV_GRIST_ASSO`) : chaque manifeste déclare les routes communes dont il se
+  sert, `src/integrations/plugins.ts` ne les ajoute qu'une fois.
+- **`adhesion`** (`src/plugins/adhesion/`, [README](src/plugins/adhesion/README.md)) :
+  `/adherer`, `/adherer/formulaire`, bulletin PDF (`BULLETIN_SECRET`),
+  routes `/api/adhesion/*` du formulaire (liste `API` de `plugin.ts`), îlot
+  `formulaire/adhesion/` ; `index.ts` : `ADHESION_HREF`, `FORMULAIRE_HREF`.
+- **`activites`** (`src/plugins/activites/`, [README](src/plugins/activites/README.md)) :
+  outils `planning` (calendrier Grist de `/activites`, `lib/planning.ts` ;
+  éteint = calendrier masqué sauf séances d'extension) et `inscription`
+  (`/inscription`, `/api/inscription/{offre,preinscription,participant-exterieur}`,
+  îlot `formulaire/InscriptionForm.vue` + `client.ts` : `inscriptionApi`,
+  `membresApi`) ; `index.ts` : `planningActivites()`, `planningAffiche()`,
+  `inscriptionEnLigne()` (bouton « S'inscrire »), `INSCRIPTION_HREF` ;
+  `outilActif('activites', 'inscription')` pour les réglages d'inscription
+  du module « Activités ».
+- **`presence`** (`src/plugins/presence/`, [README](src/plugins/presence/README.md)) :
+  `/je-participe`, `/api/presence/{seances,inscrire}`, `lib/presence.ts`,
+  îlot `formulaire/PresenceForm.vue` ; `index.ts` : `PRESENCE_HREF`.
+- Liens vers leurs pages (bouton CTA et « Je participe » du `Header`,
+  boutons `Hero` / `CtaSection`) : `lienPluginIndisponible(href)` de
+  `src/lib/liens-plugins.ts` (masqués si plugin inactif ou outil éteint) ;
+  plan du site et `SERVICE_PAGES` : `pluginActif` / `outilActif`.
 
 ### Devis et facturation (plugin `facturation`, auto-entrepreneur)
 

@@ -3,8 +3,10 @@
  * Module « Plugins » (groupe `superadmin` seul) : volets activables du site
  * (catalogue `src/plugins/catalogue.ts`). Liste (icône, nom, état, bouton
  * « paramètres ») → page de configuration du plugin : description,
- * prérequis, réglages (`reglages.champs` du catalogue, par rubrique), case
- * « plugin actif », et une seule paire de boutons d'enregistrement en bas.
+ * prérequis, case « plugin actif », interrupteurs de ses outils (`outils`
+ * du catalogue : `outils.<id>.<outil>` de `reglages.yaml`), réglages
+ * (`reglages.champs` du catalogue, par rubrique), et une seule paire de
+ * boutons d'enregistrement en bas.
  * Enregistrer écrit `plugins.<id>` de `reglages.yaml` et les réglages dans
  * le fichier du plugin, puis reconstruit le site (suivi par
  * `usePublication`), ou rejoint les modifications en attente. Un plugin dont
@@ -17,6 +19,7 @@
  */
 import { computed, inject, onMounted, ref } from 'vue';
 import FormHeader from '../FormHeader.vue';
+import Interrupteur from '../Interrupteur.vue';
 import PublishButtons from '../PublishButtons.vue';
 import PublishStatus from '../PublishStatus.vue';
 import { ApiError, extensionsApi, pluginsApi, type PluginChamp, type PluginItem } from '../client';
@@ -52,11 +55,13 @@ const ouvert = computed(() => plugins.value.find((p) => p.id === ouvertId.value)
 /** Saisie en cours de la page de configuration. */
 const actif = ref(false);
 const valeurs = ref<Record<string, string>>({});
+const outils = ref<Record<string, boolean>>({});
 
 function ouvrir(p: PluginItem) {
 	ouvertId.value = p.id;
 	actif.value = p.actif;
 	valeurs.value = Object.fromEntries(p.champs.map((c) => [c.cle, c.valeur]));
+	outils.value = Object.fromEntries(p.outils.map((o) => [o.id, o.actif]));
 	error.value = '';
 	suppression.value = false;
 }
@@ -77,7 +82,11 @@ const groupes = computed(() => {
 });
 
 const modifie = computed(
-	() => !!ouvert.value && (actif.value !== ouvert.value.actif || ouvert.value.champs.some((c) => (valeurs.value[c.cle] ?? '').trim() !== c.valeur)),
+	() =>
+		!!ouvert.value &&
+		(actif.value !== ouvert.value.actif ||
+			ouvert.value.outils.some((o) => outils.value[o.id] !== o.actif) ||
+			ouvert.value.champs.some((c) => (valeurs.value[c.cle] ?? '').trim() !== c.valeur)),
 );
 
 /** Texte de repli affiché dans un champ vide. */
@@ -139,7 +148,10 @@ async function submit(plugin: PluginItem, event: Event) {
 	busy.value = true;
 	try {
 		rememberOpenModule(mot.module);
-		const result = await (ext ? extensionsApi : pluginsApi).update(plugin.id, actif.value, valeurs.value, { deferred: isDeferredSubmit(event) });
+		const options = { deferred: isDeferredSubmit(event) };
+		const result = ext
+			? await extensionsApi.update(plugin.id, actif.value, valeurs.value, options)
+			: await pluginsApi.update(plugin.id, actif.value, valeurs.value, options, outils.value);
 		afterSave(`${mot.un} « ${plugin.label} »`, result);
 		if (result.deferred) await load();
 	} catch (e) {
@@ -248,6 +260,36 @@ onMounted(load);
 					</span>
 				</span>
 			</label>
+
+			<fieldset v-if="ouvert.outils.length" class="rounded-xl border border-gray-200 p-4">
+				<legend class="px-1 font-heading text-sm font-semibold text-gray-900">Outils</legend>
+				<p class="mb-3 text-xs text-gray-500">
+					Éteint, un outil disparaît du site (pages, liens, boutons) ; ses données restent dans Grist.
+					<template v-if="!actif"> Le plugin inactif, tous ses outils sont éteints.</template>
+				</p>
+				<ul class="divide-y divide-gray-100">
+					<li v-for="o in ouvert.outils" :key="o.id" class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+						<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+							<i class="fa-solid" :class="o.icon" aria-hidden="true"></i>
+						</span>
+						<span class="min-w-0 flex-1 text-sm">
+							<span :id="`outil-${ouvert.id}-${o.id}`" class="block font-medium text-gray-900">
+								{{ o.label }}
+								<span
+									v-if="ouvert.actif && ouvert.enLigne && o.actif !== o.enLigne"
+									class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
+								>{{ o.actif ? 'Allumage en attente' : 'Extinction en attente' }}</span>
+							</span>
+							<span class="block text-xs text-gray-500">{{ o.description }}</span>
+						</span>
+						<Interrupteur
+							v-model="outils[o.id]"
+							:labelledby="`outil-${ouvert.id}-${o.id}`"
+							:disabled="locked || !actif"
+						/>
+					</li>
+				</ul>
+			</fieldset>
 
 			<fieldset v-for="[groupe, champs] in groupes" :key="groupe" class="rounded-xl border border-gray-200 p-4">
 				<legend class="px-1 font-heading text-sm font-semibold text-gray-900">{{ groupe }}</legend>

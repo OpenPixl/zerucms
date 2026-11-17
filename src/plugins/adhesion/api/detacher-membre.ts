@@ -7,7 +7,7 @@ import {
 	refList,
 	TABLES,
 	updateRecord,
-} from '../lib/grist';
+} from '../../../lib/grist-asso/grist';
 import { json } from '../../../lib/http';
 
 export const prerender = false;

@@ -5,14 +5,14 @@ import { association } from '../../lib/association';
 import { getNavTree } from '../../lib/navigation';
 import { site } from '../../config/site';
 import BrandStripe from './BrandStripe.astro';
-import { lienAdhesionIndisponible } from '../../plugins/adhesion';
+import { lienPluginIndisponible } from '../../lib/liens-plugins';
 
 // Menu construit au build à partir des pages du site + des frontmatters
 // `menu:` des pages de src/content/pages/ (voir src/content/README.md).
 const navLinks = await getNavTree();
 // Liens vers une page du plugin adhésion masqués s'il est inactif (la page n'existe pas).
-const cta = { ...site.cta, enabled: site.cta.enabled && !lienAdhesionIndisponible(site.cta.href) };
-const presence = { ...site.presence, enabled: site.presence.enabled && !lienAdhesionIndisponible(site.presence.href) };
+const cta = { ...site.cta, enabled: site.cta.enabled && !lienPluginIndisponible(site.cta.href) };
+const presence = { ...site.presence, enabled: site.presence.enabled && !lienPluginIndisponible(site.presence.href) };
 ---
 
 <header class:list={['sticky top-[var(--admin-bar-h,0px)] z-50 isolate bg-white/90 backdrop-blur', !site.colors.stripeEnabled && 'shadow-md shadow-black/10']}>

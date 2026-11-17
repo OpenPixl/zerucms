@@ -202,7 +202,7 @@ Siège social : {{association.adresse}}
 
 Détail : [pages.md](pages.md#ajouter-une-page-applicative-astro).
 
-Modèle : `src/plugins/inscription/pages/inscription.astro`.
+Modèle : `src/plugins/activites/pages/inscription.astro`.
 
 ```astro
 ---
@@ -274,7 +274,7 @@ forms: {
 },
 ```
 
-2. Entourer le formulaire (voir `src/plugins/inscription/pages/inscription.astro`). Le slot
+2. Entourer le formulaire (voir `src/plugins/activites/pages/inscription.astro`). Le slot
    `fallback`, facultatif, s'affiche sous l'encart quand le formulaire est
    fermé :
 
@@ -324,18 +324,21 @@ import InscriptionForm from '../formulaire/InscriptionForm.vue';
 ```
 
 Côté navigateur, on ne parle jamais à Grist : on passe par les routes
-`/api/*` via le client typé (`src/plugins/adhesion/formulaire/adhesion/client.ts`) :
+`/api/*` via un client typé : celui du plugin (ex.
+`src/plugins/adhesion/formulaire/adhesion/client.ts`) ou, pour les routes
+communes au document Grist de l'association, `src/lib/grist-asso/client.ts` :
 
 ```ts
-import { adhesionApi } from '../adhesion/client';
+import { membresApi } from '../../../lib/grist-asso/client';
 
-const res = await adhesionApi.retrouverMembre({ nom, prenom });
+const res = await membresApi.retrouverMembre({ nom, prenom });
 ```
 
 ### Route API Grist
 
-Motif de toutes les routes `src/plugins/adhesion/api/*.ts` (nouvelle route =
-le fichier + son nom dans `API` de `src/plugins/adhesion/plugin.ts`) : rendu serveur,
+Motif de toutes les routes `src/plugins/<id>/api/*.ts` (nouvelle route =
+le fichier + sa ligne dans `routes` du `plugin.ts` du plugin ; route commune
+à plusieurs plugins : `src/lib/grist-asso/api/` + `routesGristAsso()`) : rendu serveur,
 validation du corps, erreurs Grist relayées avec leur statut. Détail :
 [api.md](api.md).
 
@@ -371,7 +374,7 @@ export const POST: APIRoute = async ({ request }) => {
 
 Toujours passer par `COLS.*` / `TABLES.*` plutôt que d'écrire les noms de
 colonnes Grist en dur ; une nouvelle colonne s'ajoute dans `COLS`
-(`src/plugins/adhesion/lib/grist.ts`).
+(`src/lib/grist-asso/grist.ts`).
 
 ### Module de l'Espace Admin
 

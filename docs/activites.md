@@ -112,7 +112,8 @@ main reste modifiable depuis le module, et inversement.
 | Élément | Rôle |
 | :--- | :--- |
 | `src/components/admin/modules/ActivitiesModule.vue` | Liste par catégorie (vignette, pastilles brouillon / niveau / sans inscription), ordre par glisser-déposer (poignée ⠿) ou flèches ↑/↓, bandeau « Enregistrer et publier », suppression confirmée |
-| `src/components/admin/modules/activites/ActivityForm.vue` | Formulaire de création / modification (même présentation que le module « Pages ») |
+| `src/components/admin/modules/activites/ActivityForm.vue` | Formulaire de création / modification (même présentation que le module « Pages ») ; en modification, onglet **Partage** : « Créer l'actualité » (publier ou non) et liste des actualités déjà créées depuis la fiche |
+| `src/lib/activity-news.ts` | Actualité dédiée : fiche **enregistrée** reprise (titre, résumé, catégorie → `tag`, texte, photo et crédit), datée du jour, `activite: <slug>` ; `newsOfActivity()` |
 | `src/components/admin/modules/activites/CategoryForm.vue` | Formulaire d'une catégorie : nom, adresse (création), icône dans une grille (`src/lib/category-icons.ts`), description |
 | `src/lib/category-writer.ts` | Lecture / écriture de `_categories.yaml` (en place, commentaires gardés), suppression d'une catégorie vide, ordre des catégories et des fiches en une transaction (`saveCatalogOrder`) |
 | `src/lib/activity-writer.ts` | Lecture des sources, validation, écriture de `index.md` et de la photo, ordre |
@@ -125,7 +126,8 @@ main reste modifiable depuis le module, et inversement.
 | :--- | :--- |
 | `GET /api/admin/activites` | Fiches (brouillons compris, vignette, `href`), catégories (lues dans `_categories.yaml`), état de la dernière publication, disponibilité de la publication |
 | `POST /api/admin/activites` | Création `{ activity, cover?: { type, data } }` (`data` en base64) |
-| `GET /api/admin/activites/<slug>` | Sources de la fiche (formulaire), URL de la photo |
+| `GET /api/admin/activites/<slug>` | Sources de la fiche (formulaire), URL de la photo, `actualites` liées (sources, brouillons compris) |
+| `POST /api/admin/activites/<slug>/actualite` | Crée l'actualité dédiée à la fiche (`writeActivityNews`) ; journal `actualite.ajout` |
 | `PUT /api/admin/activites/<slug>` | Modification `{ activity, cover: { action: keep\|remove\|replace, type?, data? } }` |
 | `DELETE /api/admin/activites/<slug>` | Suppression `{ confirm: <slug> }` (dossier et photo) |
 | `PUT /api/admin/activites/ordre` | `{ levels?: { <catégorie>: [slugs…] }, categories?: [slugs…] }` : nouvel ordre des fiches d'une ou plusieurs catégories et/ou des catégories, en une publication |

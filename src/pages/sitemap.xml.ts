@@ -15,10 +15,10 @@ import { getContentPages } from '../lib/content-pages';
 import { getAllNews } from '../lib/news';
 import { absoluteUrl } from '../lib/seo';
 import { getSitePagesState } from '../lib/site-pages-content';
-import { pluginActif } from '../plugins';
+import { outilActif, pluginActif } from '../plugins';
 import { pagesExtensions } from '../lib/extensions-site';
 import { ADHESION_HREF } from '../plugins/adhesion';
-import { INSCRIPTION_HREF } from '../plugins/inscription';
+import { INSCRIPTION_HREF } from '../plugins/activites';
 
 const escapeXml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -29,7 +29,7 @@ export const GET: APIRoute = async ({ site }) => {
 	const entries: { path: string; lastmod?: string }[] = [
 		...sitePages.map((p) => ({ path: p.href })),
 		...(pluginActif('adhesion') ? [{ path: ADHESION_HREF }] : []),
-		...(pluginActif('inscription') && settings.forms.inscription.enabled ? [{ path: INSCRIPTION_HREF }] : []),
+		...(outilActif('activites', 'inscription') && settings.forms.inscription.enabled ? [{ path: INSCRIPTION_HREF }] : []),
 		...pagesExtensions()
 			.filter((p) => !p.closed)
 			.map((p) => ({ path: p.href })),

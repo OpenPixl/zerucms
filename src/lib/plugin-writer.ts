@@ -6,6 +6,10 @@
  *  - activation : `plugins.<id>` de `src/content/reglages.yaml` (extension :
  *    `extensions.<id>: false`, clé retirée = active), revalidé par
  *    `parseReglages()` ;
+ *  - outils du plugin (`outils` du catalogue) : `outils.<id>.<outil>: false`
+ *    pour un outil éteint, clé retirée = allumé ; l'ancienne clé d'un plugin
+ *    devenu outil (`PLUGINS_DEVENUS_OUTILS`, ex. `plugins.inscription`) est
+ *    réécrite sous `outils:` au premier enregistrement ;
  *  - réglages (`reglages.champs` du catalogue) dans le fichier du plugin
  *    (ex. `rdv.yaml`) : format du type de champ (`src/plugins/champs.ts`),
  *    champ vide = clé retirée (variable du `.env` ou défaut du modèle) ;
@@ -20,11 +24,22 @@
 import { access, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getSecret } from 'astro:env/server';
-import { isMap, parseDocument, YAMLMap, type Document } from 'yaml';
+import { isMap, parse as parseYaml, parseDocument, YAMLMap, type Document } from 'yaml';
 import { parseReglages } from '../config/site';
-import { PLUGIN_IDS, PLUGINS, proposePour, requis, type PluginInfo } from '../plugins/catalogue';
+import {
+	outilsDe,
+	PLUGIN_IDS,
+	PLUGINS,
+	PLUGINS_DEVENUS_OUTILS,
+	proposePour,
+	requis,
+	resoudreOutils,
+	type OutilPlugin,
+	type PluginId,
+	type PluginInfo,
+} from '../plugins/catalogue';
 import { FORMATS, normaliserChamp, type ChampPlugin } from '../plugins/champs';
-import { pluginActif } from '../plugins';
+import { outilActif, pluginActif } from '../plugins';
 import type { Applied } from './content-transaction';
 import { adresseOccupee } from './page-writer';
 import { extensionActive, type ExtensionInfo } from './extensions';
@@ -40,6 +55,14 @@ export interface ChampState extends ChampPlugin {
 	repli: string;
 	/** D'où vient `repli`. */
 	source: 'env' | 'defaut' | 'aucune';
+}
+
+/** Outil d'un plugin tel que le montre la page de configuration (interrupteur). */
+export interface OutilState extends OutilPlugin {
+	/** État enregistré dans `reglages.yaml` (sources), indépendamment de l'activation du plugin. */
+	actif: boolean;
+	/** État du site en ligne (construit). */
+	enLigne: boolean;
 }
 
 export interface PluginState {
@@ -70,6 +93,8 @@ export interface PluginState {
 	fichierReglages: string | null;
 	/** Proposé au type de structure du site (`structure:` de `reglages.yaml`) ; sinon caché du module. */
 	propose: boolean;
+	/** Outils allumés ou éteints un à un (plugins seulement). */
+	outils: OutilState[];
 	champs: ChampState[];
 }
 
@@ -87,7 +112,7 @@ async function lireYaml(fichier: string): Promise<unknown> {
 	}
 }
 
-type Contexte = Pick<PluginState, 'genre' | 'id' | 'actif' | 'enLigne' | 'requisInactifs' | 'dependants' | 'propose'>;
+type Contexte = Pick<PluginState, 'genre' | 'id' | 'actif' | 'enLigne' | 'requisInactifs' | 'dependants' | 'propose' | 'outils'>;
 
 /** État d'un plugin ou d'une extension tel que le montre sa page de configuration. */
 async function etatVolet(info: PluginInfo | ExtensionInfo, ctx: Contexte): Promise<PluginState> {
@@ -127,11 +152,16 @@ async function etatVolet(info: PluginInfo | ExtensionInfo, ctx: Contexte): Promi
 }
 
 async function lireReglagesSource() {
-	return parseReglages(await readFile(reglagesFile(), 'utf8').catch(() => ''));
+	const texte = await readFile(reglagesFile(), 'utf8').catch(() => '');
+	const reglages = parseReglages(texte);
+	// Outils écrits, indépendamment de l'activation du plugin (interrupteurs de la page).
+	const lu = parseYaml(texte) ?? {};
+	const tous = Object.fromEntries(PLUGIN_IDS.map((id) => [id, true])) as Record<PluginId, boolean>;
+	return { ...reglages, outilsEcrits: resoudreOutils(lu.plugins ?? {}, lu.outils ?? {}, tous) };
 }
 
 export async function readPluginsSource(): Promise<PluginState[]> {
-	const { plugins, structure } = await lireReglagesSource();
+	const { plugins, structure, outilsEcrits } = await lireReglagesSource();
 	return Promise.all(
 		PLUGIN_IDS.map((id) =>
 			etatVolet(PLUGINS[id], {
@@ -144,6 +174,7 @@ export async function readPluginsSource(): Promise<PluginState[]> {
 					.map((r) => ({ id: r, label: PLUGINS[r].label })),
 				dependants: PLUGIN_IDS.filter((d) => requis(d).includes(id)).map((d) => ({ id: d, label: PLUGINS[d].label })),
 				propose: proposePour(id, structure),
+				outils: outilsDe(id).map((o) => ({ ...o, actif: outilsEcrits[id][o.id], enLigne: outilActif(id, o.id) })),
 			}),
 		),
 	);
@@ -162,6 +193,7 @@ export async function readExtensionsSource(): Promise<PluginState[]> {
 				requisInactifs: [],
 				dependants: [],
 				propose: true,
+				outils: [],
 			}),
 		),
 	);
@@ -201,8 +233,8 @@ async function documentDe(chemin: string): Promise<{ texte: string | null; doc: 
  * Enregistre l'état et les réglages d'un plugin : `{ actif, valeurs }`
  * (`valeurs` : clé du champ → saisie). Seuls les changements sont écrits.
  */
-export function savePlugin(id: unknown, actif: unknown, valeurs: unknown): Promise<PluginResult> {
-	return saveVolet('plugin', id, actif, valeurs);
+export function savePlugin(id: unknown, actif: unknown, valeurs: unknown, outils?: unknown): Promise<PluginResult> {
+	return saveVolet('plugin', id, actif, valeurs, outils);
 }
 
 /** Même chose pour une extension installée. */
@@ -210,7 +242,7 @@ export function saveExtension(id: unknown, actif: unknown, valeurs: unknown): Pr
 	return saveVolet('extension', id, actif, valeurs);
 }
 
-async function saveVolet(genre: 'plugin' | 'extension', id: unknown, actif: unknown, valeurs: unknown): Promise<PluginResult> {
+async function saveVolet(genre: 'plugin' | 'extension', id: unknown, actif: unknown, valeurs: unknown, outils?: unknown): Promise<PluginResult> {
 	const nom = genre === 'plugin' ? 'Plugin' : 'Extension';
 	const states = genre === 'plugin' ? await readPluginsSource() : await readExtensionsSource();
 	const state = typeof id === 'string' ? states.find((p) => p.id === id) : undefined;
@@ -234,6 +266,22 @@ async function saveVolet(genre: 'plugin' | 'extension', id: unknown, actif: unkn
 		nouveaux.push({ champ, valeur });
 		changes.push(`${champ.label.toLowerCase()} : ${valeur || `vide (${champ.source === 'env' ? '.env' : 'défaut'})`}`);
 	}
+	// Outils : interrupteurs changés (`outils` : identifiant de l'outil → allumé).
+	const outilsSaisis = outils && typeof outils === 'object' ? (outils as Record<string, unknown>) : {};
+	const outilsChanges: { outil: OutilState; actif: boolean }[] = [];
+	for (const outil of state.outils) {
+		const voulu = outilsSaisis[outil.id];
+		if (voulu === undefined || voulu === outil.actif) continue;
+		if (typeof voulu !== 'boolean') {
+			errors.push(`${outil.label} : allumé ou non attendu.`);
+			continue;
+		}
+		outilsChanges.push({ outil, actif: voulu });
+		changes.push(`${outil.label.toLowerCase()} : ${voulu ? 'allumé' : 'éteint'}`);
+	}
+	// Ancienne clé d'un plugin devenu outil de celui-ci (ex. `plugins.inscription`) : réécrite sous `outils:`.
+	const anciennes = genre === 'plugin' ? Object.keys(PLUGINS_DEVENUS_OUTILS).filter((k) => PLUGINS_DEVENUS_OUTILS[k].plugin === voletId) : [];
+
 	if (nouveaux.length && state.manquants.length) errors.push(`${state.manquants[0].fichier} absent : réglages impossibles.`);
 
 	// Adresse de la page qui sera en ligne : vérifiée si elle change ou si le plugin s'active.
@@ -269,16 +317,41 @@ async function saveVolet(genre: 'plugin' | 'extension', id: unknown, actif: unkn
 		}
 	};
 	try {
-		if (actif !== state.actif) {
-			const lu = await documentDe(reglagesFile());
-			if ('erreur' in lu) return { label: '', errors: [lu.erreur] };
-			// Extension : absente = active, seule la désactivation est écrite.
-			if (genre === 'plugin') lu.doc.setIn(['plugins', voletId], actif);
-			else if (actif) {
-				lu.doc.deleteIn(['extensions', voletId]);
-				const rubrique = lu.doc.getIn(['extensions'], true);
-				if (isMap(rubrique) && rubrique.items.length === 0) lu.doc.deleteIn(['extensions']);
-			} else lu.doc.setIn(['extensions', voletId], false);
+		const lu = await documentDe(reglagesFile());
+		if ('erreur' in lu) return { label: '', errors: [lu.erreur] };
+		const migrer = anciennes.filter((k) => lu.doc.hasIn(['plugins', k]));
+		// Plugin issu d'un autre (`heriteDe`) sans valeur écrite : état actuel écrit,
+		// pour que changer l'un ne change plus l'autre (ex. activités, présence ← adhésion).
+		const herites =
+			genre === 'plugin'
+				? states.filter((p) => p.id !== voletId && (PLUGINS[p.id as PluginId] as PluginInfo).heriteDe && !lu.doc.hasIn(['plugins', p.id]))
+				: [];
+		if (actif !== state.actif || outilsChanges.length || migrer.length) {
+			for (const p of herites) lu.doc.setIn(['plugins', p.id], p.actif);
+			if (actif !== state.actif) {
+				// Extension : absente = active, seule la désactivation est écrite.
+				if (genre === 'plugin') lu.doc.setIn(['plugins', voletId], actif);
+				else if (actif) {
+					lu.doc.deleteIn(['extensions', voletId]);
+					const rubrique = lu.doc.getIn(['extensions'], true);
+					if (isMap(rubrique) && rubrique.items.length === 0) lu.doc.deleteIn(['extensions']);
+				} else lu.doc.setIn(['extensions', voletId], false);
+			}
+			// Outils : seul un outil éteint est écrit (absent = allumé), état actuel de chacun.
+			if (genre === 'plugin') {
+				const voulus = new Map(state.outils.map((o) => [o.id, o.actif]));
+				for (const c of outilsChanges) voulus.set(c.outil.id, c.actif);
+				for (const k of migrer) lu.doc.deleteIn(['plugins', k]);
+				for (const [outil, allume] of voulus) {
+					if (allume) {
+						if (lu.doc.hasIn(['outils', voletId, outil])) lu.doc.deleteIn(['outils', voletId, outil]);
+					} else lu.doc.setIn(['outils', voletId, outil], false);
+				}
+				for (const chemin of [['outils', voletId], ['outils']]) {
+					const rubrique = lu.doc.getIn(chemin, true);
+					if (isMap(rubrique) && rubrique.items.length === 0) lu.doc.deleteIn(chemin);
+				}
+			}
 			const texte = lu.doc.toString({ lineWidth: 0, flowCollectionPadding: false });
 			parseReglages(texte);
 			ecrits.push({ chemin: reglagesFile(), original: lu.texte });

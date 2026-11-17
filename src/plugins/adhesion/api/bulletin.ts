@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { COLS, GristError, listRecords, TABLES } from '../lib/grist';
+import { COLS, GristError, listRecords, TABLES } from '../../../lib/grist-asso/grist';
 import { json } from '../../../lib/http';
 import {
 	GotenbergError,

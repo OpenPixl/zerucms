@@ -8,8 +8,7 @@ import PageHeader from '../../../components/sections/PageHeader.astro';
 import { getActivitiesByCategory, renderActivity } from '../../../lib/activites';
 import { categories, getCategory } from '../../../lib/categories';
 import { association } from '../../../lib/association';
-import { isFormOpen } from '../../../lib/forms';
-import { inscriptionEnLigne } from '../../../plugins/inscription';
+import { lienInscription } from '../../../plugins/activites';
 
 export async function getStaticPaths() {
 	const perCategory = await Promise.all(
@@ -30,7 +29,7 @@ export async function getStaticPaths() {
 const { activity, prev, next } = Astro.props;
 const { html, headings } = await renderActivity(activity);
 const category = getCategory(activity.category);
-const inscriptionVisible = inscriptionEnLigne() && activity.inscription && isFormOpen('inscription');
+const inscription = lienInscription(activity);
 ---
 
 <ArticleLayout
@@ -52,9 +51,9 @@ const inscriptionVisible = inscriptionEnLigne() && activity.inscription && isFor
 				<TableOfContents headings={headings} />
 			</>
 		)}
-		{inscriptionVisible && (
+		{inscription && (
 			<a
-				href={activity.inscriptionHref}
+				href={inscription}
 				class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 font-heading text-sm font-semibold text-white transition-colors hover:opacity-90"
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

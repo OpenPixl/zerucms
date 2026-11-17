@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { CotisationOption, Genre } from '../../lib/types';
-import { formatPrix } from './format';
+import type { CotisationOption, Genre } from '../../../../lib/grist-asso/types';
+import { formatPrix } from '../../../../lib/grist-asso/format';
 
 const props = defineProps<{
 	options: CotisationOption[];

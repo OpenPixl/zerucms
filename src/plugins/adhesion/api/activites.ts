@@ -6,10 +6,10 @@ import {
 	listRecords,
 	TABLES,
 	TYPES_ACTIVITE_ADHESION,
-} from '../lib/grist';
-import { toActiviteOption } from '../lib/activite-option';
+} from '../../../lib/grist-asso/grist';
+import { toActiviteOption } from '../../../lib/grist-asso/activite-option';
 import { json } from '../../../lib/http';
-import type { ActiviteOption } from '../lib/types';
+import type { ActiviteOption } from '../../../lib/grist-asso/types';
 
 export const prerender = false;
 

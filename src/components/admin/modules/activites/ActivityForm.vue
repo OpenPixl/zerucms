@@ -3,14 +3,16 @@
  * Formulaire d'une fiche du module « Activités » : création ou modification.
  * L'adresse (nom du dossier) se choisit à la création seulement ; l'URL
  * publique `/activites/<catégorie>/<adresse>` change si la catégorie change.
- * Onglets Informations / Contenu / Image ; en modification, fichier `.md`
+ * Onglets Informations / Contenu / Image (+ Partage en modification :
+ * actualité créée depuis la fiche enregistrée, `src/lib/activity-news.ts`,
+ * liste des actualités déjà créées) ; en modification, fichier `.md`
  * à télécharger ou à recharger (`EditFileBar`, ./activity-markdown.ts) ;
  * en création, `initialFile` (« Ajouter un contenu ») pré-remplit le formulaire.
  * Le serveur valide tout (src/lib/activity-writer.ts) et reconstruit le site.
  */
 import { computed, inject, onBeforeUnmount, reactive, ref } from 'vue';
-import { pluginActif } from '../../../../plugins';
-import { TYPES_ACTIVITE_INSCRIPTION } from '../../../../plugins/adhesion/lib/choices';
+import { outilActif } from '../../../../plugins';
+import { TYPES_ACTIVITE_INSCRIPTION } from '../../../../lib/grist-asso/choices';
 import {
 	ApiError,
 	activitiesApi,
@@ -28,7 +30,7 @@ import FormHeader from '../../FormHeader.vue';
 import FormTabs from '../../FormTabs.vue';
 import LinkPicker from '../../LinkPicker.vue';
 import SeoLength from '../../SeoLength.vue';
-import { EDIT_TABS, useFormTabs, type EditTab } from '../../form-tabs';
+import { EDIT_TABS, useFormTabs, type EditTab, type FormTab } from '../../form-tabs';
 import { downloadMarkdown, readMarkdownFile } from '../../markdown-file';
 import { activityMarkdownFile, parseActivityMarkdown } from './activity-markdown';
 
@@ -80,7 +82,31 @@ const categoryLabel = computed(() => props.categories.find((c) => c.slug === for
 const categoryChanged = computed(() => Boolean(editing && form.category !== editing.category));
 const error = ref('');
 const busy = ref(false);
-const { tab, onInvalid } = useFormTabs<EditTab>('act', 'infos');
+type ActivityTab = EditTab | 'partage';
+const { tab, onInvalid } = useFormTabs<ActivityTab>('act', 'infos');
+const tabs: readonly FormTab[] = editing ? [...EDIT_TABS, { id: 'partage', label: 'Partage', icon: 'fa-share-nodes' }] : EDIT_TABS;
+
+// --- Partage (modification) ---
+
+/** Une actualité est en cours de création (bouton de l'onglet « Partage »). */
+const sharing = ref(false);
+const formatDate = (iso: string) =>
+	new Date(`${iso}T00:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+async function createNews(deferred: boolean) {
+	if (!editing) return;
+	error.value = '';
+	sharing.value = true;
+	try {
+		rememberOpenModule('activites');
+		emit('published', `Actualité : ${editing.title}`, await activitiesApi.createNews(editing.slug, { deferred }));
+	} catch (e) {
+		if (e instanceof ApiError && e.status === 401) return sessionExpired();
+		error.value = (e as Error).message;
+	} finally {
+		sharing.value = false;
+	}
+}
 
 // --- Fichier .md (modification) ---
 
@@ -202,7 +228,7 @@ async function submit(event: Event) {
 
 		<div>
 			<EditFileBar v-if="editing" :imported="imported" @download="downloadFile" @load="loadFile" />
-			<FormTabs v-model="tab" :tabs="EDIT_TABS" prefix="act" />
+			<FormTabs v-model="tab" :tabs="tabs" prefix="act" />
 
 			<div v-show="tab === 'infos'" id="act-panel-infos" role="tabpanel" aria-labelledby="act-tab-infos" class="space-y-5">
 				<div>
@@ -266,7 +292,7 @@ async function submit(event: Event) {
 				</fieldset>
 
 				<!-- Inscription en ligne (plugin inscription ; inactif : réglages gardés tels quels) -->
-				<fieldset v-if="pluginActif('inscription')" class="space-y-3 rounded-xl bg-gray-100 p-4">
+				<fieldset v-if="outilActif('activites', 'inscription')" class="space-y-3 rounded-xl bg-gray-100 p-4">
 					<legend class="sr-only">Inscription en ligne</legend>
 					<label class="flex items-center gap-2 text-sm font-semibold text-gray-700">
 						<input v-model="form.inscription" type="checkbox" class="rounded border-gray-300" />
@@ -343,6 +369,64 @@ async function submit(event: Event) {
 						<input id="act-credit" v-model="form.imageCredit" type="text" placeholder="Photo : Prénom Nom / Source" :class="inputClass" />
 					</div>
 				</fieldset>
+			</div>
+
+			<div v-if="editing" v-show="tab === 'partage'" id="act-panel-partage" role="tabpanel" aria-labelledby="act-tab-partage" class="space-y-4">
+				<!-- Actualité dédiée -->
+				<section class="space-y-3 rounded-xl bg-gray-100 p-4">
+					<h3 class="flex items-center gap-2 text-sm font-semibold text-gray-700">
+						<i class="fa-solid fa-newspaper text-primary" aria-hidden="true"></i>
+						Actualité dédiée
+					</h3>
+					<p class="text-sm font-light text-gray-600">
+						Crée une actualité datée du jour qui reprend le titre, le résumé, la catégorie, le texte et la photo de la
+						fiche. Sur le site, elle se termine par un bouton « S'inscrire » et un lien vers la fiche. Vous pourrez la
+						retoucher ensuite dans le module « Actualités ».
+					</p>
+					<p class="champ-aide">C'est la fiche <strong>enregistrée</strong> qui sert de modèle : enregistrez d'abord vos modifications en cours.</p>
+					<p v-if="!editing.isPublish" class="alerte-attention text-sm">
+						Cette activité est un brouillon : tant qu'elle n'est pas publiée, l'actualité n'affichera ni « S'inscrire » ni le lien vers la fiche.
+					</p>
+					<div class="flex flex-wrap items-center gap-3">
+						<button type="button" class="bouton bouton-primaire" :disabled="props.disabled || sharing || busy" @click="createNews(false)">
+							<i class="fa-solid fa-plus mr-1.5" aria-hidden="true"></i>
+							{{ sharing ? 'Création…' : 'Créer l’actualité et publier' }}
+						</button>
+						<button
+							type="button"
+							class="bouton bouton-contour"
+							:disabled="props.disabled || sharing || busy"
+							title="L'actualité est enregistrée mais pas encore mise en ligne : publiez ensuite toutes les modifications en attente en une fois."
+							@click="createNews(true)"
+						>
+							Créer sans publier
+						</button>
+					</div>
+				</section>
+
+				<!-- Actualités déjà créées -->
+				<section v-if="editing.actualites.length">
+					<h3 class="text-sm font-semibold text-gray-700">Actualités de cette activité</h3>
+					<ul class="mt-2 divide-y divide-gray-100 rounded-xl border border-gray-100">
+						<li v-for="n in editing.actualites" :key="n.slug" class="flex items-center gap-3 px-4 py-2.5">
+							<span class="min-w-0 flex-1">
+								<span class="block truncate text-sm font-medium" :class="n.isPublish ? 'text-gray-900' : 'text-gray-500'">{{ n.title }}</span>
+								<span class="block text-xs font-light text-gray-500">{{ formatDate(n.publishAt) }}</span>
+							</span>
+							<span v-if="!n.isPublish" class="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Brouillon</span>
+							<a
+								v-else
+								:href="n.href"
+								class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+								:aria-label="`Voir « ${n.title} » sur le site`"
+								:title="`Voir « ${n.title} » sur le site`"
+							>
+								<i class="fa-solid fa-eye text-sm" aria-hidden="true"></i>
+							</a>
+						</li>
+					</ul>
+					<p class="champ-aide">Modifier ou supprimer une actualité : module « Actualités ».</p>
+				</section>
 			</div>
 		</div>
 

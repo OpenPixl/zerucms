@@ -1,7 +1,7 @@
 /**
  * Réglages du site : couleurs, polices, bouton « Adhérer », lien « Je participe »,
- * outils de partage, ouverture/fermeture des formulaires, plugins actifs,
- * extensions désactivées.
+ * outils de partage, ouverture/fermeture des formulaires, plugins actifs et
+ * leurs outils allumés, extensions désactivées.
  *
  * Les valeurs ci-dessous (`DEFAULTS`) sont celles du modèle. Chaque
  * association les remplace dans `src/content/reglages.yaml`, fichier qui lui
@@ -18,7 +18,16 @@ import { z } from 'astro/zod';
 import { parse as parseYaml } from 'yaml';
 import raw from '../content/reglages.yaml?raw';
 import { catalogueFont, DEFAULT_FONTS, FONT_FILE_PATTERN, FONT_NAME_MAX, FONT_WEIGHTS, type FontRole, type FontWeight } from '../lib/font-catalogue';
-import { actifParDefaut, PLUGIN_IDS, PLUGINS_DEVENUS_EXTENSIONS, resoudrePlugins, type PluginId } from '../plugins/catalogue';
+import {
+	actifParDefaut,
+	outilsDe,
+	PLUGIN_IDS,
+	PLUGINS_DEVENUS_EXTENSIONS,
+	PLUGINS_DEVENUS_OUTILS,
+	resoudreOutils,
+	resoudrePlugins,
+	type PluginId,
+} from '../plugins/catalogue';
 import { STRUCTURES } from '../lib/structure';
 
 export interface FormToggle {
@@ -208,10 +217,22 @@ const overridesSchema = z
 		share: z.strictObject(Object.fromEntries(Object.keys(DEFAULTS.share).map((k) => [k, bool])) as Record<ShareKey, z.ZodBoolean>).partial(),
 		forms: z.strictObject(Object.fromEntries(Object.keys(DEFAULTS.forms).map((k) => [k, formSchema])) as Record<FormKey, typeof formSchema>).partial(),
 		plugins: z.preprocess(
-			// Ancien plugin devenu extension (ex. `rdv`) : clé laissée par les sites existants, ignorée.
-			(v) => (v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !PLUGINS_DEVENUS_EXTENSIONS.includes(k))) : v),
+			// Ancien plugin devenu extension (ex. `rdv`) : clé laissée par les sites existants, ignorée ;
+			// devenu outil d'un plugin (ex. `inscription`) : lue par `resoudreOutils()`, sans être validée ici.
+			(v) =>
+				v && typeof v === 'object'
+					? Object.fromEntries(Object.entries(v).filter(([k]) => !PLUGINS_DEVENUS_EXTENSIONS.includes(k) && !(k in PLUGINS_DEVENUS_OUTILS)))
+					: v,
 			z.strictObject(Object.fromEntries(PLUGIN_IDS.map((id) => [id, bool])) as Record<PluginId, z.ZodBoolean>).partial(),
 		),
+		/** Outils des plugins (`outils` du catalogue) : `false` éteint, absent = allumé. */
+		outils: z
+			.strictObject(
+				Object.fromEntries(
+					PLUGIN_IDS.filter((id) => outilsDe(id).length).map((id) => [id, z.strictObject(Object.fromEntries(outilsDe(id).map((o) => [o.id, bool]))).partial()]),
+				),
+			)
+			.partial(),
 		/** Extensions installées (`extensions/<id>/`) : `false` désactive, absent = active. */
 		extensions: z.record(z.string(), bool, { error: 'liste « identifiant: true | false » attendue' }),
 		/** Type de structure (src/lib/structure.ts) : `association` (défaut) ou `entreprise`. */
@@ -223,7 +244,8 @@ const overridesSchema = z
 
 /** Lit et valide le texte de `reglages.yaml` (aussi avant écriture, `brand-writer.ts`) : réglages fusionnés avec `DEFAULTS`. */
 export function parseReglages(text: string) {
-	const result = overridesSchema.safeParse(parseYaml(text));
+	const lu = parseYaml(text);
+	const result = overridesSchema.safeParse(lu);
 	if (!result.success) {
 		const details = result.error.issues
 			.map((i) => {
@@ -236,6 +258,8 @@ export function parseReglages(text: string) {
 	}
 	const o = result.data;
 	const structure = o.structure ?? 'association';
+	// Valeurs écrites, sinon `heriteDe` ou défaut du catalogue ; inactif si un plugin requis l'est.
+	const plugins = resoudrePlugins(o.plugins ?? {}, structure);
 	return {
 		structure,
 		colors: { ...DEFAULTS.colors, ...o.colors },
@@ -246,8 +270,9 @@ export function parseReglages(text: string) {
 		forms: Object.fromEntries(
 			Object.entries(DEFAULTS.forms).map(([k, d]) => [k, { ...d, ...o.forms?.[k as FormKey] }]),
 		) as Record<FormKey, FormToggle>,
-		// Valeurs écrites, sinon défauts ; inactif si un plugin requis l'est.
-		plugins: resoudrePlugins({ ...DEFAULTS.plugins, ...o.plugins }, structure),
+		plugins,
+		// Outils allumés (éteints si le plugin est inactif) ; ancienne clé `plugins.inscription` reprise.
+		outils: resoudreOutils(lu?.plugins ?? {}, o.outils ?? {}, plugins),
 		extensions: (o.extensions ?? {}) as Record<string, boolean>,
 	};
 }

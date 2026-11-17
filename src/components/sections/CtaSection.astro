@@ -1,7 +1,7 @@
 ---
 import Button from '../ui/Button.astro';
 import { association } from '../../lib/association';
-import { lienAdhesionIndisponible } from '../../plugins/adhesion';
+import { lienPluginIndisponible } from '../../lib/liens-plugins';
 
 interface Props {
 	title?: string;
@@ -25,7 +25,7 @@ const {
 			{description}
 		</p>
 	)}
-	{buttonHref && buttonLabel && !lienAdhesionIndisponible(buttonHref) && (
+	{buttonHref && buttonLabel && !lienPluginIndisponible(buttonHref) && (
 		<div class="mt-8">
 			<Button href={buttonHref} variant="secondary" class="!bg-white !text-primary">
 				{buttonLabel}

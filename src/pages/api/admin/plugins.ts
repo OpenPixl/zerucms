@@ -3,8 +3,9 @@
  *  - GET : plugins du catalogue avec leur état (sources / en ligne), fichiers
  *          requis manquants, variables d'environnement absentes, état de la
  *          dernière publication, disponibilité de la publication ;
- *  - PUT : `{ id, actif, valeurs }` → `plugins.<id>` de `reglages.yaml` et
- *          réglages du plugin dans son fichier (`savePlugin()`), puis
+ *  - PUT : `{ id, actif, valeurs, outils }` → `plugins.<id>` et
+ *          `outils.<id>` de `reglages.yaml`, réglages du plugin dans son
+ *          fichier (`savePlugin()`), puis
  *          reconstruction du site (annulée si le build échoue).
  */
 import type { APIRoute } from 'astro';
@@ -33,7 +34,7 @@ export const PUT: APIRoute = withErrors(async ({ request, locals }) => {
 	const blocked = await publishBlocked(request);
 	if (blocked) return blocked;
 	const body = (await readJson(request)) ?? {};
-	const result = await savePlugin(body.id, body.actif, body.valeurs);
+	const result = await savePlugin(body.id, body.actif, body.valeurs, body.outils);
 	if (!result.applied) return jsonError(result.errors.join(' '), 422);
 	return publishChange({
 		request,

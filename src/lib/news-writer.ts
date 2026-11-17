@@ -74,7 +74,12 @@ interface NewsFrontmatter {
 	tag?: string;
 	author?: string;
 	imageCredit?: string;
+	/** Fiche d'activité liée (nom de son dossier) : bouton « S'inscrire » en pied d'actualité. */
+	activite?: string;
 }
+
+/** Nom de dossier d'une fiche d'activité (`activite:` d'une actualité). */
+const ACTIVITE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /** Contrôle du corps (liens et images Markdown ; le HTML est nettoyé à l'affichage). Renvoie les problèmes trouvés. */
 export function checkBody(body: string): string[] {
@@ -123,6 +128,8 @@ export function parseNewsMarkdown(markdown: string): { frontmatter?: NewsFrontma
 	const tag = optionalString(raw.tag, 'tag', errors);
 	const author = optionalString(raw.author, 'author', errors);
 	const imageCredit = optionalString(raw.imageCredit, 'imageCredit', errors);
+	const activite = optionalString(raw.activite, 'activite', errors);
+	if (activite && !ACTIVITE_SLUG.test(activite)) errors.push("`activite` doit être l'adresse d'une fiche d'activité (ex. atelier-photo).");
 	if (!body) errors.push("Le fichier ne contient pas de texte après l'en-tête.");
 	else errors.push(...checkBody(body));
 
@@ -130,7 +137,7 @@ export function parseNewsMarkdown(markdown: string): { frontmatter?: NewsFrontma
 	return {
 		body,
 		errors,
-		frontmatter: { title: title!, isPublish: raw.isPublish !== false, publishAt, excerpt: excerpt!, tag, author, imageCredit },
+		frontmatter: { title: title!, isPublish: raw.isPublish !== false, publishAt, excerpt: excerpt!, tag, author, imageCredit, activite },
 	};
 }
 
@@ -215,6 +222,8 @@ export interface NewsSource {
 	tag: string;
 	author: string;
 	imageCredit: string;
+	/** Fiche d'activité liée (`activite:`), vide sinon. */
+	activite: string;
 	body: string;
 	/** Valeur `cover:` actuelle (`./cover.jpg`), ou `null` sans photo. */
 	cover: string | null;
@@ -252,6 +261,7 @@ export async function readNewsSource(slug: string): Promise<NewsSource | null> {
 		tag: str(raw.tag),
 		author: str(raw.author),
 		imageCredit: str(raw.imageCredit),
+		activite: str(raw.activite),
 		body: match ? text.slice(match[0].length).trim() : text.trim(),
 		cover,
 	};
@@ -285,6 +295,8 @@ export async function updateNews(
 	if (!current) return { errors: ['Actualité introuvable dans les sources.'] };
 	const { frontmatter, body, errors } = parseNewsMarkdown(markdown);
 	if (!frontmatter) return { errors };
+	// Le formulaire du module n'a pas de champ « activité » : le lien est gardé.
+	frontmatter.activite ??= current.activite || undefined;
 
 	const dir = join(newsSourceDir(), slug);
 	const tmp = workDir(`edition-${slug}`);

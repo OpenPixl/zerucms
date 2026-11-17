@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue';
 import MembreFields from './MembreFields.vue';
 import { hasErrors, validateMembre } from '../../lib/validation';
-import type { Genre, MembrePayload, MembreRecherche } from '../../lib/types';
+import type { Genre, MembrePayload, MembreRecherche } from '../../../../lib/grist-asso/types';
 
 defineProps<{
 	groupe: { membreId: number; label: string }[];

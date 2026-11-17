@@ -12,7 +12,10 @@ import { buildMarkdownFile, downloadMarkdown, keyWarnings, parseMarkdownFile, te
 type NewsFile = NewsFields & { body: string };
 
 const KNOWN = ['title', 'publishAt', 'excerpt', 'isPublish', 'tag', 'author', 'imageCredit'];
-const IGNORED: Record<string, string | null> = { cover: "la photo se change dans l'onglet « Image »" };
+const IGNORED: Record<string, string | null> = {
+	cover: "la photo se change dans l'onglet « Image »",
+	activite: "le lien vers l'activité est gardé tel quel",
+};
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function newsMarkdownFile(n: NewsFile): string {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { DISPO_ATTENTE } from '../../lib/choices';
-import type { CotisationOption, InscriptionLigne } from '../../lib/types';
-import { formatPrix } from './format';
+import { DISPO_ATTENTE } from '../../../../lib/grist-asso/choices';
+import type { CotisationOption, InscriptionLigne } from '../../../../lib/grist-asso/types';
+import { formatPrix } from '../../../../lib/grist-asso/format';
 
 const props = defineProps<{
 	membreLabel: string;

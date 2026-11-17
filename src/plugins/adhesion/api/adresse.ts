@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { json } from '../../../lib/http';
-import type { AdresseSuggestion } from '../lib/types';
+import type { AdresseSuggestion } from '../../../lib/grist-asso/types';
 
 export const prerender = false;
 

@@ -26,6 +26,8 @@ export interface NewsArticle {
 	image?: NewsEntry['data']['cover'];
 	imageCredit: string;
 	readingTime: number;
+	/** Fiche d'activité liée (`activite:`, nom de son dossier) : « S'inscrire » en pied d'actualité. */
+	activite?: string;
 	/** Entrée brute de la collection (HTML rendu : `entry.rendered`). */
 	entry: NewsEntry;
 }
@@ -49,6 +51,7 @@ function toArticle(entry: NewsEntry): NewsArticle {
 		image: data.cover,
 		imageCredit: data.imageCredit || `Photo : ${association.name}`,
 		readingTime: estimateReadingTime(entry.body ?? ''),
+		activite: data.activite,
 		entry,
 	};
 }

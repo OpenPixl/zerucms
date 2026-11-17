@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { adhesionApi } from './client';
-import type { AdresseSuggestion, MembrePayload } from '../../lib/types';
+import type { AdresseSuggestion, MembrePayload } from '../../../../lib/grist-asso/types';
 import type { Errors } from '../../lib/validation';
 
 const props = defineProps<{

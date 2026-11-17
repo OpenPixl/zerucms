@@ -39,6 +39,7 @@ Les actualités sont des fichiers **Markdown**, un dossier par article, dans `sr
    | `author` | non | Affiché à côté de la date |
    | `cover` | non | Photo de couverture, chemin **relatif au dossier** (`./cover.jpg`). Le fichier doit exister : sinon le build échoue. Formats : jpg, png, webp, avif |
    | `imageCredit` | non | Légende affichée sous l'image **sur la page de détail uniquement** (ex. `"Photo : Prénom Nom / Source"`). Si absent ou vide, retombe automatiquement sur `"Photo : <nom de l'association>"` (voir `src/content/association.yaml`) |
+   | `activite` | non | Adresse (nom du dossier) d'une fiche d'activité : la page se termine par « Voir l'activité » et « S'inscrire » (si l'inscription en ligne est possible pour cette fiche). Écrit par l'onglet « Partage » du module Activités ; ignoré si la fiche n'est pas publiée |
 
 3. (Optionnel) Déposer la photo de couverture dans le même dossier et la citer dans le frontmatter (`cover: ./cover.jpg`) :
 

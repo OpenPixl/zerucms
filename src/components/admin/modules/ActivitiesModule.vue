@@ -30,11 +30,11 @@ import ActivityForm from './activites/ActivityForm.vue';
 import CategoryForm from './activites/CategoryForm.vue';
 import DragHandle from './pages/DragHandle.vue';
 import OrderArrows from './pages/OrderArrows.vue';
-import { pluginActif } from '../../../plugins';
+import { outilActif } from '../../../plugins';
 
 const { sessionExpired, onCloseRequest } = inject(ADMIN_CONTEXT)!;
-/** Pastille « sans inscription » : seulement si l'inscription en ligne existe (plugin inscription). */
-const inscriptionActive = pluginActif('inscription');
+/** Pastille « sans inscription » : seulement si l'inscription en ligne existe (outil « inscription » du plugin activités). */
+const inscriptionActive = outilActif('activites', 'inscription');
 
 type View =
 	| { name: 'list' }
