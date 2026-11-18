@@ -1,0 +1,176 @@
+---
+/**
+ * Bloc « Carrousel » (`src/lib/blocs.ts`, rendu par `BlocView.astro`) :
+ * photos qui défilent une à une, défilement natif (scroll-snap : glisser au
+ * doigt, flèches du clavier), sans bibliothèque.
+ *
+ * Réglages du bloc : `fleches` (précédente / suivante), `points` (une
+ * pastille par photo), `delai` (secondes ; 0 = pas de défilement
+ * automatique). Défilement automatique : bouton pause (accessibilité),
+ * suspendu au survol, au focus, onglet masqué ou « réduire les animations ».
+ */
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+interface Props {
+	photos: { image: ImageMetadata; alt: string; legende?: string }[];
+	fleches: boolean;
+	points: boolean;
+	delai: number;
+}
+
+const { photos, fleches, points, delai } = Astro.props;
+const total = photos.length;
+const bouton =
+	'absolute top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-gray-800 shadow transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary';
+---
+
+<section class="mt-8" data-carrousel data-delai={delai} aria-roledescription="carrousel" aria-label="Photos">
+	<div class="relative">
+		<div
+			class="piste flex snap-x snap-mandatory overflow-x-auto rounded-2xl bg-gray-100"
+			data-piste
+			tabindex="0"
+			aria-live={delai > 0 ? 'off' : 'polite'}
+		>
+			{photos.map((p, i) => (
+				<figure class="relative w-full shrink-0 snap-center" role="group" aria-roledescription="diapositive" aria-label={`${i + 1} sur ${total}`}>
+					<Image
+						src={p.image}
+						alt={p.alt}
+						widths={[480, 800, 1200, 1600]}
+						sizes="(min-width: 1024px) 768px, 100vw"
+						class="aspect-video w-full object-cover"
+						loading="lazy"
+					/>
+					{p.legende && (
+						<figcaption class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-8 text-sm text-white">
+							{p.legende}
+						</figcaption>
+					)}
+				</figure>
+			))}
+		</div>
+
+		{fleches && total > 1 && (
+			<>
+				<button type="button" class:list={[bouton, 'left-3']} data-precedente aria-label="Photo précédente">
+					<i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+				</button>
+				<button type="button" class:list={[bouton, 'right-3']} data-suivante aria-label="Photo suivante">
+					<i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+				</button>
+			</>
+		)}
+	</div>
+
+	{((points && total > 1) || delai > 0) && (
+		<div class="mt-3 flex items-center justify-center gap-3">
+			{delai > 0 && (
+				<button
+					type="button"
+					class="flex h-7 w-7 items-center justify-center rounded-full text-xs text-gray-600 hover:bg-gray-100"
+					data-pause
+					aria-label="Mettre le défilement en pause"
+				>
+					<i class="fa-solid fa-pause" aria-hidden="true"></i>
+				</button>
+			)}
+			{points && total > 1 && (
+				<div class="flex flex-wrap items-center justify-center gap-1">
+					{photos.map((_, i) => (
+						<button type="button" class="point flex h-6 w-6 items-center justify-center" data-point={i} aria-label={`Photo ${i + 1}`} aria-current={i === 0 ? 'true' : undefined}>
+							<span class="block h-2.5 w-2.5 rounded-full transition-colors" aria-hidden="true"></span>
+						</button>
+					))}
+				</div>
+			)}
+		</div>
+	)}
+</section>
+
+<style>
+	.piste {
+		scrollbar-width: none;
+	}
+	.piste::-webkit-scrollbar {
+		display: none;
+	}
+	.point span {
+		background-color: var(--color-gray-300);
+	}
+	.point[aria-current='true'] span {
+		background-color: var(--color-primary);
+	}
+</style>
+
+<script>
+	const reduire = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+	function initialiser(racine: HTMLElement) {
+		const piste = racine.querySelector<HTMLElement>('[data-piste]');
+		if (!piste) return;
+		const total = piste.children.length;
+		const points = [...racine.querySelectorAll<HTMLButtonElement>('[data-point]')];
+		const pause = racine.querySelector<HTMLButtonElement>('[data-pause]');
+		const delai = Number(racine.dataset.delai) || 0;
+		let index = 0;
+
+		const aller = (i: number) => {
+			index = (i + total) % total;
+			piste.scrollTo({ left: index * piste.clientWidth, behavior: reduire.matches ? 'auto' : 'smooth' });
+		};
+
+		racine.querySelector('[data-precedente]')?.addEventListener('click', () => aller(index - 1));
+		racine.querySelector('[data-suivante]')?.addEventListener('click', () => aller(index + 1));
+		points.forEach((p) => p.addEventListener('click', () => aller(Number(p.dataset.point))));
+		piste.addEventListener('keydown', (e) => {
+			if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+			e.preventDefault();
+			aller(index + (e.key === 'ArrowRight' ? 1 : -1));
+		});
+
+		// Position réelle (glisser au doigt, molette) : pastille active.
+		let image = 0;
+		piste.addEventListener('scroll', () => {
+			cancelAnimationFrame(image);
+			image = requestAnimationFrame(() => {
+				index = Math.round(piste.scrollLeft / Math.max(piste.clientWidth, 1));
+				points.forEach((p, i) => (i === index ? p.setAttribute('aria-current', 'true') : p.removeAttribute('aria-current')));
+			});
+		});
+
+		if (delai <= 0) return;
+		/** Mis en pause par le bouton (sinon : suspendu le temps d'un survol ou d'un focus). */
+		let arrete = reduire.matches;
+		let suspendu = false;
+		let minuteur = 0;
+		const relancer = () => {
+			window.clearInterval(minuteur);
+			if (!arrete && !suspendu && !document.hidden) minuteur = window.setInterval(() => aller(index + 1), delai * 1000);
+		};
+		const majPause = () => {
+			if (!pause) return;
+			pause.setAttribute('aria-label', arrete ? 'Reprendre le défilement' : 'Mettre le défilement en pause');
+			pause.innerHTML = `<i class="fa-solid ${arrete ? 'fa-play' : 'fa-pause'}" aria-hidden="true"></i>`;
+		};
+		pause?.addEventListener('click', () => {
+			arrete = !arrete;
+			majPause();
+			relancer();
+		});
+		const suspendre = (valeur: boolean) => () => {
+			suspendu = valeur;
+			relancer();
+		};
+		racine.addEventListener('mouseenter', suspendre(true));
+		racine.addEventListener('mouseleave', suspendre(false));
+		racine.addEventListener('focusin', suspendre(true));
+		racine.addEventListener('focusout', suspendre(false));
+		document.addEventListener('visibilitychange', relancer);
+		majPause();
+		relancer();
+	}
+
+	document.querySelectorAll<HTMLElement>('[data-carrousel]').forEach(initialiser);
+</script>

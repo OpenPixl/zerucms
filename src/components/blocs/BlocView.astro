@@ -4,18 +4,25 @@
  * Ajouter un type de bloc = une entrée dans `BLOC_TYPES` + une branche ici
  * (bloc d'une extension : composant fourni par son `site.ts`).
  * Les champs `markdown` passent par `renderMarkdownFragment` (HTML nettoyé).
+ * Photos (blocs « Photos », « Carrousel ») : fichiers du dossier de la page
+ * (`chemin`), cf. `src/lib/bloc-images.ts` ; vidéo : `videoEmbed()`.
  */
+import { Image } from 'astro:assets';
 import Button from '../ui/Button.astro';
+import Carrousel from './Carrousel.astro';
+import { blocImage } from '../../lib/bloc-images';
 import type { Bloc } from '../../lib/blocs';
-import { BLOC_TYPES } from '../../lib/blocs';
+import { BLOC_TYPES, videoEmbed } from '../../lib/blocs';
 import { composantBloc } from '../../lib/extensions-site';
 import { renderMarkdownFragment, typographie } from '../../lib/markdown-fragment';
 
 interface Props {
 	bloc: Bloc;
+	/** Page du bloc (identifiant de la collection `pages`) : dossier de ses photos. */
+	chemin?: string;
 }
 
-const { bloc } = Astro.props;
+const { bloc, chemin = '' } = Astro.props;
 const field = (name: string) => (typeof bloc[name] === 'string' ? (bloc[name] as string) : '');
 /** Texte simple affiché (titres, libellés) : apostrophes typographiques. */
 const text = (value: string | undefined) => typographie(value ?? '');
@@ -26,6 +33,13 @@ const ENCART_STYLES: Record<string, { box: string; icon: string }> = {
 	succes: { box: 'border-green-200 bg-green-50 text-green-900', icon: 'fa-circle-check' },
 };
 const encart = ENCART_STYLES[field('style')] ?? ENCART_STYLES.info;
+
+/** Photos du bloc dont le fichier existe (un fichier manquant est simplement ignoré). */
+const photos = (bloc.items ?? [])
+	.map((item) => ({ image: blocImage(chemin, item.photo ?? ''), alt: text(item.alt), legende: text(item.legende) }))
+	.filter((p) => p.image);
+const colonnes = field('colonnes') === 'auto' || !field('colonnes') ? String(Math.min(photos.length, 3)) : field('colonnes');
+const video = bloc.type === 'video' ? videoEmbed(field('lien')) : null;
 ---
 
 {bloc.type === 'cartes' && (
@@ -66,6 +80,56 @@ const encart = ENCART_STYLES[field('style')] ?? ENCART_STYLES.info;
 		)}
 		<div class:list={['bloc-texte text-sm', field('titre') && 'mt-1']} set:html={renderMarkdownFragment(field('texte'))} />
 	</div>
+)}
+
+{bloc.type === 'photos' && photos.length > 0 && (
+	<div class:list={['mt-8 grid gap-6', colonnes === '2' && 'sm:grid-cols-2', colonnes === '3' && 'sm:grid-cols-2 lg:grid-cols-3']}>
+		{photos.map((p) => (
+			<figure>
+				<Image
+					src={p.image!}
+					alt={p.alt}
+					widths={[480, 800, 1200, 1600]}
+					sizes={colonnes === '1' ? '(min-width: 1024px) 768px, 100vw' : '(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw'}
+					class:list={['w-full rounded-2xl', colonnes !== '1' && 'aspect-[4/3] object-cover']}
+					loading="lazy"
+				/>
+				{p.legende && <figcaption class="mt-2 text-center text-sm font-light text-gray-500">{p.legende}</figcaption>}
+			</figure>
+		))}
+	</div>
+)}
+
+{bloc.type === 'carrousel' && photos.length > 0 && (
+	<Carrousel
+		photos={photos.map((p) => ({ image: p.image!, alt: p.alt, legende: p.legende }))}
+		fleches={field('fleches') !== 'non'}
+		points={field('points') !== 'non'}
+		delai={field('auto') === 'oui' ? Number(field('delai') || 5) : 0}
+	/>
+)}
+
+{video && (
+	<figure class="mt-8">
+		<div class="aspect-video overflow-hidden rounded-2xl bg-gray-900">
+			<iframe
+				src={video.src}
+				title={text(field('titre')) || `Vidéo ${video.source}`}
+				class="h-full w-full"
+				loading="lazy"
+				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+				allowfullscreen
+				referrerpolicy="strict-origin-when-cross-origin"
+			></iframe>
+		</div>
+		{(field('titre') || field('legende')) && (
+			<figcaption class="mt-2 text-center text-sm font-light text-gray-500">
+				{field('titre') && <span class="font-medium text-gray-700">{text(field('titre'))}</span>}
+				{field('titre') && field('legende') && ' — '}
+				{text(field('legende'))}
+			</figcaption>
+		)}
+	</figure>
 )}
 
 {BLOC_TYPES[bloc.type]?.extension && (() => {

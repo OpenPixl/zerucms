@@ -146,6 +146,8 @@ export interface PageInput {
 	body: string;
 	blocs: Record<string, Bloc>;
 	imageCredit: string;
+	/** Photos des blocs choisies dans le formulaire (`nouvelle:<clé>` → fichier en base64). */
+	photos?: Record<string, { type: string; data: string }>;
 }
 
 /** Page telle qu'elle est dans les sources. */
@@ -156,6 +158,8 @@ export interface PageSourceView extends PageInput {
 	technique: boolean;
 	/** Aperçu de la photo actuelle (GET d'une page seulement). */
 	coverUrl?: string | null;
+	/** Vignettes des photos des blocs déjà publiées, par valeur (`./bloc-….jpg`) (GET d'une page seulement). */
+	blocPhotoUrls?: Record<string, string>;
 }
 
 /** Page du site (bibliothèque Accueil, Activités…) avec ses réglages, cf. src/lib/site-pages.ts. */

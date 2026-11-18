@@ -113,7 +113,13 @@ Fonctionnement technique :
   (`src/lib/page-variables.ts`) et, si `type: enrichie`, **blocs** (`blocs:`
   + marqueurs `[[bloc:<id>]]` seuls sur leur ligne ; catalogue
   `src/lib/blocs.ts`, rendu `src/components/blocs/BlocView.astro` ; nouveau
-  bloc = entrée `BLOC_TYPES` + branche `BlocView`). `.mdx` = page
+  bloc = entrée `BLOC_TYPES` + branche `BlocView` ; blocs **Photos**,
+  **Carrousel** (`Carrousel.astro`) et **Vidéo** (`videoEmbed()` : YouTube
+  nocookie, Vimeo, Framatube / peertube.fr) : photos `photo_<n>.jpg` (n = numéro suivant le plus grand)
+  dans le dossier de la page, choisies et réduites dans le module
+  (`pages/bloc-photos.ts`, `PageInput.photos`), écrites et nettoyées par
+  `page-writer.ts`, rendues via `src/lib/bloc-images.ts` ; détail
+  [docs/pages.md](docs/pages.md)). `.mdx` = page
   « technique » écrite dans le code, jamais produite par l'admin (le MDX
   s'exécute sur le serveur).
 - **Module « Pages »** (`redacteur`) : `SitePagesModule.vue` +

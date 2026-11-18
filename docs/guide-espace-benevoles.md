@@ -553,13 +553,25 @@ blocs :
 
 - **Page classique** : du texte mis en forme (titres `##`, listes, liens,
   tableaux) et une photo de couverture facultative ;
-- **Page enrichie** : la même chose, plus des **blocs** (grille de cartes,
-  encadré tarif, bouton, encadré d'information, et ceux des extensions
-  installées, ex. prise de rendez-vous). « Ajouter un bloc » le crée et insère son marqueur
+- **Page enrichie** : la même chose, plus des **blocs** (photos, carrousel,
+  vidéo, grille de cartes, encadré tarif, bouton, encadré d'information, et
+  ceux des extensions installées, ex. prise de rendez-vous). « Ajouter un bloc » le crée et insère son marqueur
   `[[bloc:…]]` dans le texte à l'endroit du curseur ; le bloc s'affiche à
   cet endroit (on peut déplacer la ligne du marqueur). Sous les textes des
   blocs (cartes, encadré), « Insérer un lien vers une page du site » ; sous
   le lien d'un bouton, « Choisir une page du site » remplit l'adresse.
+  - **Photos** : une ou plusieurs photos (12 au plus) en grille, chacune
+    avec sa **description** (lue par les personnes malvoyantes, obligatoire)
+    et une légende facultative ; « Ajouter plusieurs photos d'un coup » en
+    choisit plusieurs à la fois. Les photos sont réduites avant l'envoi et
+    leur position GPS est retirée.
+  - **Carrousel** : de 2 à 20 photos qui défilent une à une ; interrupteurs
+    **Flèches de navigation**, **Points de navigation** et **Défilement
+    automatique** (avec la durée de chaque photo). En défilement
+    automatique, un bouton pause est toujours affiché.
+  - **Vidéo** : collez l'adresse d'une vidéo YouTube, Vimeo ou PeerTube
+    (Framatube, peertube.fr) ; le formulaire indique si le lien est
+    reconnu. Une vidéo par bloc ; les fichiers vidéo ne se déposent pas.
 
 **Ou à partir d'un fichier `.md`** (même écran) : « Télécharger un modèle »
 (page classique ou page enrichie, avec des exemples de chaque bloc), le

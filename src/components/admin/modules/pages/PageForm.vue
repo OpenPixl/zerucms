@@ -24,6 +24,7 @@ import FormHeader from '../../FormHeader.vue';
 import FormTabs from '../../FormTabs.vue';
 import { EDIT_TABS, useFormTabs, type EditTab } from '../../form-tabs';
 import { downloadMarkdown } from '../../markdown-file';
+import { fournirBlocPhotos } from './bloc-photos';
 import BlocsEditor from './BlocsEditor.vue';
 import { downloadPageTemplate, pageMarkdownFile, parsePageMarkdown } from './page-markdown';
 
@@ -79,6 +80,9 @@ const form = reactive({
 	imageCredit: editing?.imageCredit ?? '',
 });
 const blocs = reactive<Record<string, Bloc>>(structuredClone(toRaw(editing?.blocs ?? {})));
+/** Photos des blocs (« Photos », « Carrousel ») : aperçus, fichiers choisis à envoyer avec la page. */
+const blocPhotos = fournirBlocPhotos(editing?.blocPhotoUrls);
+onBeforeUnmount(blocPhotos.liberer);
 /** Création : type pas encore choisi (écran de choix classique / enrichie). */
 const typeChosen = ref(Boolean(editing));
 /** L'adresse suit le titre tant qu'elle n'a pas été modifiée à la main (création seulement). */
@@ -231,6 +235,7 @@ async function submit(event: Event) {
 			body: form.body,
 			blocs: form.type === 'enrichie' ? blocs : {},
 			imageCredit: form.imageCredit,
+			photos: form.type === 'enrichie' ? await blocPhotos.envoi(blocs) : {},
 		};
 		const newPhoto = coverAction.value === 'replace' && photo.value ? { type: photo.value.type, data: await fileToBase64(photo.value) } : null;
 		rememberOpenModule('pages-site');
@@ -281,8 +286,8 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 				<i class="fa-solid fa-puzzle-piece text-primary" aria-hidden="true"></i>Page enrichie
 			</span>
 			<span class="mt-1 block text-sm font-light text-gray-600">
-				Le texte, plus des blocs placés où vous voulez : grille de cartes, tarif, bouton, encadré, rendez-vous du
-				Conseiller Numérique…
+				Le texte, plus des blocs placés où vous voulez : photos, carrousel, vidéo, grille de cartes, tarif, bouton,
+				encadré…
 			</span>
 		</button>
 

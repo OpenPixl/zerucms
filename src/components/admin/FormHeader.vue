@@ -5,14 +5,15 @@
  * (pastille ronde bleu clair, icône « modifier » ou « + », puis son titre, qui suit la saisie du champ
  * Titre — titre enregistré ou « Nouvelle … » s'il est vide) pour savoir où
  * l'on se trouve. Actualités, Pages, Activités, Comptes, Plugins. Slot par
- * défaut : affiché à droite du titre (ex. état du plugin).
+ * défaut : affiché à droite du titre (ex. état du plugin). Encadré grisé :
+ * l'en-tête se distingue des onglets du formulaire, juste en dessous.
  */
 const props = defineProps<{ back: string; title: string; editing: boolean }>();
 const emit = defineEmits<{ back: [] }>();
 </script>
 
 <template>
-	<div class="mb-5">
+	<div class="mb-5 rounded-xl border border-gray-200 bg-gray-100 p-4">
 		<button
 			type="button"
 			class="bouton bouton-accent"
@@ -21,9 +22,9 @@ const emit = defineEmits<{ back: [] }>();
 			<i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i>
 			{{ props.back }}
 		</button>
-		<div class="mt-4 flex items-center gap-3">
+		<div class="mt-3 flex items-center gap-3">
 			<span
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-white text-primary"
 				:title="props.editing ? 'Modification' : 'Création'"
 			>
 				<i :class="['fa-solid text-sm', props.editing ? 'fa-pen-to-square' : 'fa-plus']" aria-hidden="true"></i>
