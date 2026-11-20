@@ -77,6 +77,26 @@ Deux mécanismes coexistent :
   une entrée dans `BLOC_TYPES` (champs : formulaire du module + validation
   au build) + une branche dans `BlocView.astro`. Un composant avec
   `client:*` (îlot) y est possible.
+- **Blocs avec médias** : **Photos** (`photos`, 1 à 12, disposition
+  automatique / 1 / 2 / 3 colonnes), **Carrousel** (`carrousel`, 2 à 20
+  photos, interrupteurs `fleches`, `points`, `auto` + `delai` en secondes ;
+  `src/components/blocs/Carrousel.astro`, scroll-snap sans bibliothèque,
+  bouton pause si défilement automatique, suspendu au survol / focus /
+  « réduire les animations ») et **Vidéo** (`video`, une seule : lien
+  YouTube — intégré par youtube-nocookie.com —, Vimeo ou PeerTube
+  Framatube / peertube.fr, `videoEmbed()` de `blocs.ts` ; aucun autre site,
+  pas de fichier vidéo déposé). Types de champ `photo`, `video`,
+  `interrupteur` (`oui` / `non`, `defaut`) et `si` (champ affiché selon un
+  interrupteur). Photos = fichiers `photo_<n>.jpg` du **dossier de la
+  page** (à côté de `cover.jpg`, déplacés avec elle) : choisies dans le
+  module, réduites à 2 000 px dans le navigateur (`pages/bloc-photos.ts` :
+  `fournirBlocPhotos()` / `useBlocPhotos()`, champ `nouvelle:<clé>`),
+  envoyées avec la page (`PageInput.photos`), écrites par `page-writer.ts`
+  (sharp, 2 000 px, sans métadonnées ; n = numéro suivant le plus grand déjà
+  pris dans le dossier, jamais réutilisé dans le même enregistrement), celles
+  qu'aucun bloc ne cite plus supprimées ; rendu par `<Image>` via
+  `src/lib/bloc-images.ts` (`import.meta.glob`), fichier manquant ignoré ;
+  vignettes du module : `blocPhotoUrls` du `GET /api/admin/pages/<chemin>`.
 - **`.mdx`** : reste lu par la route attrape-tout (composant `Content`),
   pour une page écrite dans le code avec ses propres `import`. Le module
   « Pages » la montre comme **page technique** (lecture seule) : le MDX

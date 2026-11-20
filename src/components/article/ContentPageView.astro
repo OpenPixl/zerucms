@@ -87,7 +87,7 @@ breadcrumbs.push({ label: page.title });
 
 			<div class="markdown-content font-light text-gray-700">
 				{md
-					? md.parts.map((part) => ('html' in part ? <Fragment set:html={part.html} /> : <BlocView bloc={part.bloc} />))
+					? md.parts.map((part) => ('html' in part ? <Fragment set:html={part.html} /> : <BlocView bloc={part.bloc} chemin={page.slug} />))
 					: Content && <Content />}
 			</div>
 		</>

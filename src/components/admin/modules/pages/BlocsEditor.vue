@@ -7,9 +7,10 @@
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { disponible } from '../../../../plugins';
-import { BLOC_TYPES, blocMarkersIn, emptyBloc, type Bloc, type BlocType, type BlocTypeDef } from '../../../../lib/blocs';
+import { BLOC_TYPES, blocMarkersIn, emptyBloc, emptyValue, type Bloc, type BlocType, type BlocTypeDef } from '../../../../lib/blocs';
 import { iconButtonClass, inputClass, sortableProps } from '../../context';
 import BlocFields from './BlocFields.vue';
+import { useBlocPhotos } from './bloc-photos';
 import DragHandle from './DragHandle.vue';
 import OrderArrows from './OrderArrows.vue';
 
@@ -36,7 +37,41 @@ function remove(id: string) {
 
 function addItem(bloc: Bloc) {
 	const fields = def(bloc.type).items!.fields;
-	(bloc.items ??= []).push(Object.fromEntries(fields.map((f) => [f.name, ''])));
+	(bloc.items ??= []).push(Object.fromEntries(fields.map((f) => [f.name, emptyValue(f)])));
+}
+
+// --- Plusieurs photos d'un coup (blocs dont les éléments ont un champ photo) ---
+
+const photos = useBlocPhotos();
+const champPhoto = (bloc: Bloc) => def(bloc.type).items?.fields.find((f) => f.type === 'photo')?.name;
+const erreurPhotos = ref<Record<string, string>>({});
+
+/** Une photo par élément : d'abord les éléments sans photo, puis de nouveaux éléments (dans la limite du bloc). */
+async function ajouterPhotos(id: string, bloc: Bloc, event: Event) {
+	const input = event.target as HTMLInputElement;
+	const files = [...(input.files ?? [])];
+	input.value = '';
+	const champ = champPhoto(bloc);
+	if (!photos || !champ) return;
+	const max = def(bloc.type).items!.max;
+	const problemes: string[] = [];
+	for (const file of files) {
+		let item = bloc.items?.find((it) => !it[champ]);
+		if (!item) {
+			if ((bloc.items?.length ?? 0) >= max) {
+				problemes.push(`${max} photos au plus : les suivantes sont ignorées.`);
+				break;
+			}
+			addItem(bloc);
+			item = bloc.items![bloc.items!.length - 1];
+		}
+		try {
+			item[champ] = await photos.choisir(file);
+		} catch (e) {
+			problemes.push((e as Error).message);
+		}
+	}
+	erreurPhotos.value = { ...erreurPhotos.value, [id]: problemes.join(' ') };
 }
 
 function moveItem(bloc: Bloc, index: number, delta: number) {
@@ -113,14 +148,21 @@ function reorderItems(bloc: Bloc, list: NonNullable<Bloc['items']>) {
 						<BlocFields :fields="def(bloc.type).items!.fields" :values="item" :id-prefix="`bloc-${id}-${i}`" />
 					</div>
 				</VueDraggable>
-				<button
-					v-if="(bloc.items?.length ?? 0) < def(bloc.type).items!.max"
-					type="button"
-					class="text-sm font-medium text-primary hover:underline"
-					@click="addItem(bloc)"
-				>
-					<i class="fa-solid fa-plus mr-1" aria-hidden="true"></i>Ajouter : {{ def(bloc.type).items!.label.toLowerCase() }}
-				</button>
+				<div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+					<button
+						v-if="(bloc.items?.length ?? 0) < def(bloc.type).items!.max"
+						type="button"
+						class="text-sm font-medium text-primary hover:underline"
+						@click="addItem(bloc)"
+					>
+						<i class="fa-solid fa-plus mr-1" aria-hidden="true"></i>Ajouter : {{ def(bloc.type).items!.label.toLowerCase() }}
+					</button>
+					<label v-if="photos && champPhoto(bloc)" class="cursor-pointer text-sm font-medium text-primary hover:underline">
+						<i class="fa-solid fa-images mr-1" aria-hidden="true"></i>Ajouter plusieurs photos d'un coup
+						<input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" @change="ajouterPhotos(String(id), bloc, $event)" />
+					</label>
+				</div>
+				<p v-if="erreurPhotos[String(id)]" class="text-xs text-red-700" role="alert">{{ erreurPhotos[String(id)] }}</p>
 			</div>
 		</div>
 

@@ -170,6 +170,27 @@ blocs:
     style: attention         # info | attention | succes
     titre: "À savoir"
     texte: "Texte **Markdown**."
+  galerie:
+    type: photos
+    colonnes: auto           # auto | "1" | "2" | "3"
+    items:                   # fichiers du dossier de la page (choisis dans le module)
+      - photo: ./photo_1.jpg
+        alt: "Ce que montre la photo"
+        legende: "Légende facultative"
+  diaporama:
+    type: carrousel
+    fleches: oui             # oui | non
+    points: oui              # pastilles de navigation
+    auto: non                # défilement automatique
+    delai: "5"               # secondes (si auto : oui) : 3 | 5 | 8 | 12
+    items:                   # 2 photos au moins, mêmes champs que « photos »
+      - { photo: ./photo_1.jpg, alt: "…" }
+      - { photo: ./photo_2.jpg, alt: "…" }
+  presentation:
+    type: video
+    lien: "https://www.youtube.com/watch?v=…"   # YouTube, Vimeo, Framatube, peertube.fr
+    titre: "Titre de la vidéo"
+    legende: "Légende facultative"
   rdv:
     type: rdv                # plugin rdv actif ; titre / texte facultatifs
 ---

@@ -138,6 +138,8 @@ type: enrichie
 # Chaque bloc a un identifiant (minuscules, chiffres, tirets) repris dans le
 # texte par un marqueur [[bloc:identifiant]] seul sur sa ligne.
 # Retirez les blocs inutiles ET leur marqueur.
+# Les blocs « Photos » et « Carrousel » s'ajoutent dans le formulaire (les
+# photos y sont choisies), une fois le fichier déposé.
 blocs:
   services:
     type: cartes
@@ -166,6 +168,10 @@ blocs:
     texte: "Nous contacter"
     lien: "/contact"
     style: primary         # primary, secondary ou outline
+  presentation:
+    type: video
+    lien: "https://www.youtube.com/watch?v=xxxxxxxxxxx"   # YouTube, Vimeo, Framatube ou peertube.fr
+    titre: "Titre de la vidéo"
 ---
 
 Premier paragraphe : l'essentiel en quelques phrases.
@@ -173,6 +179,10 @@ Premier paragraphe : l'essentiel en quelques phrases.
 ## Ce que nous proposons
 
 [[bloc:services]]
+
+## En vidéo
+
+[[bloc:presentation]]
 
 ## Tarif
 
