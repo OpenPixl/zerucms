@@ -61,13 +61,17 @@ fi
 echo "  version visée : $version"
 
 # Mode : Docker seulement si le site tourne DÉJÀ sous Docker (version choisie
-# dans le .env, ou conteneur de ce docker-compose.yml existant). La simple
+# dans le .env, ou conteneur de ce docker-compose.yml en marche). La simple
 # présence de docker-compose.yml (livré avec le dépôt) et de la commande docker
 # ne suffit pas : une installation Node se retrouverait basculée sous Docker.
+# Site construit sur place (dist → .releases/, scripts/serveur.mjs) = Node,
+# même si un conteneur traîne (créé par erreur par un ancien update.sh : il
+# redémarrerait en boucle et rendrait le site « Docker » à chaque mise à jour).
 site_docker() {
   [ -f docker-compose.yml ] && command -v docker >/dev/null 2>&1 || return 1
   grep -qE '^NUMERIK_VERSION=' .env 2>/dev/null && return 0
-  [ -n "$(docker compose ps -a -q 2>/dev/null)" ]
+  [ -L dist ] && return 1
+  [ -n "$(docker compose ps -q --status running 2>/dev/null)" ]
 }
 if [ -z "$mode" ]; then
   if site_docker; then mode=docker

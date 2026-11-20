@@ -114,7 +114,7 @@ Docker : après une mise à jour réussie, `update.sh`, `sauvegarde.sh`,
 
 Le mode est détecté : Docker seulement si le site tourne déjà sous Docker
 (`NUMERIK_VERSION` dans le `.env`, ou conteneur de ce `docker-compose.yml`
-existant) — la présence de `docker-compose.yml` et de la commande `docker`
+en marche, sauf site construit sur place : `dist` → `.releases/`) — la présence de `docker-compose.yml` et de la commande `docker`
 ne suffit plus (une installation Node basculait sous Docker). Sinon Node
 seul ; installation par `git clone` = message « git pull + npm install +
 npm start », rien n'est changé. `--docker` / `--node` pour l'imposer.
