@@ -112,8 +112,12 @@ cas de souci après la mise à jour : `./restauration.sh <cette archive>`.
 Docker : après une mise à jour réussie, `update.sh`, `sauvegarde.sh`,
 `restauration.sh` et `auth-user.sh` sont recopiés depuis la nouvelle image.
 
-Le mode est détecté (Docker si `docker-compose.yml` et la commande `docker`
-sont présents, sinon Node seul) ; `--docker` / `--node` pour l'imposer.
+Le mode est détecté : Docker seulement si le site tourne déjà sous Docker
+(`NUMERIK_VERSION` dans le `.env`, ou conteneur de ce `docker-compose.yml`
+existant) — la présence de `docker-compose.yml` et de la commande `docker`
+ne suffit plus (une installation Node basculait sous Docker). Sinon Node
+seul ; installation par `git clone` = message « git pull + npm install +
+npm start », rien n'est changé. `--docker` / `--node` pour l'imposer.
 `SITE_URL` doit être dans le `.env`.
 
 ⚠️ **Plugins** (volets activables, [src/plugins/README.md](../src/plugins/README.md)) :
