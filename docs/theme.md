@@ -89,7 +89,7 @@ par `src/lib/site-images.ts` quelle que soit leur extension :
 
 | Fichier | Rôle |
 | --- | --- |
-| `logo.(png\|jpg\|webp\|svg)` | **Obligatoire.** En-tête et pied de page, via `<Image>` (`astro:assets` : redimensionné, converti en WebP au build). Largeur calculée d'après ses proportions (`logoWidth()`) : carré, large ou haut, il n'est ni rogné ni déformé. Fond transparent conseillé. |
+| `logo.(png\|jpg\|webp\|svg)` | **Obligatoire.** En-tête et pied de page, via `<Image>` (`astro:assets` : redimensionné, converti en WebP au build). Largeur calculée d'après ses proportions (`logoWidth()`) : carré, large ou haut, il n'est ni rogné ni déformé. Affiché sur 64 px de haut au plus et, dans l'en-tête, 16 rem de large au plus (60 % de l'écran sur mobile ; pied de page : 18 rem) : un logo très large est réduit plutôt que de pousser le menu. Fond transparent conseillé. |
 | `accueil.(jpg\|png\|webp)` | Facultatif. Photo de fond du bandeau d'accueil ; absente = bandeau sans photo. Réglable depuis l'Espace Admin : module « Pages » → Accueil → module « Bandeau ». |
 | `favicon.(svg\|png\|ico)` | Facultatif, un ou plusieurs formats. Icône de l'onglet (une balise `<link rel="icon">` par fichier) ; `favicon.ico` (ou `.png`) est aussi servi à l'adresse `/favicon.ico` (`src/pages/favicon.ico.ts`). |
 
