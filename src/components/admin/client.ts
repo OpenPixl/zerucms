@@ -607,6 +607,8 @@ export interface InstallationEtat {
 	requise: boolean;
 	structure: Structure;
 	compte: { login: string; fullname: string } | null;
+	/** Identifiants déjà utilisés (ex. le super admin). */
+	loginsPris: string[];
 	association: { name: string; email: string; phone: string; address: { street: string; postalCode: string; city: string } };
 	logo: string | null;
 	plugins: InstallationPlugin[];

@@ -10,6 +10,13 @@
  * pendant sa reconstruction (page de progression), puis la page
  * `/installation` (`src/pages/installation.astro`, seule à monter ce
  * composant) revient sur l'écran de fin.
+ *
+ * Serveur de dev : l'installation réécrit des fichiers de `src/content/` que
+ * l'îlot importe (association, réglages) ; Vite recharge alors ce composant
+ * à chaud, ce qui le remettrait à la première étape. Un repère en
+ * `sessionStorage` (`ENVOI`) posé à l'envoi le fait reconnaître : au
+ * remontage, la page est rechargée (écran de fin servi par le serveur) dès
+ * que l'installation n'est plus requise.
  */
 import { computed, onMounted, ref } from 'vue';
 import { PASSWORD_MIN_LENGTH } from '../../lib/auth/password-rules';
@@ -31,6 +38,42 @@ function plusTard() {
 		// Rien à garder.
 	}
 	window.location.assign('/');
+}
+
+/** Envoi de l'installation en cours ou réussi (horodatage), gardé à travers un rechargement à chaud. */
+const ENVOI = 'numerik-installation-envoyee';
+const ENVOI_VALIDITE_MS = 10 * 60 * 1000;
+function lireEnvoi(): boolean {
+	try {
+		const t = Number(sessionStorage.getItem(ENVOI));
+		return Boolean(t) && Date.now() - t < ENVOI_VALIDITE_MS;
+	} catch {
+		return false;
+	}
+}
+function marquerEnvoi(actif: boolean) {
+	try {
+		if (actif) sessionStorage.setItem(ENVOI, String(Date.now()));
+		else sessionStorage.removeItem(ENVOI);
+	} catch {
+		// Navigation privée stricte : rien à garder.
+	}
+}
+
+/** Après un envoi, attend que l'installation soit enregistrée puis recharge la page (écran de fin). */
+async function attendreFin() {
+	for (let i = 0; i < 40; i++) {
+		const r = await installationApi.requise().catch(() => null);
+		if (r && !r.requise) {
+			marquerEnvoi(false);
+			window.location.reload();
+			return;
+		}
+		await new Promise((resolve) => setTimeout(resolve, 1500));
+	}
+	// Toujours requise après une minute : l'installation n'a pas abouti, l'assistant reprend.
+	marquerEnvoi(false);
+	termine.value = false;
 }
 
 const etat = ref<InstallationEtat | null>(null);
@@ -60,7 +103,21 @@ function proposerMotDePasse() {
 onMounted(async () => {
 	try {
 		const e = await installationApi.get();
+		// Installation déjà enregistrée (composant rechargé à chaud après l'envoi) :
+		// la page servie par le serveur montre l'écran de fin.
+		if (!e.requise) {
+			marquerEnvoi(false);
+			window.location.reload();
+			return;
+		}
 		etat.value = e;
+		// Envoi en cours au moment du rechargement à chaud : on attend sa fin
+		// plutôt que de revenir à la première étape. Une reconstruction échouée
+		// (`echec`) rend la main à l'assistant.
+		if (lireEnvoi() && !props.echec) {
+			termine.value = true;
+			void attendreFin();
+		} else marquerEnvoi(false);
 		structure.value = e.structure;
 		const a = e.association;
 		association.value = { name: a.name, email: a.email, phone: a.phone, street: a.address.street, postalCode: a.address.postalCode, city: a.address.city };
@@ -125,7 +182,11 @@ const index = computed(() => etapes.value.findIndex((e) => e.id === courante.val
 function probleme(e: Etape): string {
 	if (e === 'compte' && !etat.value?.compte) {
 		const c = compte.value;
-		if (!/^[a-z0-9][a-z0-9._-]{1,31}$/.test(c.login.trim().toLowerCase())) return "Identifiant : 2 à 32 caractères (minuscules, chiffres, « . », « - » ou « _ »).";
+		const login = c.login.trim().toLowerCase();
+		if (!/^[a-z0-9][a-z0-9._-]{1,31}$/.test(login)) return "Identifiant : 2 à 32 caractères (minuscules, chiffres, « . », « - » ou « _ »).";
+		if (etat.value?.loginsPris.includes(login)) {
+			return `Identifiant : « ${login} » est déjà pris (c'est peut-être votre compte super admin) ; choisissez-en un autre pour l'administrateur.`;
+		}
 		if (!c.fullname.trim()) return 'Indiquez le prénom et le nom.';
 		if (c.password.length < PASSWORD_MIN_LENGTH) return `Mot de passe : au moins ${PASSWORD_MIN_LENGTH} caractères.`;
 	}
@@ -179,12 +240,14 @@ async function installer() {
 			),
 			exemples: exemples.value,
 		};
+		marquerEnvoi(true);
 		const r = await installationApi.installer(saisie);
 		termine.value = true;
 		// Production : la page rechargée est celle de la maintenance (progression
 		// de la construction), qui revient ensuite ici, sur l'écran de fin.
 		if (r.maintenance) setTimeout(() => window.location.reload(), 1500);
 	} catch (err) {
+		marquerEnvoi(false);
 		error.value = err instanceof ApiError ? err.message : (err as Error).message;
 	} finally {
 		busy.value = false;
