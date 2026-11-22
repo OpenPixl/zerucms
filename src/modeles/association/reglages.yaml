@@ -31,7 +31,8 @@ colors:
   stripeEnabled: false
 
 # Bouton mis en avant à droite de la barre de navigation.
-# enabled: false pour le masquer.
+# enabled: false pour le masquer. Modifiable depuis l’Espace Admin :
+# Paramètres → Charte graphique, onglet En-tête.
 cta:
   label: 'Adhérer'
   href: '/adherer'

@@ -4,7 +4,7 @@
  *  - GET  : actualités des sources (brouillons et actualités enregistrées
  *           sans publier compris), état de la dernière publication,
  *           disponibilité de la publication sur ce serveur ;
- *  - POST : `{ markdown, cover?: { type, data (base64) } }` → écrit
+ *  - POST : `{ markdown, cover?: { type, data (base64) }, photos? }` → écrit
  *           `src/content/news/<AAAA-MM-JJ-slug>/` puis lance la reconstruction
  *           du site (`src/lib/site-build.ts`) ; annulée si le build échoue.
  *           `?publier=non` : rejoint le lot en attente (`src/lib/admin-publish.ts`).
@@ -80,7 +80,9 @@ export const POST: APIRoute = withErrors(async ({ request, locals }) => {
 		if (cover.length > COVER_MAX_BYTES) return jsonError('La photo est trop lourde (10 Mo max).');
 	}
 
-	const { slug, title, errors } = await writeNews(markdown, cover);
+	// Photos des blocs déposées avec le fichier, sous le nom cité dans le `.md`.
+	const photos = body?.photos && typeof body.photos === 'object' && !Array.isArray(body.photos) ? (body.photos as Record<string, unknown>) : {};
+	const { slug, title, errors } = await writeNews(markdown, cover, photos);
 	if (!slug) return jsonError(errors.join(' '), 422);
 
 	return publishChange({

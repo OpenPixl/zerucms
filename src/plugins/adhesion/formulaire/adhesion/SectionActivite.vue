@@ -77,7 +77,7 @@ function valider() {
 
 <template>
 	<li
-		class="rounded-2xl border bg-white p-6 shadow-sm"
+		class="rounded-2xl border bg-surface p-6 shadow-sm"
 		:class="active ? 'border-primary' : 'border-gray-100'"
 	>
 		<div class="flex items-center gap-3">

@@ -5,6 +5,7 @@
 
 import { getCollection, type CollectionEntry } from 'astro:content';
 import { association } from './association';
+import { decouperBlocs, type BlocPart } from './bloc-parts';
 import type { Heading } from './headings';
 import { estimateReadingTime } from './reading-time';
 import { sanitizeNewsHtml } from './sanitize-news';
@@ -74,15 +75,16 @@ export async function getActivitiesByCategory(categorySlug: string): Promise<Act
 }
 
 /**
- * Contenu rendu d'une fiche : HTML nettoyé et titres (sommaire). Les fiches
+ * Contenu rendu d'une fiche : HTML nettoyé découpé aux blocs (`ContenuBlocs.astro`,
+ * dossier `activites/<slug>`) et titres (sommaire). Les fiches
  * se modifient depuis l'Espace Admin : même nettoyage que les actualités
  * (`sanitizeNewsHtml`, HTML autorisé, code exécutable retiré).
  */
-export async function renderActivity(activity: Activity): Promise<{ html: string; headings: Heading[] }> {
+export async function renderActivity(activity: Activity): Promise<{ parts: BlocPart[]; headings: Heading[] }> {
 	// HTML rendu au build par le Content Layer (loader glob, rendu non différé).
 	const rendered = activity.entry.rendered;
 	return {
-		html: sanitizeNewsHtml(rendered?.html ?? ''),
+		parts: decouperBlocs(sanitizeNewsHtml(rendered?.html ?? ''), activity.entry.data.blocs ?? {}),
 		headings: (rendered?.metadata?.headings as Heading[] | undefined) ?? [],
 	};
 }

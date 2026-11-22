@@ -6,7 +6,8 @@
  * cf. src/content/README.md) ; le serveur revalide tout à l'envoi
  * (src/lib/page-writer.ts).
  */
-import { validateBloc, type Bloc } from '../../../../lib/blocs';
+import type { Bloc } from '../../../../lib/blocs';
+import { lireBlocsFichier, type PhotoDeposee } from '../../blocs-fichier';
 import { contentKindProblem } from '../../content-import';
 import { buildMarkdownFile, downloadMarkdown, keyWarnings, parseMarkdownFile, textField } from '../../markdown-file';
 
@@ -22,15 +23,16 @@ export interface ImportedPage {
 	menuLabel: string;
 	imageCredit: string;
 	blocs: Record<string, Bloc>;
+	/** Photo de couverture citée (`cover:`), à retrouver parmi les fichiers déposés. */
+	cover: string;
 	body: string;
 }
 
 /** Clés du frontmatter reprises ; les autres sont signalées puis ignorées. */
-const KNOWN = ['title', 'description', 'type', 'menu', 'imageCredit', 'blocs'];
+const KNOWN = ['title', 'description', 'type', 'menu', 'imageCredit', 'blocs', 'cover'];
 /** Clés connues du site mais réglées dans le formulaire (emplacement, photo…). */
 const SET_IN_FORM: Record<string, string> = {
 	access: "l'accès se règle avec l'emplacement « Page réservée »",
-	cover: "la photo se change dans l'onglet « Image »",
 };
 
 const text = textField;
@@ -44,6 +46,8 @@ export function pageMarkdownFile(page: {
 	imageCredit: string;
 	blocs: Record<string, Bloc>;
 	body: string;
+	/** Photo de couverture jointe au `.zip` (nom dans l'archive). */
+	cover?: string;
 }): string {
 	return buildMarkdownFile(
 		'page',
@@ -52,6 +56,7 @@ export function pageMarkdownFile(page: {
 			description: page.description,
 			type: page.type === 'enrichie' ? 'enrichie' : undefined,
 			menu: page.menu ? { show: page.menu.show, ...(page.menu.label ? { label: page.menu.label } : {}) } : undefined,
+			cover: page.cover,
 			imageCredit: page.imageCredit,
 			blocs: page.type === 'enrichie' && Object.keys(page.blocs).length ? page.blocs : undefined,
 		},
@@ -63,20 +68,17 @@ export function pageMarkdownFile(page: {
  * Lit un fichier de page. `error` = fichier inutilisable ; `warnings` =
  * éléments ignorés ou à corriger (le formulaire est quand même rempli).
  */
-export function parsePageMarkdown(source: string): { page?: ImportedPage; warnings: string[]; error?: string } {
+export function parsePageMarkdown(source: string, photo?: PhotoDeposee): { page?: ImportedPage; warnings: string[]; error?: string } {
 	const { data, body, error } = parseMarkdownFile(source);
 	if (!data) return { warnings: [], error };
 	const wrongKind = contentKindProblem(data, 'page');
 	if (wrongKind) return { warnings: [], error: wrongKind };
 	const warnings = keyWarnings(data, KNOWN, SET_IN_FORM);
 
-	const blocs: Record<string, Bloc> = {};
 	const rawBlocs = data.blocs && typeof data.blocs === 'object' && !Array.isArray(data.blocs) ? (data.blocs as Record<string, unknown>) : {};
-	for (const [id, raw] of Object.entries(rawBlocs)) {
-		const { bloc, errors } = validateBloc(id, raw);
-		warnings.push(...errors);
-		if (bloc) blocs[id] = bloc;
-	}
+	const lus = lireBlocsFichier(data.blocs, photo);
+	const blocs = lus.blocs;
+	warnings.push(...lus.warnings);
 	const type: PageKind = data.type === 'enrichie' || Object.keys(rawBlocs).length > 0 ? 'enrichie' : 'classique';
 	const menu = data.menu && typeof data.menu === 'object' ? (data.menu as Record<string, unknown>) : null;
 
@@ -89,6 +91,7 @@ export function parsePageMarkdown(source: string): { page?: ImportedPage; warnin
 			menuLabel: text(menu?.label),
 			imageCredit: text(data.imageCredit),
 			blocs,
+			cover: text(data.cover),
 			body,
 		},
 		warnings,
@@ -138,8 +141,13 @@ type: enrichie
 # Chaque bloc a un identifiant (minuscules, chiffres, tirets) repris dans le
 # texte par un marqueur [[bloc:identifiant]] seul sur sa ligne.
 # Retirez les blocs inutiles ET leur marqueur.
-# Les blocs « Photos » et « Carrousel » s'ajoutent dans le formulaire (les
-# photos y sont choisies), une fois le fichier déposé.
+# Blocs « Photos » et « Carrousel » : photos citées par leur nom de fichier
+# et déposées avec ce .md (ou dans le même .zip), par exemple :
+#   galerie:
+#     type: photos
+#     items:
+#       - { photo: "photo-1.jpg", alt: "Ce que montre la photo" }
+# Photo de couverture, de même : cover: "couverture.jpg" (avant « blocs: »).
 blocs:
   services:
     type: cartes

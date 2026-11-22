@@ -113,7 +113,8 @@ main reste modifiable depuis le module, et inversement.
 | :--- | :--- |
 | `src/components/admin/modules/ActivitiesModule.vue` | Liste par catégorie (vignette, pastilles brouillon / niveau / sans inscription), ordre par glisser-déposer (poignée ⠿) ou flèches ↑/↓, bandeau « Enregistrer et publier », suppression confirmée |
 | `src/components/admin/modules/activites/ActivityForm.vue` | Formulaire de création / modification (même présentation que le module « Pages ») ; en modification, onglet **Partage** : « Créer l'actualité » (publier ou non) et liste des actualités déjà créées depuis la fiche |
-| `src/lib/activity-news.ts` | Actualité dédiée : fiche **enregistrée** reprise (titre, résumé, catégorie → `tag`, texte, photo et crédit), datée du jour, `activite: <slug>` ; `newsOfActivity()` |
+| `src/lib/activity-news.ts` | Actualité dédiée : fiche **enregistrée** reprise (titre, résumé, catégorie → `tag`, texte, blocs — photos copiées —, photo et crédit), datée du jour, `activite: <slug>` ; `newsOfActivity()` |
+| Blocs (`blocs:` du frontmatter) | Photos, carrousel, vidéo… comme les pages enrichies ([pages.md](pages.md)) : éditeur dans l'onglet Contenu, photos `photo_<n>.jpg` dans le dossier de la fiche (`src/lib/bloc-writer.ts`), aussi par dépôt du `.md` avec ses photos ou en `.zip` |
 | `src/components/admin/modules/activites/CategoryForm.vue` | Formulaire d'une catégorie : nom, adresse (création), icône dans une grille (`src/lib/category-icons.ts`), description |
 | `src/lib/category-writer.ts` | Lecture / écriture de `_categories.yaml` (en place, commentaires gardés), suppression d'une catégorie vide, ordre des catégories et des fiches en une transaction (`saveCatalogOrder`) |
 | `src/lib/activity-writer.ts` | Lecture des sources, validation, écriture de `index.md` et de la photo, ordre |

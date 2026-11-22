@@ -65,7 +65,7 @@ defineExpose({ reset });
 </script>
 
 <template>
-	<li class="rounded-2xl border bg-white p-6 shadow-sm" :class="active ? 'border-primary' : 'border-gray-100'">
+	<li class="rounded-2xl border bg-surface p-6 shadow-sm" :class="active ? 'border-primary' : 'border-gray-100'">
 		<div class="flex items-center gap-3">
 			<span
 				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-heading text-sm"
@@ -142,7 +142,7 @@ defineExpose({ reset });
 					<li v-for="r in resultats" :key="r.membreId">
 						<button
 							type="button"
-							class="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-left text-sm hover:border-primary disabled:opacity-50"
+							class="w-full rounded-lg border border-gray-200 bg-surface px-4 py-2 text-left text-sm hover:border-primary disabled:opacity-50"
 							:disabled="busy || groupe.some((g) => g.membreId === r.membreId)"
 							@click="emit('rattacher', r.membreId)"
 						>

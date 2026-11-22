@@ -11,8 +11,8 @@ import { nextTick, ref, type Ref } from 'vue';
 export interface FormTab {
 	id: string;
 	label: string;
-	/** Icône Font Awesome (style « solid »), ex. `fa-image`. */
-	icon: string;
+	/** Icône Font Awesome (style « solid »), ex. `fa-image` ; facultative. */
+	icon?: string;
 }
 
 export function useFormTabs<T extends string>(prefix: string, first: T): { tab: Ref<T>; onInvalid: (event: Event) => void } {

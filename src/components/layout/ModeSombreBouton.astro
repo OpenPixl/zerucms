@@ -1,0 +1,76 @@
+---
+/**
+ * Bouton clair / sombre de l'en-tête (rendu seulement si le mode sombre est
+ * proposé : `site.sombre.enabled`). Bascule `data-theme` sur <html> et
+ * garde le choix dans `localStorage` ; sans choix, le site suit la
+ * préférence du système, y compris quand elle change. Script d'amorçage :
+ * `ModeSombre.astro`. Icônes : lune en clair, soleil en sombre (CSS de
+ * `global.css`).
+ */
+import { site } from '../../config/site';
+
+interface Props {
+	class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+{
+	site.sombre.enabled && (
+		<button
+			type="button"
+			class:list={['flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-primary', className]}
+			data-mode-sombre
+			aria-label="Passer en mode sombre"
+			title="Passer en mode sombre"
+		>
+			<i class="fa-solid fa-moon mode-sombre-lune" aria-hidden="true"></i>
+			<i class="fa-solid fa-sun mode-sombre-soleil" aria-hidden="true"></i>
+		</button>
+	)
+}
+
+<script>
+	const racine = document.documentElement;
+	const systeme = window.matchMedia('(prefers-color-scheme: dark)');
+	const boutons = document.querySelectorAll<HTMLButtonElement>('[data-mode-sombre]');
+
+	function libeller() {
+		const sombre = racine.dataset.theme === 'dark';
+		const texte = sombre ? 'Passer en mode clair' : 'Passer en mode sombre';
+		boutons.forEach((b) => {
+			b.setAttribute('aria-label', texte);
+			b.title = texte;
+		});
+	}
+
+	function choixEnregistre(): string | null {
+		try {
+			return localStorage.getItem('theme');
+		} catch {
+			return null;
+		}
+	}
+
+	boutons.forEach((b) =>
+		b.addEventListener('click', () => {
+			const theme = racine.dataset.theme === 'dark' ? 'light' : 'dark';
+			racine.dataset.theme = theme;
+			try {
+				localStorage.setItem('theme', theme);
+			} catch {
+				// Stockage indisponible (navigation privée…) : choix gardé pour la page seulement.
+			}
+			libeller();
+		}),
+	);
+
+	// Sans choix du visiteur, suivre le système quand il change (mode proposé seulement).
+	systeme.addEventListener('change', (e) => {
+		if (!boutons.length || choixEnregistre()) return;
+		racine.dataset.theme = e.matches ? 'dark' : 'light';
+		libeller();
+	});
+
+	libeller();
+</script>

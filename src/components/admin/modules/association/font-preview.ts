@@ -1,5 +1,5 @@
 /**
- * Aperçu des polices dans l'onglet « Charte graphique » (navigateur) :
+ * Aperçu des polices dans le module « Charte graphique » (navigateur) :
  * chaque police (proposée, déposée ou en cours d'ajout) est chargée à la
  * demande sous un nom d'aperçu (`apercu-…`) avec l'API `FontFace`, sans
  * toucher aux polices du site.

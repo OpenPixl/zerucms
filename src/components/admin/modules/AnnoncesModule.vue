@@ -17,6 +17,7 @@ import { annoncesApi, ApiError, type AnnonceItem, type SaveResult } from '../cli
 import { ADMIN_CONTEXT, iconButtonClass, rememberOpenModule, sortableProps, takeModuleToReopen } from '../context';
 import { isDeferredSubmit } from '../lot';
 import { takePendingImport } from '../content-import';
+import type { Depot } from '../depot';
 import { usePublication } from '../usePublication';
 import AnnonceForm from './annonces/AnnonceForm.vue';
 import { annonceState, frenchDay, type AnnonceState } from './annonces/dates';
@@ -25,7 +26,7 @@ import OrderArrows from './pages/OrderArrows.vue';
 
 const { sessionExpired, onCloseRequest } = inject(ADMIN_CONTEXT)!;
 
-type View = { name: 'list' } | { name: 'form'; source: AnnonceItem | null; file?: File };
+type View = { name: 'list' } | { name: 'form'; source: AnnonceItem | null; file?: Depot };
 
 const view = ref<View>({ name: 'list' });
 const annonces = ref<AnnonceItem[]>([]);

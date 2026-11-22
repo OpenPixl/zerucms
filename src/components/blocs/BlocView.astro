@@ -4,8 +4,9 @@
  * Ajouter un type de bloc = une entrée dans `BLOC_TYPES` + une branche ici
  * (bloc d'une extension : composant fourni par son `site.ts`).
  * Les champs `markdown` passent par `renderMarkdownFragment` (HTML nettoyé).
- * Photos (blocs « Photos », « Carrousel ») : fichiers du dossier de la page
- * (`chemin`), cf. `src/lib/bloc-images.ts` ; vidéo : `videoEmbed()`.
+ * Photos (blocs « Photos », « Carrousel ») : fichiers du dossier du contenu
+ * (`dossier`, relatif à `src/content/`), cf. `src/lib/bloc-images.ts` ;
+ * vidéo : `videoEmbed()`. Texte + blocs d'un contenu : `ContenuBlocs.astro`.
  */
 import { Image } from 'astro:assets';
 import Button from '../ui/Button.astro';
@@ -18,11 +19,11 @@ import { renderMarkdownFragment, typographie } from '../../lib/markdown-fragment
 
 interface Props {
 	bloc: Bloc;
-	/** Page du bloc (identifiant de la collection `pages`) : dossier de ses photos. */
-	chemin?: string;
+	/** Dossier du contenu, relatif à `src/content/` (ex. `pages/statuts`) : photos du bloc. */
+	dossier?: string;
 }
 
-const { bloc, chemin = '' } = Astro.props;
+const { bloc, dossier = '' } = Astro.props;
 const field = (name: string) => (typeof bloc[name] === 'string' ? (bloc[name] as string) : '');
 /** Texte simple affiché (titres, libellés) : apostrophes typographiques. */
 const text = (value: string | undefined) => typographie(value ?? '');
@@ -36,7 +37,7 @@ const encart = ENCART_STYLES[field('style')] ?? ENCART_STYLES.info;
 
 /** Photos du bloc dont le fichier existe (un fichier manquant est simplement ignoré). */
 const photos = (bloc.items ?? [])
-	.map((item) => ({ image: blocImage(chemin, item.photo ?? ''), alt: text(item.alt), legende: text(item.legende) }))
+	.map((item) => ({ image: blocImage(dossier, item.photo ?? ''), alt: text(item.alt), legende: text(item.legende) }))
 	.filter((p) => p.image);
 const colonnes = field('colonnes') === 'auto' || !field('colonnes') ? String(Math.min(photos.length, 3)) : field('colonnes');
 const video = bloc.type === 'video' ? videoEmbed(field('lien')) : null;
@@ -45,7 +46,7 @@ const video = bloc.type === 'video' ? videoEmbed(field('lien')) : null;
 {bloc.type === 'cartes' && (
 	<div class:list={['mt-8 grid gap-6 sm:grid-cols-2', field('colonnes') === '3' && 'lg:grid-cols-3']}>
 		{(bloc.items ?? []).map((item) => (
-			<div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+			<div class="rounded-2xl border border-gray-100 bg-surface p-6 shadow-sm transition-shadow hover:shadow-md">
 				{item.icone && (
 					<span class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-xl text-primary">
 						<i class={`fa-solid fa-${item.icone}`} aria-hidden="true"></i>
@@ -111,7 +112,7 @@ const video = bloc.type === 'video' ? videoEmbed(field('lien')) : null;
 
 {video && (
 	<figure class="mt-8">
-		<div class="aspect-video overflow-hidden rounded-2xl bg-gray-900">
+		<div class="aspect-video overflow-hidden rounded-2xl bg-black">
 			<iframe
 				src={video.src}
 				title={text(field('titre')) || `Vidéo ${video.source}`}

@@ -14,6 +14,11 @@ const PAGES: { href: string; disponible: () => boolean }[] = [
 	{ href: INSCRIPTION_HREF, disponible: () => outilActif('activites', 'inscription') },
 ];
 
+/** Adresses des pages de plugin indisponibles (vérifiées par l'admin pendant la saisie d'un lien). */
+export function pagesIndisponibles(): string[] {
+	return PAGES.filter((p) => !p.disponible()).map((p) => p.href);
+}
+
 export function lienPluginIndisponible(href: string): boolean {
 	const chemin = href.split(/[?#]/)[0].replace(/\/+$/, '');
 	const page = PAGES.find((p) => chemin === p.href || chemin.startsWith(`${p.href}/`));

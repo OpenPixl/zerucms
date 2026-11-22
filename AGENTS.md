@@ -116,10 +116,18 @@ Fonctionnement technique :
   bloc = entrée `BLOC_TYPES` + branche `BlocView` ; blocs **Photos**,
   **Carrousel** (`Carrousel.astro`) et **Vidéo** (`videoEmbed()` : YouTube
   nocookie, Vimeo, Framatube / peertube.fr) : photos `photo_<n>.jpg` (n = numéro suivant le plus grand)
-  dans le dossier de la page, choisies et réduites dans le module
-  (`pages/bloc-photos.ts`, `PageInput.photos`), écrites et nettoyées par
-  `page-writer.ts`, rendues via `src/lib/bloc-images.ts` ; détail
-  [docs/pages.md](docs/pages.md)). `.mdx` = page
+  dans le dossier du contenu, choisies et réduites dans le module
+  (`pages/bloc-photos.ts`) ; **blocs communs aux pages enrichies,
+  actualités et activités** (`blocs:` des trois collections,
+  `blocsSchema()` de `content.config.ts`) : écriture `src/lib/bloc-writer.ts`
+  (`preparerBlocs` : validation + photos fournies sous la valeur du champ —
+  `nouvelle:<clé>`, nom de fichier déposé, copie —, `ecrireBlocPhotos`,
+  `marqueursSansBloc`), découpage `src/lib/bloc-parts.ts`, rendu
+  `ContenuBlocs.astro` (prop `dossier` relatif à `src/content/`), photos
+  `src/lib/bloc-images.ts` (`blocImage`, `blocPhotoUrls`), éditeur
+  `BlocsEditor.vue` dans l'onglet Contenu des trois formulaires (photos des blocs en grille de 4 vignettes : `PhotosGrille.vue`, glisser pour l'ordre, clic = description)
+  (`pages/marqueur.ts`) ; l'onglet « Partage » d'une activité copie ses
+  blocs et leurs photos ; détail [docs/pages.md](docs/pages.md)). `.mdx` = page
   « technique » écrite dans le code, jamais produite par l'admin (le MDX
   s'exécute sur le serveur).
 - **Module « Pages »** (`redacteur`) : `SitePagesModule.vue` +
@@ -174,7 +182,14 @@ Fonctionnement technique :
   `@theme` ; jamais de couleur du thème en hexadécimal dans le code :
   `var(--color-primary)` ou classe Tailwind ; l'Espace Admin ne suit pas
   la charte : couleurs propres redéfinies sur `#espace-benevoles` et
-  `.theme-admin` dans `global.css` ; bouton CTA « Adhérer », « Je
+  `.theme-admin` dans `global.css` ; **mode sombre** visiteur (`sombre:`
+  de `reglages.yaml`, désactivé par défaut, réglé dans la charte
+  graphique : palettes `src/lib/mode-sombre.ts`, couleurs de marque
+  automatiques, logo `images/logo-sombre.*` ; `ModeSombre.astro` en tête
+  + `ModeSombreBouton.astro` dans l'en-tête, `data-theme="dark"` sur
+  `<html>`, échelle des gris recalculée dans `global.css`, admin toujours
+  clair) : fonds publics en `bg-fond` / `bg-surface`, **jamais `bg-white`**
+  ; détail [docs/theme.md](docs/theme.md#mode-sombre) ; bouton CTA « Adhérer », « Je
   participe », outils de partage, ouverture/fermeture des formulaires
   `site.forms`) : `DEFAULTS` du modèle **fusionnés** avec
   `src/content/reglages.yaml` (propre à l'asso, tout facultatif, clé inconnue
@@ -279,10 +294,21 @@ titre enregistré ou « Nouvelle … »).
 Formulaires d'actualité, de page et d'activité **en onglets** Informations /
 Contenu / Image (`FormTabs.vue` + `form-tabs.ts` : `EDIT_TABS`,
 `useFormTabs()` dont `onInvalid` en `@invalid.capture` ramène sur l'onglet
-d'un champ requis vide ; aussi utilisé par le module Association). En
-modification, `EditFileBar.vue` au-dessus : télécharger le `.md` construit
+d'un champ requis vide ; aussi utilisé par la Charte graphique et la Facturation). `FormTabs` = **barre d'onglets réutilisable** de toute l'admin : une seule ligne, défilement sans ascenseur (`scrollbar-aucune`) et chevrons ‹ › quand elle déborde, onglet actif ramené dans la vue, `icon` facultative, `marks` (pastille) et `counts` (compteur). En
+modification, `EditFileBar.vue` au-dessus, dans un **encadré gris** entre
+le titre (`FormHeader`, sans encadré) et les onglets — slot par défaut en
+tête, ex. adresse de l'actualité : télécharger le `.md` construit
 depuis le formulaire / charger un `.md` modifié qui remplit le formulaire
-(sans publier) ; `src/components/admin/markdown-file.ts` +
+(sans publier). **Principe : tout contenu se fait aussi par fichier `.md`**
+(membres de l'association qui contribuent sans accès à l'admin) — toute
+nouveauté d'un contenu doit pouvoir s'écrire dans son `.md`. Photos (blocs,
+`cover:`) citées par leur nom de fichier et déposées **avec** le `.md`
+(sélection multiple ou `.zip`, `src/components/admin/depot.ts` : `lireDepot`,
+`trouverPhoto`, `photosDuDepot` ; lecture des blocs `blocs-fichier.ts` :
+`lireBlocsFichier`, `transformerPhotos`) ; « Télécharger le fichier » =
+`.zip` (`.md` + photos) dès qu'il y a des photos (`zip-contenu.ts`, photos
+sources via `GET /api/admin/photos-contenu`, garde `redacteur`) ;
+`src/components/admin/markdown-file.ts` +
 `modules/actualites/news-markdown.ts`, `modules/activites/activity-markdown.ts`,
 `modules/pages/page-markdown.ts` (`pageMarkdownFile`, `parsePageMarkdown`),
 `modules/annonces/annonce-markdown.ts` (en-tête = champs d'une entrée d'`annonces.yaml` sans `id`, texte = message).
@@ -292,9 +318,10 @@ En tête de chaque fichier `.md` d'échange (modèles, téléchargement) :
 fichier d'un autre type refusé au chargement (`contentKindProblem`).
 **Ajouter un contenu** = premier bouton du menu « Contenus »
 (`AdminRoot.vue`) → modale `ContentImportModal.vue` (type lu, sinon choisi ;
-modèles) → `setPendingImport()` puis ouverture du module, dont le
-formulaire de création se remplit (`takePendingImport()` au montage, prop
-`initialFile` de `PageForm` / `ActivityForm`).
+modèles ; `.md` seul, avec ses photos ou en `.zip`) → `setPendingImport(kind,
+depot)` puis ouverture du module, dont le formulaire de création se remplit
+(`takePendingImport()` au montage, prop `initialFile` = `Depot` de
+`PageForm` / `ActivityForm` / `AnnonceForm`).
 
 - `src/components/admin/AdminLoader.astro` (dans les deux layouts) ne
   charge l'îlot Vue (`mount.ts` → `AdminRoot.vue`) que si le cookie
@@ -304,7 +331,7 @@ formulaire de création se remplit (`takePendingImport()` au montage, prop
   connexion ; `GUARDS` réserve des préfixes à des groupes
   (`/api/admin/comptes`, `/api/admin/sauvegardes`, `/api/admin/maintenance`, `/api/admin/version`, `/api/admin/association` et `/api/admin/charte` → `admin`, `/api/admin/actualites`,
   `/api/admin/publication`, `/api/admin/activites`, `/api/admin/annonces`, `/api/admin/pages`, `/api/admin/menus-deroulants`,
-  `/api/admin/liens`, `/api/admin/pages-du-site` et `/api/admin/ordre-menu` →
+  `/api/admin/liens`, `/api/admin/pages-du-site`, `/api/admin/photos-contenu` et `/api/admin/ordre-menu` →
   `redacteur`, `/api/admin/facturation` → `admin`, `/api/admin/journal`, `/api/admin/plugins`, `/api/admin/extensions`, `/api/admin/installation` et `/api/admin/sauvegardes/restauration` → `superadmin` seul).
 - **Journal des modifications** : `src/lib/journal.ts` (`logEvent()`,
   `<DATA_DIR>/journal/<AAAA>.jsonl`, ajout seul), appelé par chaque route
@@ -331,7 +358,7 @@ formulaire de création se remplit (`takePendingImport()` au montage, prop
   actualiser ») puis rechargement de la page, module rouvert
   (`reopenAfterReload` → `takeModuleToReopen` dans `AdminRoot`) ; page en
   404 (supprimée, déplacée) → `status.href` ou l'accueil.
-- Modules : Pages réservées (masqué pour qui a « Pages » : `replacedBy`), **Pages**, **Activités**, **Actualités**, **Annonces**, **Association** (bureau), **Sauvegardes** (bureau ; restauration super admin : `SauvegardesModule.vue`, `scripts/sauvegarde.mjs`, routes `/api/admin/sauvegardes*`, docs/sauvegarde.md), **Site** (bureau : mode maintenance), Comptes, Journal et **Plugins** (`exclusive`,
+- Modules : Pages réservées (masqué pour qui a « Pages » : `replacedBy`), **Pages**, **Activités**, **Actualités**, **Annonces**, **Association** (bureau), **Charte graphique** (bureau, onglets), **Sauvegardes** (bureau ; restauration super admin : `SauvegardesModule.vue`, `scripts/sauvegarde.mjs`, routes `/api/admin/sauvegardes*`, docs/sauvegarde.md), **Site** (bureau : mode maintenance), Comptes, Journal et **Plugins** (`exclusive`,
   `superadmin` seul ; Plugins : `PluginsModule.vue`, `src/lib/plugin-writer.ts`
   écrit `plugins.<id>` de `reglages.yaml` en place puis publie, activation
   refusée si un fichier `requis` du catalogue manque, `env` absentes
@@ -353,7 +380,7 @@ formulaire de création se remplit (`takePendingImport()` au montage, prop
   du nom, en fin de barre (pleine largeur, badge serveur juste avant).
   Pages, Activités, Actualités et Annonces (dans cet ordre, celui du registre) sont regroupées sous **Contenus ▾** (`menu: 'contenu'`,
   `ADMIN_MENUS` / `barEntries()` dans `modules.ts`, sous-liens côte à côte ;
-  un seul module visible du menu = bouton direct) ; de même Association, Comptes, Sauvegardes et Site sous **Paramètres ▾**
+  un seul module visible du menu = bouton direct) ; de même Association, Charte graphique, Comptes, Sauvegardes et Site sous **Paramètres ▾**
   (`menu: 'parametres'`).
 
 ### HTML des actualités
@@ -441,13 +468,18 @@ lien en dur) = l'ajouter aussi dans `src/modeles/association/`.
   Document — commentaires gardés —, fichier revalidé par
   `parseAssociation()`, restauré si le build échoue ; route
   `/api/admin/association`). Réseaux sociaux reconnus : `SOCIAL_NETWORKS`
-  (`association.ts`, partagé avec `Footer.astro`). Onglet « Charte
-  graphique » (`association/BrandForm.vue`, `src/lib/brand-writer.ts`,
-  route `/api/admin/charte`) : `colors:` de `reglages.yaml` (en place,
+  (`association.ts`, partagé avec `Footer.astro`). Module à part
+  **« Charte graphique »** (menu Paramètres, `CharteModule.vue` →
+  `association/BrandForm.vue` en onglets Couleurs / En-tête (logo, bouton
+  `cta:` texte + lien + affiché, `DEFAULT_CTA`, lien vers un plugin inactif
+  signalé via `pagesIndisponibles()` de `liens-plugins.ts`, bande) /
+  Polices / Mode sombre / Icône, aperçu au-dessus (version sombre en tête de l'onglet Mode sombre), sections en encadrés repliables `src/components/admin/Encadre.vue` (slot `actions` = interrupteur de l'en-tête), une seule
+  publication ; `src/lib/brand-writer.ts`, route `/api/admin/charte` :
+  `{ source, status, availability }`) : `colors:` de `reglages.yaml` (en place,
   revalidé par `parseReglages()`), `logo.*` et `favicon.*` d'`images/`
   (raster passé par sharp, SVG à contenu actif refusé, SVG d'icône →
   `favicon.png` en plus), aperçu en direct et contraste du texte blanc
-  (`association/contrast.ts`). **Polices** (même onglet,
+  (`association/contrast.ts`). **Polices** (onglet Polices,
   `association/FontsField.vue`, aperçu `font-preview.ts` via `FontFace`) :
   `polices:` de `reglages.yaml` (`titres` / `texte` = police proposée ou
   déposée, `deposees` = fichiers de `src/content/polices/` par graisse ou
@@ -507,7 +539,9 @@ service = l'y ajouter). Détail : [docs/referencement.md](docs/referencement.md)
 `src/components/ui/Button.astro` : lien = `grand` par défaut). **Jamais de
 chaîne de classes de champ ou de bouton recopiée** : `class="champ"`, ou `inputClass` /
 `compactInputClass` de `src/components/admin/context.ts` dans l'espace
-bénévoles. Détail : [docs/snippets.md](docs/snippets.md#champs-de-formulaire).
+bénévoles. Formulaires de l'admin : texte `text-sm` hérité (règle `base` de
+`forms.css`), zones de texte `rows="6"` partout (sauf ligne de facture).
+Détail : [docs/snippets.md](docs/snippets.md#champs-de-formulaire).
 
 ### Agenda hebdomadaire
 

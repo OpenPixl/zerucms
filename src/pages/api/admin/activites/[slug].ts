@@ -13,6 +13,7 @@ import { getEntry } from 'astro:content';
 import { json, jsonError, readJson, withErrors } from '../../../../lib/auth/api';
 import { publishBlocked, publishChange } from '../../../../lib/admin-publish';
 import { readCover } from '../../../../lib/admin-cover';
+import { blocPhotoUrls } from '../../../../lib/bloc-images';
 import { newsOfActivity } from '../../../../lib/activity-news';
 import { deleteActivity, readActivityInput, readActivitySource, saveActivity, type CoverChange } from '../../../../lib/activity-writer';
 
@@ -31,7 +32,7 @@ export const GET: APIRoute = withErrors(async ({ params }) => {
 		isPublish: n.isPublish,
 		href: `/actualites/${n.slug}`,
 	}));
-	return json({ ...source, coverUrl, actualites });
+	return json({ ...source, coverUrl, actualites, blocPhotoUrls: await blocPhotoUrls(`activites/${source.slug}`, source.blocs) });
 });
 
 export const PUT: APIRoute = withErrors(async ({ params, request, locals }) => {

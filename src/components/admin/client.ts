@@ -8,7 +8,8 @@ import type { Structure } from '../../lib/structure';
 import type { TypeChamp } from '../../plugins/champs';
 import type { Association } from '../../lib/association';
 import type { AuthGroup } from '../../lib/auth/groups';
-import type { ThemeColors } from '../../config/site';
+import type { LinkToggle, ThemeColors } from '../../config/site';
+import type { ReglageSombre } from '../../lib/mode-sombre';
 import type { Bloc } from '../../lib/blocs';
 import type { HomeModule } from '../../lib/home-modules';
 import type { ModelVersionInfo } from '../../lib/model-version';
@@ -61,10 +62,17 @@ export interface NewsSource {
 	author: string;
 	imageCredit: string;
 	body: string;
+	/** Blocs placés dans le texte (`[[bloc:<id>]]`). */
+	blocs: Record<string, Bloc>;
 	cover: string | null;
 	/** Aperçu de la photo actuelle (site construit). */
 	coverUrl: string | null;
+	/** Vignettes des photos des blocs déjà publiées, par valeur (`./photo_1.jpg`). */
+	blocPhotoUrls?: Record<string, string>;
 }
+
+/** Photos des blocs envoyées avec un contenu, sous la valeur du champ qui les cite (`nouvelle:<clé>`, nom de fichier). */
+export type BlocPhotosEnvoi = Record<string, { type: string; data: string }>;
 
 export type NewsFields = Pick<NewsSource, 'title' | 'publishAt' | 'excerpt' | 'isPublish' | 'tag' | 'author' | 'imageCredit'>;
 
@@ -81,10 +89,14 @@ export interface ActivityInput {
 	typeGrist: string;
 	imageCredit: string;
 	body: string;
+	/** Blocs placés dans le texte (`[[bloc:<id>]]`). */
+	blocs: Record<string, Bloc>;
+	/** Photos des blocs à envoyer (enregistrement seulement). */
+	photos?: BlocPhotosEnvoi;
 }
 
 /** Ligne de la liste du module (sans le texte). */
-export interface ActivityItem extends Omit<ActivityInput, 'body'> {
+export interface ActivityItem extends Omit<ActivityInput, 'body' | 'blocs' | 'photos'> {
 	order: number;
 	cover: string | null;
 	href: string;
@@ -97,6 +109,8 @@ export interface ActivitySourceView extends ActivityInput {
 	cover: string | null;
 	/** Aperçu de la photo actuelle (site construit). */
 	coverUrl: string | null;
+	/** Vignettes des photos des blocs déjà publiées, par valeur (`./photo_1.jpg`). */
+	blocPhotoUrls?: Record<string, string>;
 	/** Actualités créées depuis l'onglet « Partage » (sources, brouillons compris). */
 	actualites: { slug: string; title: string; publishAt: string; isPublish: boolean; href: string }[];
 }
@@ -146,8 +160,8 @@ export interface PageInput {
 	body: string;
 	blocs: Record<string, Bloc>;
 	imageCredit: string;
-	/** Photos des blocs choisies dans le formulaire (`nouvelle:<clé>` → fichier en base64). */
-	photos?: Record<string, { type: string; data: string }>;
+	/** Photos des blocs envoyées avec la page (cf. `BlocPhotosEnvoi`). */
+	photos?: BlocPhotosEnvoi;
 }
 
 /** Page telle qu'elle est dans les sources. */
@@ -270,13 +284,20 @@ export const newsApi = {
 			'GET',
 			'/api/admin/actualites',
 		),
-	create: (markdown: string, cover: { type: string; data: string } | null, options?: SaveOptions) =>
-		request<SaveResult>('POST', saveUrl('/api/admin/actualites', options), { markdown, cover: cover ?? undefined }),
+	create: (markdown: string, cover: { type: string; data: string } | null, options?: SaveOptions, photos: BlocPhotosEnvoi = {}) =>
+		request<SaveResult>('POST', saveUrl('/api/admin/actualites', options), { markdown, cover: cover ?? undefined, photos }),
 	status: () => request<PublishStatus>('GET', '/api/admin/publication'),
 	dismissStatus: () => request<{ ok: true }>('DELETE', '/api/admin/publication'),
 	get: (slug: string) => request<NewsSource>('GET', `/api/admin/actualites/${encodeURIComponent(slug)}`),
-	update: (slug: string, fields: NewsFields, body: string, cover: CoverUpdate, options?: SaveOptions) =>
-		request<SaveResult>('PUT', saveUrl(`/api/admin/actualites/${encodeURIComponent(slug)}`, options), { fields, body, cover }),
+	update: (
+		slug: string,
+		fields: NewsFields,
+		body: string,
+		cover: CoverUpdate,
+		options?: SaveOptions,
+		blocs: Record<string, Bloc> = {},
+		photos: BlocPhotosEnvoi = {},
+	) => request<SaveResult>('PUT', saveUrl(`/api/admin/actualites/${encodeURIComponent(slug)}`, options), { fields, body, blocs, photos, cover }),
 	remove: (slug: string, options?: SaveOptions) =>
 		request<SaveResult>('DELETE', saveUrl(`/api/admin/actualites/${encodeURIComponent(slug)}`, options), { confirm: slug }),
 };
@@ -424,7 +445,14 @@ export interface BrandFonts {
 export interface BrandSource {
 	colors: ThemeColors;
 	defaults: ThemeColors;
+	/** Mode sombre : couleurs de marque présentes seulement si réglées (absentes = automatiques). */
+	sombre: ReglageSombre;
+	/** Bouton d'action de l'en-tête, son réglage d'origine, pages de plugin inactives (bouton masqué si son lien y mène). */
+	cta: LinkToggle;
+	ctaDefaults: LinkToggle;
+	pagesIndisponibles: string[];
 	logo: BrandImage | null;
+	logoSombre: BrandImage | null;
 	favicons: BrandImage[];
 	fonts: BrandFonts;
 	fontDefaults: Record<FontRole, string>;
@@ -440,9 +468,19 @@ export interface BrandFontsInput {
 }
 
 export const brandApi = {
-	get: () => request<BrandSource>('GET', '/api/admin/charte'),
+	get: () =>
+		request<{ source: BrandSource; status: PublishStatus; availability: { ok: boolean; reason?: string } }>('GET', '/api/admin/charte'),
 	update: (
-		input: { colors: ThemeColors; fonts: BrandFontsInput; logo?: { type: string; data: string }; favicon?: { type: string; data: string } },
+		input: {
+			colors: ThemeColors;
+			sombre: ReglageSombre;
+			cta: LinkToggle;
+			fonts: BrandFontsInput;
+			logo?: { type: string; data: string };
+			logoSombre?: { type: string; data: string };
+			retirerLogoSombre?: boolean;
+			favicon?: { type: string; data: string };
+		},
 		options?: SaveOptions,
 	) => request<SaveResult>('PUT', saveUrl('/api/admin/charte', options), input),
 };
@@ -569,6 +607,8 @@ export interface InstallationEtat {
 	requise: boolean;
 	structure: Structure;
 	compte: { login: string; fullname: string } | null;
+	/** Identifiants déjà utilisés (ex. le super admin). */
+	loginsPris: string[];
 	association: { name: string; email: string; phone: string; address: { street: string; postalCode: string; city: string } };
 	logo: string | null;
 	plugins: InstallationPlugin[];

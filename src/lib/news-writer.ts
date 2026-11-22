@@ -18,16 +18,17 @@
  * Code serveur uniquement (node:fs, sharp).
  */
 
-import type { Nodes } from 'mdast';
-import { fromMarkdown } from 'mdast-util-from-markdown';
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { SITE_ROOT } from 'astro:env/server';
 import sharp from 'sharp';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { BLOC_PHOTO_ERREUR, BlocPhotoError, ecrireBlocPhotos, marqueursSansBloc, preparerBlocs, type PhotosEnvoyees } from './bloc-writer';
+import type { Bloc } from './blocs';
+import { checkBody } from './markdown-check';
 import { isSafeUrl } from './safe-url';
 
-export { isSafeUrl };
+export { checkBody, isSafeUrl };
 
 /** Taille maximale de la photo déposée (octets). */
 export const COVER_MAX_BYTES = 10 * 1024 * 1024;
@@ -76,28 +77,12 @@ interface NewsFrontmatter {
 	imageCredit?: string;
 	/** Fiche d'activité liée (nom de son dossier) : bouton « S'inscrire » en pied d'actualité. */
 	activite?: string;
+	/** Blocs tels que lus (validés et leurs photos préparées par `preparerBlocs()` à l'écriture). */
+	blocs?: Record<string, unknown>;
 }
 
 /** Nom de dossier d'une fiche d'activité (`activite:` d'une actualité). */
 const ACTIVITE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-/** Contrôle du corps (liens et images Markdown ; le HTML est nettoyé à l'affichage). Renvoie les problèmes trouvés. */
-export function checkBody(body: string): string[] {
-	const problems = new Set<string>();
-	const walk = (node: Nodes) => {
-		const line = node.position?.start.line;
-		const where = line ? ` (ligne ${line} du texte)` : '';
-		if ((node.type === 'link' || node.type === 'definition') && !isSafeUrl(node.url)) {
-			problems.add(`Lien refusé${where} : seuls les liens http(s), mailto:, tel: et internes sont acceptés.`);
-		}
-		if (node.type === 'image' && !/^https?:\/\//i.test(node.url.trim())) {
-			problems.add(`Image refusée${where} : seule la photo de couverture se dépose ici ; dans le texte, utilisez une adresse http(s).`);
-		}
-		if ('children' in node) node.children.forEach((child) => walk(child as Nodes));
-	};
-	walk(fromMarkdown(body));
-	return [...problems];
-}
 
 /** Lit et vérifie un fichier `.md` déposé ; renvoie le frontmatter normalisé et le corps, ou les erreurs. */
 export function parseNewsMarkdown(markdown: string): { frontmatter?: NewsFrontmatter; body: string; errors: string[] } {
@@ -129,6 +114,10 @@ export function parseNewsMarkdown(markdown: string): { frontmatter?: NewsFrontma
 	const author = optionalString(raw.author, 'author', errors);
 	const imageCredit = optionalString(raw.imageCredit, 'imageCredit', errors);
 	const activite = optionalString(raw.activite, 'activite', errors);
+	if (raw.blocs !== undefined && (!raw.blocs || typeof raw.blocs !== 'object' || Array.isArray(raw.blocs))) {
+		errors.push('`blocs` doit être une liste de blocs par identifiant (cf. modèle).');
+	}
+	const blocs = raw.blocs && typeof raw.blocs === 'object' && !Array.isArray(raw.blocs) ? (raw.blocs as Record<string, unknown>) : undefined;
 	if (activite && !ACTIVITE_SLUG.test(activite)) errors.push("`activite` doit être l'adresse d'une fiche d'activité (ex. atelier-photo).");
 	if (!body) errors.push("Le fichier ne contient pas de texte après l'en-tête.");
 	else errors.push(...checkBody(body));
@@ -137,7 +126,7 @@ export function parseNewsMarkdown(markdown: string): { frontmatter?: NewsFrontma
 	return {
 		body,
 		errors,
-		frontmatter: { title: title!, isPublish: raw.isPublish !== false, publishAt, excerpt: excerpt!, tag, author, imageCredit, activite },
+		frontmatter: { title: title!, isPublish: raw.isPublish !== false, publishAt, excerpt: excerpt!, tag, author, imageCredit, activite, blocs },
 	};
 }
 
@@ -156,9 +145,10 @@ export async function writeCover(dir: string, input: Buffer): Promise<void> {
  * fichier déposé est ignoré (la photo est celle du formulaire).
  */
 /** Contenu de `index.md` : frontmatter validé (`cover:` éventuel) + corps. */
-function serializeNews(frontmatter: NewsFrontmatter, body: string, cover?: string): string {
+function serializeNews(frontmatter: NewsFrontmatter, body: string, cover: string | undefined, blocs: Record<string, Bloc>): string {
+	const { blocs: _bruts, ...champs } = frontmatter;
 	const data: Record<string, unknown> = Object.fromEntries(
-		Object.entries({ ...frontmatter, cover }).filter(([, v]) => v !== undefined),
+		Object.entries({ ...champs, cover, blocs: Object.keys(blocs).length ? blocs : undefined }).filter(([, v]) => v !== undefined),
 	);
 	const yaml = stringifyYaml(data, { defaultStringType: 'QUOTE_DOUBLE', defaultKeyType: 'PLAIN', lineWidth: 0 });
 	return `---\n${yaml}---\n\n${body}\n`;
@@ -181,9 +171,17 @@ export function workDir(name: string): string {
 
 export const COVER_ERROR = "La photo n'a pas pu être lue (formats acceptés : JPEG, PNG, WebP).";
 
-export async function writeNews(markdown: string, cover?: Buffer): Promise<{ slug?: string; title?: string; errors: string[] }> {
+/**
+ * `photos` : photos des blocs fournies avec le fichier, sous la valeur du
+ * champ qui les cite (nom de fichier déposé, `nouvelle:<clé>`, ou copie),
+ * cf. `src/lib/bloc-writer.ts`.
+ */
+export async function writeNews(markdown: string, cover?: Buffer, photos: PhotosEnvoyees = {}): Promise<{ slug?: string; title?: string; errors: string[] }> {
 	const { frontmatter, body, errors } = parseNewsMarkdown(markdown);
 	if (!frontmatter) return { errors };
+	const prepares = await preparerBlocs(frontmatter.blocs ?? {}, photos, null);
+	const manquants = marqueursSansBloc(body, frontmatter.blocs ?? {});
+	if (prepares.errors.length || manquants) return { errors: [...prepares.errors, ...(manquants ? [manquants] : [])] };
 
 	const slug = `${frontmatter.publishAt}-${slugify(frontmatter.title) || 'actualite'}`;
 	const target = join(newsSourceDir(), slug);
@@ -201,7 +199,13 @@ export async function writeNews(markdown: string, cover?: Buffer): Promise<{ slu
 				return { errors: [COVER_ERROR] };
 			}
 		}
-		await writeFile(join(tmp, 'index.md'), serializeNews(frontmatter, body, cover ? './cover.jpg' : undefined), 'utf8');
+		try {
+			await ecrireBlocPhotos(tmp, prepares.photos, prepares.blocs);
+		} catch (err) {
+			if (err instanceof BlocPhotoError) return { errors: [BLOC_PHOTO_ERREUR] };
+			throw err;
+		}
+		await writeFile(join(tmp, 'index.md'), serializeNews(frontmatter, body, cover ? './cover.jpg' : undefined, prepares.blocs), 'utf8');
 		await mkdir(newsSourceDir(), { recursive: true }); // site sans aucune actualité
 		await rename(tmp, target);
 		return { slug, title: frontmatter.title, errors: [] };
@@ -224,6 +228,8 @@ export interface NewsSource {
 	imageCredit: string;
 	/** Fiche d'activité liée (`activite:`), vide sinon. */
 	activite: string;
+	/** Blocs tels qu'ils sont dans les sources. */
+	blocs: Record<string, unknown>;
 	body: string;
 	/** Valeur `cover:` actuelle (`./cover.jpg`), ou `null` sans photo. */
 	cover: string | null;
@@ -262,6 +268,7 @@ export async function readNewsSource(slug: string): Promise<NewsSource | null> {
 		author: str(raw.author),
 		imageCredit: str(raw.imageCredit),
 		activite: str(raw.activite),
+		blocs: raw.blocs && typeof raw.blocs === 'object' && !Array.isArray(raw.blocs) ? (raw.blocs as Record<string, unknown>) : {},
 		body: match ? text.slice(match[0].length).trim() : text.trim(),
 		cover,
 	};
@@ -290,11 +297,15 @@ export async function updateNews(
 	slug: string,
 	markdown: string,
 	coverChange: CoverChange,
+	photos: PhotosEnvoyees = {},
 ): Promise<{ title?: string; restore?: () => Promise<void>; purge?: () => Promise<void>; errors: string[] }> {
 	const current = await readNewsSource(slug);
 	if (!current) return { errors: ['Actualité introuvable dans les sources.'] };
 	const { frontmatter, body, errors } = parseNewsMarkdown(markdown);
 	if (!frontmatter) return { errors };
+	const prepares = await preparerBlocs(frontmatter.blocs ?? {}, photos, join(newsSourceDir(), slug));
+	const manquants = marqueursSansBloc(body, frontmatter.blocs ?? {});
+	if (prepares.errors.length || manquants) return { errors: [...prepares.errors, ...(manquants ? [manquants] : [])] };
 	// Le formulaire du module n'a pas de champ « activité » : le lien est gardé.
 	frontmatter.activite ??= current.activite || undefined;
 
@@ -315,7 +326,13 @@ export async function updateNews(
 			}
 			cover = './cover.jpg';
 		}
-		await writeFile(join(tmp, 'index.md'), serializeNews(frontmatter, body, cover), 'utf8');
+		try {
+			await ecrireBlocPhotos(tmp, prepares.photos, prepares.blocs);
+		} catch (err) {
+			if (err instanceof BlocPhotoError) return { errors: [BLOC_PHOTO_ERREUR] };
+			throw err;
+		}
+		await writeFile(join(tmp, 'index.md'), serializeNews(frontmatter, body, cover, prepares.blocs), 'utf8');
 
 		const backup = workDir(`sauvegarde-${slug}`);
 		await rename(dir, backup);

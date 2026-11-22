@@ -112,7 +112,7 @@ function choisir(s: AdresseSuggestion) {
 			/>
 			<ul
 				v-if="ouvert"
-				class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+				class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-surface shadow-lg"
 			>
 				<li v-for="s in suggestions" :key="s.label">
 					<button

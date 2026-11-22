@@ -21,6 +21,14 @@ export interface BlocPhotos {
 	apercu(valeur: string): string | null;
 	/** Prépare une photo choisie ; renvoie la valeur du champ (`nouvelle:<clé>`). Erreur = message à afficher. */
 	choisir(file: File): Promise<string>;
+	/**
+	 * Photo déposée avec un fichier `.md` (`depot.ts`) : enregistrée telle
+	 * quelle (réduite à l'envoi), même fichier = même valeur ; `null` si son
+	 * format n'est pas accepté.
+	 */
+	deposer(file: File): string | null;
+	/** Fichier d'une photo choisie ou déposée (`nouvelle:<clé>`), pour le téléchargement en `.zip`. */
+	fichier(valeur: string): Blob | null;
 }
 
 const CLE: InjectionKey<BlocPhotos> = Symbol('bloc-photos');
@@ -46,6 +54,13 @@ async function reduire(file: File): Promise<Blob> {
 	}
 }
 
+/** Photo prête à envoyer : réduite, `{ type, data (base64) }` (aussi pour les dépôts envoyés tels quels). */
+export async function photoPourEnvoi(file: Blob): Promise<{ type: string; data: string }> {
+	const blob = file.type === 'image/jpeg' && file.size < 300 * 1024 ? file : await reduire(file as File);
+	const f = new File([blob], 'photo', { type: blob.type || 'image/jpeg' });
+	return { type: f.type, data: await fileToBase64(f) };
+}
+
 /** Valeurs `nouvelle:<clé>` citées par les blocs (champs et éléments). */
 function nouvellesCitees(blocs: Record<string, Bloc>): Set<string> {
 	const citees = new Set<string>();
@@ -60,8 +75,10 @@ function nouvellesCitees(blocs: Record<string, Bloc>): Set<string> {
 }
 
 export function fournirBlocPhotos(apercus: Record<string, string> = {}) {
-	const attente = shallowReactive(new Map<string, { blob: Blob; url: string }>());
+	const attente = shallowReactive(new Map<string, { blob: Blob; url: string; aReduire?: boolean }>());
+	const deposees = new WeakMap<File, string>();
 	let compteur = 0;
+	const cle = () => `nouvelle:${Date.now().toString(36)}${(compteur++).toString(36)}`;
 
 	const api: BlocPhotos = {
 		apercu: (valeur) => attente.get(valeur)?.url ?? apercus[valeur] ?? null,
@@ -69,22 +86,37 @@ export function fournirBlocPhotos(apercus: Record<string, string> = {}) {
 			if (!TYPES.includes(file.type)) throw new Error(`« ${file.name} » : formats acceptés JPEG, PNG ou WebP.`);
 			const blob = await reduire(file);
 			if (blob.size > POIDS_MAX) throw new Error(`« ${file.name} » est trop lourde (10 Mo max).`);
-			const valeur = `nouvelle:${Date.now().toString(36)}${(compteur++).toString(36)}`;
+			const valeur = cle();
 			attente.set(valeur, { blob, url: URL.createObjectURL(blob) });
+			return valeur;
+		},
+		fichier: (valeur) => attente.get(valeur)?.blob ?? null,
+		deposer(file) {
+			if (!TYPES.includes(file.type)) return null;
+			const deja = deposees.get(file);
+			if (deja && attente.has(deja)) return deja;
+			const valeur = cle();
+			attente.set(valeur, { blob: file, url: URL.createObjectURL(file), aReduire: true });
+			deposees.set(file, valeur);
 			return valeur;
 		},
 	};
 	provide(CLE, api);
 
 	return {
+		api,
 		/** Photos à envoyer avec la page : seulement celles encore citées par un bloc. */
 		async envoi(blocs: Record<string, Bloc>): Promise<Record<string, { type: string; data: string }>> {
 			const photos: Record<string, { type: string; data: string }> = {};
 			for (const valeur of nouvellesCitees(blocs)) {
 				const photo = attente.get(valeur);
 				if (!photo) continue;
+				if (photo.aReduire) {
+					photos[valeur] = await photoPourEnvoi(photo.blob);
+					continue;
+				}
 				const file = new File([photo.blob], 'photo', { type: photo.blob.type || 'image/jpeg' });
-				photos[valeur.slice('nouvelle:'.length)] = { type: file.type, data: await fileToBase64(file) };
+				photos[valeur] = { type: file.type, data: await fileToBase64(file) };
 			}
 			return photos;
 		},

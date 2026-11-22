@@ -30,6 +30,7 @@ import { usePublication } from '../usePublication';
 import DragHandle from './pages/DragHandle.vue';
 import OrderArrows from './pages/OrderArrows.vue';
 import { takePendingImport } from '../content-import';
+import type { Depot } from '../depot';
 import PageForm from './pages/PageForm.vue';
 import PageRow from './pages/PageRow.vue';
 import SitePageForm from './pages/SitePageForm.vue';
@@ -39,7 +40,7 @@ const { sessionExpired, onCloseRequest } = inject(ADMIN_CONTEXT)!;
 
 type View =
 	| { name: 'list' }
-	| { name: 'page'; source: PageSourceView | null; file?: File }
+	| { name: 'page'; source: PageSourceView | null; file?: Depot }
 	| { name: 'dropdown'; dropdown: DropdownView | null }
 	| { name: 'site'; page: SitePageView };
 

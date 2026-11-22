@@ -3,6 +3,8 @@
  * l'association, jamais remplacé par une mise à jour du modèle) :
  *
  * - `logo.(png|jpg|jpeg|webp|svg)` — obligatoire : en-tête et pied de page ;
+ * - `logo-sombre.(png|jpg|jpeg|webp|svg)` — facultatif : logo de l'en-tête
+ *   en mode sombre (`src/lib/mode-sombre.ts`), absent = logo normal ;
  * - `accueil.(jpg|jpeg|png|webp)` — facultatif : fond du bandeau d'accueil
  *   (réglé depuis le module « Bandeau » de l'accueil, `home-photo.ts`) ;
  * - `favicon.(svg|png|ico)` — facultatif, un ou plusieurs formats : icône
@@ -18,6 +20,7 @@ import type { ImageMetadata } from 'astro';
 type ImageModules = Record<string, { default: ImageMetadata }>;
 
 const logos: ImageModules = import.meta.glob('../content/images/logo.{png,jpg,jpeg,webp,svg}', { eager: true });
+const logosSombres: ImageModules = import.meta.glob('../content/images/logo-sombre.{png,jpg,jpeg,webp,svg}', { eager: true });
 const accueils: ImageModules = import.meta.glob('../content/images/accueil.{jpg,jpeg,png,webp}', { eager: true });
 const faviconFiles: Record<string, string> = import.meta.glob('../content/images/favicon.{svg,png,ico}', {
 	eager: true,
@@ -40,12 +43,15 @@ function single(modules: ImageModules, name: string, required: boolean): ImageMe
 /** Logo de l'association (en-tête, pied de page). */
 export const logo = single(logos, 'logo', true)!;
 
+/** Logo de l'en-tête en mode sombre (charte graphique), facultatif. */
+export const logoSombre = single(logosSombres, 'logo-sombre', false);
+
 /**
  * Largeur du logo pour une hauteur donnée, d'après ses proportions réelles :
  * un logo carré, large ou haut n'est ni rogné ni déformé.
  */
-export function logoWidth(height: number): number {
-	return Math.round((height * logo.width) / logo.height);
+export function logoWidth(height: number, image: ImageMetadata = logo): number {
+	return Math.round((height * image.width) / image.height);
 }
 
 /** Photo de fond du bandeau d'accueil ; absente = bandeau sans photo. */

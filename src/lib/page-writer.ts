@@ -25,11 +25,10 @@
 
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import sharp from 'sharp';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { isAuthGroup, type AuthGroup } from './auth/groups';
-import { readCover } from './admin-cover';
-import { BLOC_PHOTO_NOUVELLE, BLOC_TYPES, blocMarkdownTexts, blocMarkersIn, blocPhotos, validateBloc, type Bloc, type BlocTypeDef } from './blocs';
+import { blocMarkersIn, type Bloc } from './blocs';
+import { BLOC_PHOTO_ERREUR, BlocPhotoError, ecrireBlocPhotos, marqueursSansBloc, preparerBlocs, type PhotoAEcrire } from './bloc-writer';
 import { RESERVED_FOLDER } from './content-pages';
 import { adressesPluginsActifs } from './plugin-adresses';
 import { contentTransaction, type Applied } from './content-transaction';
@@ -62,8 +61,9 @@ export interface PageInput {
 	blocs: Record<string, unknown>;
 	imageCredit: string;
 	/**
-	 * Photos des blocs choisies dans le formulaire, par clé : un champ `photo`
-	 * qui vaut `nouvelle:<clé>` reçoit le fichier `{ type, data (base64) }`.
+	 * Photos des blocs fournies avec la page, sous la valeur du champ `photo`
+	 * qui les cite (`nouvelle:<clé>`, nom de fichier) : `{ type, data (base64) }`
+	 * (cf. `src/lib/bloc-writer.ts`).
 	 */
 	photos?: Record<string, unknown>;
 }
@@ -265,81 +265,8 @@ interface NormalizedPage {
 	path: string;
 	frontmatter: Record<string, unknown>;
 	body: string;
-	/** Photos de blocs à écrire dans le dossier de la page (`nom` = `./photo_<n>.jpg`). */
-	photos: { nom: string; data: Buffer }[];
-}
-
-/** Photo de bloc d'un fichier de page : `photo_<n>.<ext>`, retirée quand plus aucun bloc ne la cite. */
-const FICHIER_PHOTO_BLOC = /^photo_(\d{1,4})\.(?:jpg|jpeg|png|webp)$/;
-
-/** Plus grand numéro de photo de bloc déjà pris : fichiers du dossier de la page et valeurs reçues. */
-async function dernierNumeroPhoto(dossier: string | null, blocs: Record<string, unknown>): Promise<number> {
-	const fichiers = dossier ? await readdir(dossier).catch(() => [] as string[]) : [];
-	const numeros = [...fichiers, ...(JSON.stringify(blocs).match(/photo_\d{1,4}\.\w+/g) ?? [])]
-		.map((f) => Number(f.match(FICHIER_PHOTO_BLOC)?.[1] ?? 0));
-	return Math.max(0, ...numeros);
-}
-
-/**
- * Remplace, dans les blocs reçus, les photos nouvellement choisies
- * (`nouvelle:<clé>`) par leur futur nom de fichier, `photo_<n>.jpg` : n =
- * numéro suivant le plus grand déjà pris (`dernier`), dans l'ordre des blocs
- * (une même clé citée deux fois = un seul fichier) ; les fichiers à écrire
- * sont ajoutés à `photos`.
- */
-function resoudrePhotos(
-	blocs: Record<string, unknown>,
-	envoyees: Record<string, unknown>,
-	dernier: number,
-	photos: NormalizedPage['photos'],
-	errors: string[],
-): Record<string, unknown> {
-	const noms = new Map<string, string>();
-	const nom = (valeur: unknown, where: string): unknown => {
-		if (typeof valeur !== 'string' || !BLOC_PHOTO_NOUVELLE.test(valeur)) return valeur;
-		const { data, error } = readCover(envoyees[valeur.slice('nouvelle:'.length)]);
-		if (!data) {
-			errors.push(`${where} : ${error ?? 'photo manquante, choisissez-la à nouveau.'}`);
-			// Nom valide factice : l'erreur ci-dessus suffit (pas de « photo obligatoire » en plus) ; rien n'est écrit.
-			return './photo_0.jpg';
-		}
-		let fichier = noms.get(valeur);
-		if (!fichier) {
-			fichier = `./photo_${++dernier}.jpg`;
-			noms.set(valeur, fichier);
-			photos.push({ nom: fichier, data });
-		}
-		return fichier;
-	};
-	return Object.fromEntries(
-		Object.entries(blocs).map(([id, raw]) => {
-			if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return [id, raw];
-			const bloc = { ...(raw as Record<string, unknown>) };
-			const def: BlocTypeDef | undefined = typeof bloc.type === 'string' ? BLOC_TYPES[bloc.type] : undefined;
-			if (!def) return [id, raw];
-			for (const f of def.fields) if (f.type === 'photo') bloc[f.name] = nom(bloc[f.name], `Bloc « ${id} »`);
-			if (def.items && Array.isArray(bloc.items)) {
-				bloc.items = bloc.items.map((item, i) => {
-					if (!item || typeof item !== 'object') return item;
-					const copie = { ...(item as Record<string, unknown>) };
-					for (const f of def.items!.fields) {
-						if (f.type === 'photo') copie[f.name] = nom(copie[f.name], `Bloc « ${id} », ${def.items!.label.toLowerCase()} ${i + 1}`);
-					}
-					return copie;
-				});
-			}
-			return [id, bloc];
-		}),
-	);
-}
-
-/** Photo de bloc : redressée selon l'EXIF, sans métadonnées (dont la position GPS), 2000 px de large au plus. */
-async function writeBlocPhoto(dir: string, nom: string, data: Buffer): Promise<void> {
-	await sharp(data, { failOn: 'error' })
-		.rotate()
-		.resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
-		.jpeg({ quality: 85, mozjpeg: true })
-		.toFile(join(dir, nom.replace(/^\.\//, '')));
+	/** Photos de blocs à écrire dans le dossier de la page (`src/lib/bloc-writer.ts`). */
+	photos: PhotoAEcrire[];
 }
 
 async function normalizePage(input: PageInput, currentPath: string | null): Promise<{ page?: NormalizedPage; errors: string[] }> {
@@ -368,20 +295,14 @@ async function normalizePage(input: PageInput, currentPath: string | null): Prom
 	const unknownVars = unknownPageVariables(body);
 	if (unknownVars.length) errors.push(`Variable(s) inconnue(s) : ${unknownVars.map((v) => `{{${v}}}`).join(', ')}.`);
 
-	const blocs: Record<string, Bloc> = {};
-	const photos: NormalizedPage['photos'] = [];
+	let blocs: Record<string, Bloc> = {};
+	let photos: PhotoAEcrire[] = [];
 	if (input.type === 'enrichie') {
-		const dernier = await dernierNumeroPhoto(currentPath ? join(pagesSourceDir(), currentPath) : null, input.blocs ?? {});
-		const recus = resoudrePhotos(input.blocs ?? {}, input.photos ?? {}, dernier, photos, errors);
-		for (const [id, raw] of Object.entries(recus)) {
-			const { bloc, errors: blocErrors } = validateBloc(id, raw);
-			errors.push(...blocErrors);
-			if (!bloc) continue;
-			for (const text of blocMarkdownTexts(bloc)) errors.push(...checkBody(text).map((e) => `Bloc « ${id} » : ${e}`));
-			blocs[id] = bloc;
-		}
-		const missing = blocMarkersIn(body).filter((id) => !blocs[id]);
-		if (missing.length) errors.push(`Marqueur(s) sans bloc : ${missing.map((id) => `[[bloc:${id}]]`).join(', ')}.`);
+		const prepares = await preparerBlocs(input.blocs ?? {}, input.photos ?? {}, currentPath ? join(pagesSourceDir(), currentPath) : null);
+		({ blocs, photos } = prepares);
+		errors.push(...prepares.errors);
+		const manquants = marqueursSansBloc(body, input.blocs ?? {});
+		if (manquants) errors.push(manquants);
 	} else if (blocMarkersIn(body).length) {
 		errors.push('Une page classique ne peut pas contenir de marqueur [[bloc:…]] : choisissez « page enrichie ».');
 	}
@@ -447,7 +368,6 @@ function transaction(mutate: (root: string) => Promise<void>): Promise<Applied> 
 // --- Pages -----------------------------------------------------------------
 
 class CoverError extends Error {}
-class BlocPhotoError extends Error {}
 
 /** Dossier des pages réservées devenu vide (dernière page supprimée ou déplacée) : retiré. */
 async function removeEmptyReservedFolder(root: string): Promise<void> {
@@ -490,19 +410,7 @@ export async function savePage(
 				cover = './cover.jpg';
 			}
 			// Photos des blocs : nouvelles écrites, celles qu'aucun bloc ne cite plus retirées.
-			for (const photo of page.photos) {
-				await writeBlocPhoto(dir, photo.nom, photo.data).catch(() => {
-					throw new BlocPhotoError();
-				});
-			}
-			const citees = new Set(
-				Object.values((page.frontmatter.blocs ?? {}) as Record<string, Bloc>)
-					.flatMap(blocPhotos)
-					.map((p) => p.replace(/^\.\//, '')),
-			);
-			for (const fichier of await readdir(dir)) {
-				if (FICHIER_PHOTO_BLOC.test(fichier) && !citees.has(fichier)) await rm(join(dir, fichier), { force: true });
-			}
+			await ecrireBlocPhotos(dir, page.photos, (page.frontmatter.blocs ?? {}) as Record<string, Bloc>);
 			// `cover` avant `imageCredit` et les blocs : ordre de lecture habituel.
 			const { blocs, imageCredit, ...head } = page.frontmatter;
 			const frontmatter = { ...head, ...(cover ? { cover } : {}), ...(imageCredit ? { imageCredit } : {}), ...(blocs ? { blocs } : {}) };
@@ -511,7 +419,7 @@ export async function savePage(
 		});
 	} catch (err) {
 		if (err instanceof CoverError) return { errors: [COVER_ERROR] };
-		if (err instanceof BlocPhotoError) return { errors: ["Une photo d'un bloc n'a pas pu être lue (formats acceptés : JPEG, PNG, WebP)."] };
+		if (err instanceof BlocPhotoError) return { errors: [BLOC_PHOTO_ERREUR] };
 		throw err;
 	}
 	return { path: page.path, title: String(page.frontmatter.title), applied, errors: [] };

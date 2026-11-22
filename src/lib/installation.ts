@@ -137,6 +137,8 @@ export interface EtatInstallation {
 	structure: Structure;
 	/** Compte administrateur déjà créé (installation reprise après un échec). */
 	compte: { login: string; fullname: string } | null;
+	/** Identifiants déjà utilisés (ex. le super admin) : refusés dès l'étape « Compte ». */
+	loginsPris: string[];
 	association: { name: string; email: string; phone: string; address: { street: string; postalCode: string; city: string } };
 	logo: string | null;
 	plugins: PluginInstallation[];
@@ -167,6 +169,7 @@ export async function lireEtat(): Promise<EtatInstallation> {
 		requise: await installationRequise(),
 		structure: reglages.structure,
 		compte: admin ? { login: admin.login, fullname: admin.fullname } : null,
+		loginsPris: comptes.map((a) => a.login),
 		association: {
 			name: vide(association.name),
 			email: vide(association.email),

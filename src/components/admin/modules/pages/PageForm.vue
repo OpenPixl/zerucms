@@ -9,9 +9,9 @@
  * (Espace Admin). « Menu » = menu de navigation (frontmatter `menu:`). Le serveur valide
  * tout (src/lib/page-writer.ts) et reconstruit le site.
  */
-import { computed, inject, nextTick, onBeforeUnmount, reactive, ref, toRaw } from 'vue';
+import { computed, inject, onBeforeUnmount, reactive, ref, toRaw } from 'vue';
 import { ASSIGNABLE_GROUPS, AUTH_GROUPS } from '../../../../lib/auth/groups';
-import { blocMarker, type Bloc } from '../../../../lib/blocs';
+import { type Bloc } from '../../../../lib/blocs';
 import { PAGE_VARIABLES } from '../../../../lib/page-variables';
 import { ApiError, pagesApi, type CoverUpdate, type DropdownView, type PageInput, type PageSourceView, type SaveResult } from '../../client';
 import { isDeferredSubmit } from '../../lot';
@@ -23,8 +23,10 @@ import EditFileBar from '../../EditFileBar.vue';
 import FormHeader from '../../FormHeader.vue';
 import FormTabs from '../../FormTabs.vue';
 import { EDIT_TABS, useFormTabs, type EditTab } from '../../form-tabs';
-import { downloadMarkdown } from '../../markdown-file';
+import { telechargerContenu } from '../../zip-contenu';
 import { fournirBlocPhotos } from './bloc-photos';
+import { DEPOT_ACCEPT, lireDepot, photosDuDepot, remarquesDepot, trouverPhoto, type Depot } from '../../depot';
+import { insererMarqueur } from './marqueur';
 import BlocsEditor from './BlocsEditor.vue';
 import { downloadPageTemplate, pageMarkdownFile, parsePageMarkdown } from './page-markdown';
 
@@ -33,7 +35,7 @@ const props = defineProps<{
 	source: PageSourceView | null;
 	disabled: boolean;
 	/** Création à partir d'un fichier déposé dans « Ajouter un contenu » (menu Contenus). */
-	initialFile?: File;
+	initialFile?: Depot;
 }>();
 const emit = defineEmits<{ published: [label: string, result: SaveResult]; cancel: [] }>();
 const { sessionExpired } = inject(ADMIN_CONTEXT)!;
@@ -98,9 +100,20 @@ const { tab, onInvalid } = useFormTabs<EditTab>('pg', 'infos');
 const imported = ref<{ name: string; warnings: string[] } | null>(null);
 const mdDragOver = ref(false);
 
-async function pickMarkdown(file: File | undefined) {
+/** Fichier `.md` déposé ou chargé, seul, avec ses photos ou en `.zip` (cf. `depot.ts`). */
+async function pickMarkdown(entree: File[] | Depot | undefined) {
 	error.value = '';
-	if (!file) return;
+	if (!entree || (Array.isArray(entree) && !entree.length)) return;
+	let depot: Depot;
+	if (Array.isArray(entree)) {
+		const lu = await lireDepot(entree);
+		if (!lu.depot) {
+			error.value = lu.error!;
+			return;
+		}
+		depot = lu.depot;
+	} else depot = entree;
+	const file = depot.markdown;
 	if (!/\.(md|markdown)$/i.test(file.name)) {
 		error.value = 'Le fichier doit être un fichier Markdown (.md).';
 		return;
@@ -109,7 +122,8 @@ async function pickMarkdown(file: File | undefined) {
 		error.value = 'Le fichier est trop long (200 Ko max).';
 		return;
 	}
-	const { page, warnings, error: problem } = parsePageMarkdown(await file.text());
+	const citees = new Set<File>();
+	const { page, warnings, error: problem } = parsePageMarkdown(await file.text(), photosDuDepot(depot, blocPhotos.api, citees));
 	if (!page) {
 		error.value = problem!;
 		return;
@@ -126,25 +140,47 @@ async function pickMarkdown(file: File | undefined) {
 	else if (page.menuShow === true && form.placement === 'libre') form.placement = 'menu';
 	for (const id of Object.keys(blocs)) delete blocs[id];
 	Object.assign(blocs, page.blocs);
+	if (page.cover) {
+		const photoCouverture = trouverPhoto(depot, page.cover);
+		if (photoCouverture) {
+			citees.add(photoCouverture);
+			pickPhoto(photoCouverture);
+		} else warnings.push(`Photo de couverture « ${page.cover} » absente : déposez-la avec le fichier, ou choisissez-la dans l'onglet « Image ».`);
+	}
+	warnings.push(...remarquesDepot(depot, citees));
 	if (!page.title) warnings.unshift('Titre absent du fichier : à saisir dans « Informations ».');
-	imported.value = { name: file.name, warnings };
+	imported.value = { name: depot.photos.length ? `${file.name} + ${depot.photos.length} photo(s)` : file.name, warnings };
 	typeChosen.value = true;
 }
 
 if (props.initialFile && !editing) void pickMarkdown(props.initialFile);
 
 /** Fichier de la page d'après le formulaire (modification). */
-function downloadFile() {
-	const text = pageMarkdownFile({
-		type: form.type,
-		title: form.title,
-		description: form.description,
-		menu: form.placement === 'reservee' ? null : { show: form.placement === 'menu', label: form.menuLabel },
-		imageCredit: form.imageCredit,
-		blocs,
-		body: form.body,
-	});
-	downloadMarkdown(`${slug.value || 'page'}.md`, text);
+/** `.md` de la page d'après le formulaire, en `.zip` avec ses photos s'il y en a (`zip-contenu.ts`). */
+async function downloadFile() {
+	error.value = '';
+	try {
+		await telechargerContenu({
+			nom: slug.value || 'page',
+			dossier: editing ? `pages/${editing.path}` : null,
+			blocs: form.type === 'enrichie' ? blocs : {},
+			photos: blocPhotos.api,
+			couverture: { actuelle: editing?.cover ?? null, nouvelle: coverAction.value === 'replace' ? photo.value : null, retiree: coverAction.value === 'remove' },
+			construire: (b, cover) =>
+				pageMarkdownFile({
+					type: form.type,
+					title: form.title,
+					description: form.description,
+					menu: form.placement === 'reservee' ? null : { show: form.placement === 'menu', label: form.menuLabel },
+					imageCredit: form.imageCredit,
+					blocs: b,
+					body: form.body,
+					cover,
+				}),
+		});
+	} catch (e) {
+		error.value = (e as Error).message;
+	}
 }
 
 const coverAction = ref<'keep' | 'replace' | 'remove'>('keep');
@@ -183,19 +219,8 @@ function onSlugInput(event: Event) {
 }
 
 /** Marqueur de bloc inséré au curseur, seul sur sa ligne. */
-async function insertMarker(id: string) {
-	const field = bodyField.value;
-	const marker = blocMarker(id);
-	const at = field ? field.selectionStart : form.body.length;
-	const before = form.body.slice(0, at).replace(/\s*$/, '');
-	const after = form.body.slice(at).replace(/^\s*/, '');
-	form.body = `${before}${before ? '\n\n' : ''}${marker}\n\n${after}`;
-	await nextTick();
-	if (field) {
-		const pos = before.length + (before ? 2 : 0) + marker.length;
-		field.focus();
-		field.setSelectionRange(pos, pos);
-	}
+function insertMarker(id: string) {
+	return insererMarqueur(form.body, (texte) => (form.body = texte), bodyField.value, id);
 }
 
 function pickPhoto(file: File | undefined) {
@@ -302,12 +327,12 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 				:class="mdDragOver ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/50'"
 				@dragover.prevent="mdDragOver = true"
 				@dragleave="mdDragOver = false"
-				@drop.prevent="mdDragOver = false; pickMarkdown($event.dataTransfer?.files?.[0])"
+				@drop.prevent="mdDragOver = false; pickMarkdown([...($event.dataTransfer?.files ?? [])])"
 			>
 				<i class="fa-solid fa-file-arrow-up text-2xl text-gray-400" aria-hidden="true"></i>
-				<span class="text-gray-600">Glissez votre fichier ici ou <span class="text-primary underline">parcourez</span></span>
+				<span class="text-gray-600">Glissez votre fichier ici (avec ses photos, ou en .zip) ou <span class="text-primary underline">parcourez</span></span>
 				<span class="text-xs font-light text-gray-500">Le formulaire est pré-rempli : vous vérifiez, choisissez l'emplacement, puis publiez.</span>
-				<input type="file" accept=".md,.markdown,text/markdown" class="sr-only" @change="pickMarkdown(($event.target as HTMLInputElement).files?.[0])" />
+				<input type="file" :accept="DEPOT_ACCEPT" multiple class="sr-only" @change="pickMarkdown([...(($event.target as HTMLInputElement).files ?? [])])" />
 			</label>
 			<p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
 				<span class="text-gray-600"><i class="fa-solid fa-download mr-1 text-xs text-gray-400" aria-hidden="true"></i>Télécharger un modèle :</span>
@@ -354,7 +379,7 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 					<label for="pg-description" class="champ-libelle">
 						Description <span class="font-light text-gray-500">(facultative)</span>
 					</label>
-					<textarea id="pg-description" v-model="form.description" rows="2" :class="inputClass"></textarea>
+					<textarea id="pg-description" v-model="form.description" rows="6" :class="inputClass"></textarea>
 					<SeoLength :text="form.description" kind="description" />
 					<p class="champ-aide">Affichée sous le titre et dans les moteurs de recherche.</p>
 				</div>
@@ -423,9 +448,9 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 						id="pg-body"
 						ref="bodyField"
 						v-model="form.body"
-						rows="16"
+						rows="6"
 						required
-						:class="[inputClass, 'font-mono text-xs leading-relaxed']"
+						:class="[inputClass, 'font-mono text-sm leading-relaxed']"
 					></textarea>
 					<p class="champ-aide">
 						<code>## Titre de section</code> (alimente le sommaire), <code>**gras**</code>, <code>*italique*</code>,

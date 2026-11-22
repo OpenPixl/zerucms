@@ -29,6 +29,7 @@ import {
 	type PluginId,
 } from '../plugins/catalogue';
 import { STRUCTURES } from '../lib/structure';
+import { DEFAULT_SOMBRE, sombreCss, type ReglageSombre } from '../lib/mode-sombre';
 
 export interface FormToggle {
 	/** `false` masque le formulaire et affiche `closedTitle` + `closedMessage` à la place. */
@@ -50,7 +51,7 @@ export interface SiteFonts extends Record<FontRole, string> {
 	deposees: UploadedFont[];
 }
 
-interface LinkToggle {
+export interface LinkToggle {
 	label: string;
 	href: string;
 	enabled: boolean;
@@ -72,6 +73,13 @@ const DEFAULTS = {
 		/** `false` = pas de bande de couleurs (en-tête, PDF des RDV). */
 		stripeEnabled: true,
 	},
+
+	/**
+	 * Mode sombre proposé aux visiteurs (bouton de l'en-tête,
+	 * `src/lib/mode-sombre.ts`) : désactivé par défaut ; palette Material ;
+	 * couleurs de marque absentes = éclaircies automatiquement.
+	 */
+	sombre: DEFAULT_SOMBRE as ReglageSombre,
 
 	/**
 	 * Polices (`src/lib/font-catalogue.ts`, CSS produit par `src/lib/fonts.ts`
@@ -156,9 +164,13 @@ const DEFAULTS = {
 	plugins: Object.fromEntries(PLUGIN_IDS.map((id) => [id, actifParDefaut(id)])) as Record<PluginId, boolean>,
 };
 
-/** Couleurs du modèle (« rétablir » du module « Association », onglet Charte graphique). */
+/** Couleurs du modèle (« rétablir » du module « Charte graphique »). */
 export const DEFAULT_COLORS: Readonly<typeof DEFAULTS.colors> = DEFAULTS.colors;
 export type ThemeColors = typeof DEFAULTS.colors;
+/** Bouton d'action de l'en-tête du modèle (« rétablir » du module « Charte graphique », onglet En-tête). */
+export const DEFAULT_CTA: Readonly<LinkToggle> = DEFAULTS.cta;
+/** Texte du bouton d'action de l'en-tête : longueur maximale (admin). */
+export const CTA_LABEL_MAX = 30;
 /** Format accepté pour une couleur (`'#2f7fc1'` ou `'#28c'`). */
 export const COLOR_PATTERN = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
@@ -212,6 +224,9 @@ const overridesSchema = z
 			})
 			.partial(),
 		polices: fontsSchema,
+		sombre: z
+			.strictObject({ enabled: bool, fond: color, surface: color, texte: color, primary: color, secondary: color, accent: color })
+			.partial(),
 		cta: linkSchema,
 		presence: linkSchema,
 		share: z.strictObject(Object.fromEntries(Object.keys(DEFAULTS.share).map((k) => [k, bool])) as Record<ShareKey, z.ZodBoolean>).partial(),
@@ -264,6 +279,7 @@ export function parseReglages(text: string) {
 		structure,
 		colors: { ...DEFAULTS.colors, ...o.colors },
 		polices: { ...DEFAULTS.polices, ...o.polices } as SiteFonts,
+		sombre: { ...DEFAULTS.sombre, ...o.sombre } as ReglageSombre,
 		cta: { ...DEFAULTS.cta, ...o.cta },
 		presence: { ...DEFAULTS.presence, ...o.presence },
 		share: { ...DEFAULTS.share, ...o.share },
@@ -279,5 +295,7 @@ export function parseReglages(text: string) {
 
 export const site = parseReglages(raw);
 
-/** Variables CSS des couleurs du thème, injectées dans `<head>` par les layouts. */
-export const themeCss = `:root{--color-primary:${site.colors.primary};--color-secondary:${site.colors.secondary};--color-accent:${site.colors.accent}}`;
+/** Variables CSS des couleurs du thème (et du mode sombre s'il est proposé), injectées dans `<head>` par les layouts. */
+export const themeCss =
+	`:root{--color-primary:${site.colors.primary};--color-secondary:${site.colors.secondary};--color-accent:${site.colors.accent}}` +
+	sombreCss(site.colors, site.sombre);

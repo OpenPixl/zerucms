@@ -10,6 +10,7 @@ import { association } from '../lib/association';
 import type { JsonLd } from '../lib/seo';
 import { favicons } from '../lib/site-images';
 import { themeCss } from '../config/site';
+import ModeSombre from '../components/layout/ModeSombre.astro';
 import { fontPreloads, fontsCss } from '../lib/fonts';
 
 interface Props {
@@ -45,13 +46,15 @@ const {
 		{favicons.map((icon) => <link rel="icon" type={icon.type} href={icon.href} />)}
 		{/* Couleurs du thème (src/content/reglages.yaml) : remplacent celles de global.css. */}
 		<style is:inline set:html={themeCss} />
+		{/* Mode sombre proposé : data-theme posé avant l'affichage (pas d'éclair blanc). */}
+		<ModeSombre />
 		{/* Polices (reglages.yaml, polices:) : @font-face des seules polices choisies, src/lib/fonts.ts. */}
 		{fontPreloads.map((href) => <link rel="preload" as="font" type="font/woff2" href={href} crossorigin />)}
 		<style is:inline set:html={fontsCss} />
 		<meta name="generator" content={Astro.generator} />
 		<SeoHead {title} {description} {image} {ogType} {noindex} {breadcrumbs} {jsonLd} />
 	</head>
-	<body class="flex min-h-screen flex-col bg-white">
+	<body class="flex min-h-screen flex-col bg-fond">
 		<Header />
 		<main class="flex-1">
 			<slot name="page-header" />

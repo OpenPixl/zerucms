@@ -12,8 +12,7 @@ import { getEntry } from 'astro:content';
 import { json, jsonError, readJson, withErrors } from '../../../../lib/auth/api';
 import { publishBlocked, publishChange } from '../../../../lib/admin-publish';
 import { readCover } from '../../../../lib/admin-cover';
-import { blocImage } from '../../../../lib/bloc-images';
-import { blocPhotos, type Bloc } from '../../../../lib/blocs';
+import { blocPhotoUrls as blocPhotoUrlsDe } from '../../../../lib/bloc-images';
 import { deletePage, readPageInput, readPageSource, savePage, type CoverChange } from '../../../../lib/page-writer';
 
 export const prerender = false;
@@ -24,14 +23,7 @@ export const GET: APIRoute = withErrors(async ({ params }) => {
 	// Aperçu de la photo actuelle : celle du site construit (la source n'est pas servie).
 	const entry = await getEntry('pages', source.path);
 	const coverUrl = entry?.data.cover ? (await getImage({ src: entry.data.cover, width: 640, height: 360, fit: 'cover' })).src : null;
-	// Vignettes des photos des blocs (site construit ; une photo pas encore publiée n'en a pas).
-	const blocPhotoUrls: Record<string, string> = {};
-	for (const bloc of Object.values(source.blocs) as Bloc[]) {
-		for (const photo of bloc && typeof bloc === 'object' ? blocPhotos(bloc) : []) {
-			const image = blocImage(source.path, photo);
-			if (image && !blocPhotoUrls[photo]) blocPhotoUrls[photo] = (await getImage({ src: image, width: 320, height: 200, fit: 'cover' })).src;
-		}
-	}
+	const blocPhotoUrls = await blocPhotoUrlsDe(`pages/${source.path}`, source.blocs);
 	return json({ ...source, coverUrl, blocPhotoUrls });
 });
 

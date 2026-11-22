@@ -6,6 +6,7 @@
 
 import { getCollection, type CollectionEntry } from 'astro:content';
 import { association } from './association';
+import { decouperBlocs, type BlocPart } from './bloc-parts';
 import type { Heading } from './headings';
 import { estimateReadingTime } from './reading-time';
 import { sanitizeNewsHtml } from './sanitize-news';
@@ -66,13 +67,14 @@ export async function getAllNews(): Promise<NewsArticle[]> {
 
 /**
  * Contenu d'une actualité prêt à afficher : HTML NETTOYÉ (balisage gardé,
- * code exécutable retiré, cf. `sanitize-news.ts`) et titres (sommaire).
+ * code exécutable retiré, cf. `sanitize-news.ts`) découpé aux marqueurs de
+ * blocs (`ContenuBlocs.astro`, dossier `news/<slug>`) et titres (sommaire).
  */
-export async function renderNews(article: NewsArticle): Promise<{ html: string; headings: Heading[] }> {
+export async function renderNews(article: NewsArticle): Promise<{ parts: BlocPart[]; headings: Heading[] }> {
 	// HTML rendu au build par le Content Layer (loader glob, rendu non différé).
 	const rendered = article.entry.rendered;
 	return {
-		html: sanitizeNewsHtml(rendered?.html ?? ''),
+		parts: decouperBlocs(sanitizeNewsHtml(rendered?.html ?? ''), article.entry.data.blocs ?? {}),
 		headings: (rendered?.metadata?.headings as Heading[] | undefined) ?? [],
 	};
 }

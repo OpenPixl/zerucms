@@ -30,6 +30,8 @@ import { join } from 'node:path';
 import { Document, parseDocument } from 'yaml';
 import { TYPES_ACTIVITE_INSCRIPTION } from './grist-asso/choices';
 import { categories } from './categories';
+import type { Bloc } from './blocs';
+import { BLOC_PHOTO_ERREUR, BlocPhotoError, ecrireBlocPhotos, marqueursSansBloc, preparerBlocs } from './bloc-writer';
 import { contentTransaction, type Applied } from './content-transaction';
 import { checkBody, COVER_ERROR, siteRoot, slugify, writeCover, type CoverChange } from './news-writer';
 
@@ -59,6 +61,10 @@ export interface ActivityInput {
 	typeGrist: string;
 	imageCredit: string;
 	body: string;
+	/** Blocs placés dans le texte (`[[bloc:<id>]]`), cf. `src/lib/bloc-writer.ts`. */
+	blocs: Record<string, unknown>;
+	/** Photos des blocs fournies avec la fiche, sous la valeur du champ qui les cite. */
+	photos?: Record<string, unknown>;
 }
 
 export interface ActivitySource extends ActivityInput {
@@ -95,6 +101,7 @@ function toSource(slug: string, data: Record<string, unknown>, body: string): Ac
 		typeGrist: str(data.typeGrist),
 		imageCredit: str(data.imageCredit),
 		body,
+		blocs: data.blocs && typeof data.blocs === 'object' && !Array.isArray(data.blocs) ? (data.blocs as Record<string, unknown>) : {},
 		order: typeof data.order === 'number' ? data.order : 999,
 		cover: typeof data.cover === 'string' && COVER_FIELD.test(data.cover) ? data.cover : null,
 	};
@@ -160,9 +167,10 @@ function validate(input: ActivityInput): string[] {
 }
 
 /** Champs du formulaire posés sur le frontmatter ; un champ facultatif vide est retiré. */
-function applyFields(doc: Document, input: ActivityInput, extra: { order: number; cover: string | undefined }): void {
+function applyFields(doc: Document, input: ActivityInput, extra: { order: number; cover: string | undefined; blocs: Record<string, Bloc> }): void {
 	const setOrDelete = (key: string, value: unknown) => {
-		if (value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) doc.delete(key);
+		const vide = value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0;
+		if (value === undefined || value === '' || vide || (Array.isArray(value) && value.length === 0)) doc.delete(key);
 		else doc.set(key, value);
 	};
 	doc.set('title', input.title.trim());
@@ -177,6 +185,7 @@ function applyFields(doc: Document, input: ActivityInput, extra: { order: number
 	setOrDelete('typeGrist', input.typeGrist);
 	setOrDelete('cover', extra.cover);
 	setOrDelete('imageCredit', input.imageCredit.trim());
+	setOrDelete('blocs', extra.blocs);
 }
 
 function newDocument(): Document {
@@ -233,6 +242,10 @@ export async function saveActivity(input: ActivityInput, currentSlug: string | n
 		else if (RESERVED_SLUGS.has(slug)) errors.push(`L'adresse « ${slug} » est réservée : choisissez-en une autre.`);
 		else if (await readSourceFile(slug)) errors.push(`Une activité utilise déjà l'adresse « ${slug} ».`);
 	}
+	const prepares = await preparerBlocs(input.blocs ?? {}, input.photos ?? {}, currentSlug ? join(activitesSourceDir(), currentSlug) : null);
+	errors.push(...prepares.errors);
+	const manquants = marqueursSansBloc(input.body, input.blocs ?? {});
+	if (manquants) errors.push(manquants);
 	if (errors.length) return { errors };
 
 	const before = current ? toSource(slug, docData(current.doc), current.body) : null;
@@ -245,12 +258,14 @@ export async function saveActivity(input: ActivityInput, currentSlug: string | n
 			const dir = join(root, slug);
 			await mkdir(dir, { recursive: true });
 			const cover = await applyCover(dir, before?.cover ?? null, coverChange);
+			await ecrireBlocPhotos(dir, prepares.photos, prepares.blocs);
 			const doc = current?.doc ?? newDocument();
-			applyFields(doc, input, { order, cover });
+			applyFields(doc, input, { order, cover, blocs: prepares.blocs });
 			await writeFile(join(dir, 'index.md'), serialize(doc, input.body), 'utf8');
 		});
 	} catch (err) {
 		if (err instanceof CoverError) return { errors: [COVER_ERROR] };
+		if (err instanceof BlocPhotoError) return { errors: [BLOC_PHOTO_ERREUR] };
 		throw err;
 	}
 	return { slug, title: input.title.trim(), href: hrefOf(input.category, slug), applied, errors: [] };
@@ -315,5 +330,7 @@ export function readActivityInput(raw: unknown): ActivityInput {
 		typeGrist: text('typeGrist'),
 		imageCredit: text('imageCredit'),
 		body: text('body').replace(/\r\n?/g, '\n'),
+		blocs: r.blocs && typeof r.blocs === 'object' && !Array.isArray(r.blocs) ? (r.blocs as Record<string, unknown>) : {},
+		photos: r.photos && typeof r.photos === 'object' && !Array.isArray(r.photos) ? (r.photos as Record<string, unknown>) : {},
 	};
 }

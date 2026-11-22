@@ -5,7 +5,7 @@
  *
  * Deux rôles : `titres` (h1…h6, classe `font-heading`) et `texte` (tout le
  * reste). Réglés dans `polices:` de `src/content/reglages.yaml` (module
- * « Association », onglet « Charte graphique ») ; sans réglage,
+ * « Charte graphique », onglet « Polices ») ; sans réglage,
  * `DEFAULT_FONTS`.
  *
  * Polices proposées : paquets `@fontsource-variable/<id>` (un fichier

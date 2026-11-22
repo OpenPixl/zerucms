@@ -499,18 +499,33 @@ si la reconstruction échoue, la version précédente est conservée.
 
 **Formulaires en onglets** (actualités, pages, activités) : **Informations**
 (titre, résumé, date, emplacement, brouillon…), **Contenu** (texte en
-Markdown, et blocs d'une page enrichie) et **Image** (photo de couverture et
+Markdown, et **blocs** : photos, carrousel, vidéo… — pour les actualités, les
+activités et les pages enrichies) et **Image** (photo de couverture et
 crédit). En cas de champ obligatoire vide, l'enregistrement ramène sur son
-onglet.
+onglet. Les champs sont écrits en petit et les zones de texte font 6
+lignes : pour écrire plus à l'aise, agrandissez une zone en tirant son coin
+en bas à droite.
 
-**Travailler dans un fichier** (modification seulement) : au-dessus des
-onglets, **Télécharger le fichier** donne le contenu du formulaire en `.md`
-(en-tête + texte, sans la photo ; la ligne `contenu:` en tête indique le
-type, ce qui permet de le réutiliser dans **Ajouter un contenu**) ; après l'avoir modifié dans un éditeur de
-texte, **Charger un fichier modifié** (ou le glisser sur le bouton) remplit
-le formulaire. Rien n'est publié avant **Enregistrer** ; les champs ignorés
-(photo, champ inconnu, catégorie inexistante, date illisible…) sont signalés.
-L'adresse et l'emplacement restent ceux du formulaire.
+**Travailler dans un fichier** (modification seulement) : dans l'encadré
+gris entre le titre et les onglets, **Télécharger le fichier** donne le contenu du formulaire en `.md`
+(en-tête + texte ; la ligne `contenu:` en tête indique le type, ce qui
+permet de le réutiliser dans **Ajouter un contenu**). Si le contenu a des
+photos (blocs, couverture), c'est un **`.zip`** : le `.md` et ses photos.
+Après l'avoir modifié dans un éditeur de texte, **Charger un fichier
+modifié** (ou le glisser sur le bouton), avec ses photos ou le `.zip` entier,
+remplit le formulaire. Rien n'est publié avant **Enregistrer** ; les champs
+ignorés (champ inconnu, catégorie inexistante, date illisible, photo citée
+mais absente…) sont signalés. L'adresse et l'emplacement restent ceux du
+formulaire.
+
+**Contributions des membres** : n'importe qui peut préparer un contenu sans
+accès à l'Espace Admin. Il télécharge un **modèle** (« Ajouter un contenu »)
+ou reçoit un fichier existant, le complète dans un éditeur de texte, cite ses
+photos par leur nom de fichier (`cover: "couverture.jpg"`, photos des blocs)
+et envoie le tout — le `.md` et ses photos, ou un `.zip` — à une personne de
+l'équipe, qui le dépose dans **Ajouter un contenu** : le formulaire s'ouvre
+rempli, photos comprises, à vérifier puis publier. Les photos sont
+renommées `photo_1.jpg`, `photo_2.jpg`… dans le dossier du contenu.
 
 **Insérer un lien vers une page du site** (sous le texte des actualités, des
 pages et des activités) : liste des pages du site, des pages de contenu, des
@@ -562,13 +577,18 @@ blocs :
   le lien d'un bouton, « Choisir une page du site » remplit l'adresse.
   - **Photos** : une ou plusieurs photos (12 au plus) en grille, chacune
     avec sa **description** (lue par les personnes malvoyantes, obligatoire)
-    et une légende facultative ; « Ajouter plusieurs photos d'un coup » en
-    choisit plusieurs à la fois. Les photos sont réduites avant l'envoi et
-    leur position GPS est retirée.
+    et une légende facultative. Dans le formulaire, les photos s'affichent
+    en vignettes, 4 par ligne : la case **+ Ajouter** en choisit une ou
+    plusieurs, la corbeille d'une vignette la retire, un clic dessus
+    déroule en dessous sa description et sa légende (pastille orange = à
+    compléter), et on change l'ordre en faisant glisser les vignettes (au
+    doigt : appui prolongé ; au clavier : « Reculer » / « Avancer »). Les
+    photos sont réduites avant l'envoi et leur position GPS est retirée.
   - **Carrousel** : de 2 à 20 photos qui défilent une à une ; interrupteurs
     **Flèches de navigation**, **Points de navigation** et **Défilement
     automatique** (avec la durée de chaque photo). En défilement
-    automatique, un bouton pause est toujours affiché.
+    automatique, un bouton pause est toujours affiché. Photos en vignettes,
+    comme pour le bloc Photos.
   - **Vidéo** : collez l'adresse d'une vidéo YouTube, Vimeo ou PeerTube
     (Framatube, peertube.fr) ; le formulaire indique si le lien est
     reconnu. Une vidéo par bloc ; les fichiers vidéo ne se déposent pas.
@@ -792,13 +812,8 @@ bénévoles…). Module **Annonces** du menu **Contenus ▾**.
 
 ### Informations de l'association (bureau)
 
-Module **🏛 Association**, réservé au bureau, en deux onglets :
-**Généralités** et **Charte graphique**. Chaque onglet s'enregistre à part ;
-une pastille orange signale un onglet modifié mais pas encore publié.
-
-#### Généralités
-
-Nom, présentation,
+Menu **Paramètres** → **🏛 Association** (« Entreprise » pour un
+auto-entrepreneur), réservé au bureau : nom, présentation,
 coordonnées, réseaux sociaux et mentions légales. Ces informations
 apparaissent partout sur le site (en-tête, pied de page, page Contact,
 aperçus de partage) et dans le texte des pages grâce aux variables
@@ -825,25 +840,53 @@ d'échec de la reconstruction, l'ancienne version est remise en place.
 Le fichier modifié est `src/content/association.yaml` : ses commentaires
 sont conservés, il reste modifiable à la main.
 
-#### Charte graphique
+### Charte graphique (bureau)
+
+Menu **Paramètres** → **🎨 Charte graphique**, réservé au bureau. L'aperçu
+reste en haut du panneau ; les réglages sont rangés en onglets :
+**Couleurs**, **En-tête** (logo, bouton « Adhérer », bande de couleurs), **Polices**, **Mode
+sombre** et **Icône** (favicon) ; sur un panneau étroit, les onglets restent sur une ligne
+et les chevrons ‹ › font défiler les suivants (comme dans tous les formulaires en onglets). Chaque encadré se replie ou se déplie d'un clic sur son titre
+(l'interrupteur à droite du titre, lui, ne replie rien). Une pastille orange signale un onglet
+modifié mais pas encore publié ; tous les onglets partent ensemble avec
+**Enregistrer et publier** (ou **Enregistrer sans publier**).
 
 - **Aperçu** : en-tête, bande de couleurs, lien, bouton et pied de page
-  avec les couleurs et le logo en cours de saisie, avant publication.
+  avec les couleurs et le logo en cours de saisie, avant publication (le
+  mode sombre a son propre aperçu, dans son onglet).
 - **Couleurs** : principale (liens, boutons, titres), secondaire (pied de
   page, survols), d'accent (bouton « Adhérer »). Nuancier ou code
   `#2f7fc1`. Le site écrit en blanc sur ces couleurs : une étiquette
   indique si c'est **lisible**, lisible en **gros caractères seulement**,
   ou **peu lisible**. « couleur d'origine » remet celle du modèle.
+- **Bouton de l'en-tête** (« Adhérer » par défaut, à droite du menu, en
+  couleur d'accent) : **texte** (30 caractères au plus) et **lien** (page
+  du site, ex. `/adherer`, ou adresse complète ; « Choisir une page du
+  site » remplit le lien). L'interrupteur **Affiché / Masqué** le retire
+  du site en gardant texte et lien ; « bouton d'origine » rétablit celui du
+  modèle. Un lien vers la page d'un plugin inactif est signalé : le site
+  masque alors le bouton.
 - **Bande de couleurs** (sous l'en-tête) : 1 à 12 couleurs, à réordonner
   (glisser-déposer ou flèches), ajouter, retirer ; « bande d'origine ».
   L'interrupteur **Affichée / Masquée** de la section la retire du site (et
   du PDF des rendez-vous) ; ses couleurs sont gardées pour la réactiver.
+- **Mode sombre** : l'interrupteur **Proposé / Non proposé** ajoute un
+  bouton lune / soleil dans l'en-tête du site (désactivé par défaut). À sa
+  première visite, le visiteur voit le site dans le mode de son appareil,
+  puis son choix est retenu. **Palette** : Material (par défaut), GitHub,
+  Ardoise, Neutre ou Solarized, puis fond, surfaces et texte modifiables
+  (étiquette de lisibilité du texte sur le fond). Les trois couleurs de la
+  charte ont une version **automatique** pour le mode sombre (éclaircie si
+  besoin), modifiable ; « automatique » la rétablit. **Logo du mode
+  sombre** (facultatif) : version claire du logo, sinon le logo normal est
+  utilisé — vérifiez qu'il reste lisible. L'onglet commence par un
+  **aperçu du mode sombre** (dès qu'il est proposé).
 - **Polices** : une pour les **titres**, une pour le **texte**, choisies
   dans la liste des **polices proposées** (Montserrat, Open Sans, Inter,
   Roboto, Raleway, Source Sans 3, Nunito, Work Sans, Lora ; par défaut
   Montserrat pour les titres, Open Sans pour le texte) ou parmi **vos
   polices**. Un exemple de texte s'affiche dans la police choisie, et
-  l'aperçu en haut de l'onglet la reprend. **Ajouter une police** : un
+  l'aperçu en haut du panneau la reprend. **Ajouter une police** : un
   nom, puis ses fichiers (WOFF2 conseillé ; WOFF, TTF, OTF acceptés ; 2 Mo
   max), chacun avec sa **graisse** (devinée d'après le nom du fichier :
   « Light » = 300, « Bold » = 700…) ou un seul fichier **variable**. Le
@@ -861,8 +904,8 @@ sont conservés, il reste modifiable à la main.
   donne aussi une version PNG pour les anciens navigateurs.
 
 Un SVG contenant du script ou des liens externes est refusé par sécurité :
-l'exporter en « SVG simple » ou en PNG. Fichiers modifiés : `colors:` et
-`polices:` de `src/content/reglages.yaml` (autres réglages et commentaires
+l'exporter en « SVG simple » ou en PNG. Fichiers modifiés : `colors:`, `cta:`,
+`sombre:` et `polices:` de `src/content/reglages.yaml` (autres réglages et commentaires
 gardés), `src/content/images/logo.*` et `favicon.*`, `src/content/polices/`. Si la reconstruction échoue,
 tout est remis comme avant.
 

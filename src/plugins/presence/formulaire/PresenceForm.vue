@@ -144,7 +144,7 @@ function message(s: SeanceCourante): string {
 <template>
 	<div class="mx-auto max-w-xl px-4 py-12 sm:px-6">
 		<!-- Étape 1 : identification (1ʳᵉ visite sur cet appareil) -->
-		<div v-if="!membre" class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+		<div v-if="!membre" class="rounded-2xl border border-gray-100 bg-surface p-6 shadow-sm">
 			<h2 class="font-heading text-lg text-gray-900">Qui êtes-vous ?</h2>
 			<p class="mt-1 text-sm text-gray-600">
 				Tapez votre nom pour vous retrouver — on s'en souviendra la prochaine fois sur cet appareil.
@@ -173,7 +173,7 @@ function message(s: SeanceCourante): string {
 		</div>
 
 		<!-- Étape 2 : séance(s) en cours -->
-		<div v-else class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+		<div v-else class="rounded-2xl border border-gray-100 bg-surface p-6 shadow-sm">
 			<div class="flex items-center justify-between gap-3">
 				<h2 class="font-heading text-lg text-gray-900">{{ membre.label }}</h2>
 				<button

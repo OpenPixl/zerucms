@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Section « Polices » de l'onglet « Charte graphique » (`BrandForm.vue`) :
+ * Onglet « Polices » du module « Charte graphique » (`BrandForm.vue`) :
  * police des titres et du texte (liste des polices proposées + polices
  * déposées par l'association), polices déposées à ajouter ou à retirer.
  * Brouillon en `v-model` (`FontsDraft`), envoyé avec le reste de la charte ;
@@ -23,6 +23,7 @@ import {
 import type { BrandSource } from '../../client';
 import { compactInputClass, iconButtonClass } from '../../context';
 import { previewFamily } from './font-preview';
+import Encadre from '../../Encadre.vue';
 
 export interface FontsDraft {
 	titres: string;
@@ -31,7 +32,7 @@ export interface FontsDraft {
 	retraits: string[];
 }
 
-const props = defineProps<{ source: BrandSource; headerClass: string }>();
+const props = defineProps<{ source: BrandSource }>();
 const draft = defineModel<FontsDraft>({ required: true });
 
 const ACCEPT = '.woff2,.woff,.ttf,.otf';
@@ -127,12 +128,7 @@ function removeAdded(key: number) {
 </script>
 
 <template>
-	<section class="overflow-hidden rounded-xl border border-gray-200">
-		<header :class="props.headerClass">
-			<i class="fa-solid fa-font text-gray-400" aria-hidden="true"></i>
-			<span class="font-heading font-semibold text-gray-900">Polices</span>
-			<span class="text-xs text-gray-500">titres et texte du site</span>
-		</header>
+	<Encadre icone="fa-font" titre="Polices" sous-titre="titres et texte du site">
 
 		<!-- Choix par rôle -->
 		<div class="divide-y divide-gray-100">
@@ -259,5 +255,5 @@ function removeAdded(key: number) {
 				<p class="text-xs font-light text-gray-500">Puis choisissez-la pour les titres ou le texte ; elle est envoyée à l'enregistrement de la charte.</p>
 			</div>
 		</div>
-	</section>
+	</Encadre>
 </template>

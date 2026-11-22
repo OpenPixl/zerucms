@@ -1,4 +1,4 @@
-# Thème : couleurs, polices, logo
+# Thème : couleurs, mode sombre, polices, logo
 
 Tout le thème visuel part d'un seul fichier : **`src/styles/global.css`**.
 
@@ -43,12 +43,62 @@ une administration lisible.
 
 Ces couleurs sont utilisables partout dans le code via les classes Tailwind générées automatiquement : `bg-primary`, `text-secondary`, `border-accent`, `from-primary`, `to-secondary`, etc. (y compris avec opacité : `bg-primary/10`).
 
+Fonds : **`bg-fond`** (page) et **`bg-surface`** (en-tête, cartes, champs,
+encadrés), blancs en mode clair. **Ne pas écrire `bg-white`** dans les pages
+publiques : il resterait blanc en mode sombre (`text-white` sur une couleur
+de marque reste correct). L'Espace Admin, toujours clair, garde `bg-white`.
+
+## Mode sombre
+
+Proposé aux visiteurs si la structure l'active (module « Charte graphique », onglet « Mode sombre »,
+**désactivé par défaut**) : bouton lune / soleil dans l'en-tête
+(`ModeSombreBouton.astro`, à côté du bouton « Adhérer » ; à côté du menu
+sur mobile). Première visite : le site suit la préférence de l'appareil
+(`prefers-color-scheme`), puis le choix du visiteur est gardé dans
+`localStorage` (clé `theme`). Un petit script en tête de page
+(`ModeSombre.astro`, motif « theme toggle » de la doc Astro) pose
+`data-theme="dark"` sur `<html>` avant l'affichage : pas d'éclair blanc.
+
+Réglage dans `src/content/reglages.yaml` (seuls les écarts au défaut sont
+écrits par l'admin) :
+
+```yaml
+sombre:
+  enabled: true         # absent = non proposé
+  fond: '#0d1117'       # arrière-plan des pages
+  surface: '#161b22'    # en-tête, cartes, champs
+  texte: '#e6edf3'      # texte ; les gris en sont tirés
+  accent: '#ffcc00'     # facultatif : primary / secondary / accent
+```
+
+- **Palettes proposées** (`PALETTES_SOMBRES`, `src/lib/mode-sombre.ts`) :
+  Material (`#121212`, recommandation de Google, **défaut**), GitHub,
+  Ardoise (Tailwind slate), Neutre (zinc), Solarized.
+- **Couleurs de marque** : absentes = **automatiques**
+  (`couleurSombreAuto()` : éclaircies jusqu'à une luminance ≈ 0,18, lisibles
+  sur le fond comme sous du texte blanc ; une couleur déjà claire est
+  gardée). Une valeur égale à la variante automatique n'est pas écrite :
+  elle suit la couleur claire.
+- **CSS** (`global.css`) : sous `:root[data-theme="dark"]`, l'échelle
+  `--color-gray-*` est recalculée depuis la palette (`color-mix` du texte
+  et du fond : `text-gray-900` = texte, `bg-gray-100` = surface foncée…),
+  les tons 50–300 et 700–950 de `red`, `amber`, `green`, `sky` sont
+  inversés (encarts d'alerte), `--color-fond` / `--color-surface` prennent
+  la palette. Les composants gardent donc leurs classes, sans `dark:`.
+  `themeCss` ajoute les variables `--sombre-*` et les couleurs de marque
+  sombres seulement si le mode est proposé.
+- **Espace Admin** et page d'installation : toujours clairs (gris, fonds et
+  couleurs d'alerte d'origine redéfinis sur `#espace-benevoles` /
+  `.theme-admin`).
+- **Logo du mode sombre** : `images/logo-sombre.*` facultatif (voir
+  « Logo ») ; absent = logo normal.
+
 ## Polices
 
 Deux rôles : **titres** (`h1`…`h6`, classe `font-heading`) et **texte**
 (tout le reste, `body`). Réglés dans `polices:` de `src/content/reglages.yaml`,
-depuis l'Espace Admin : module **Association** → onglet **Charte
-graphique** → section **Polices**. Sans réglage : **Montserrat** (titres) et
+depuis l'Espace Admin : menu **Paramètres** → module **Charte
+graphique** → onglet **Polices**. Sans réglage : **Montserrat** (titres) et
 **Open Sans** (texte).
 
 ```yaml
@@ -90,6 +140,7 @@ par `src/lib/site-images.ts` quelle que soit leur extension :
 | Fichier | Rôle |
 | --- | --- |
 | `logo.(png\|jpg\|webp\|svg)` | **Obligatoire.** En-tête et pied de page, via `<Image>` (`astro:assets` : redimensionné, converti en WebP au build). Largeur calculée d'après ses proportions (`logoWidth()`) : carré, large ou haut, il n'est ni rogné ni déformé. Affiché sur 64 px de haut au plus et, dans l'en-tête, 16 rem de large au plus (60 % de l'écran sur mobile ; pied de page : 18 rem) : un logo très large est réduit plutôt que de pousser le menu. Fond transparent conseillé. |
+| `logo-sombre.(png\|jpg\|webp\|svg)` | Facultatif. Logo de l'en-tête en **mode sombre** (version claire du logo), mêmes règles que `logo.*` ; absent = logo normal. Déposé depuis la charte graphique, section « Mode sombre ». |
 | `accueil.(jpg\|png\|webp)` | Facultatif. Photo de fond du bandeau d'accueil ; absente = bandeau sans photo. Réglable depuis l'Espace Admin : module « Pages » → Accueil → module « Bandeau ». |
 | `favicon.(svg\|png\|ico)` | Facultatif, un ou plusieurs formats. Icône de l'onglet (une balise `<link rel="icon">` par fichier) ; `favicon.ico` (ou `.png`) est aussi servi à l'adresse `/favicon.ico` (`src/pages/favicon.ico.ts`). |
 
