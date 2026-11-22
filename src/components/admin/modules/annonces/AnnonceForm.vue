@@ -7,6 +7,7 @@
  * (`EditFileBar`) ; en création, `initialFile` (« Ajouter un contenu »)
  * pré-remplit le formulaire.
  */
+import { lireDepot, type Depot } from '../../depot';
 import { computed, inject, reactive, ref } from 'vue';
 import {
 	ANNONCE_CTA_LABEL_MAX,
@@ -32,7 +33,7 @@ const props = defineProps<{
 	source: AnnonceItem | null;
 	disabled: boolean;
 	/** Création à partir d'un fichier déposé dans « Ajouter un contenu » (menu Contenus). */
-	initialFile?: File;
+	initialFile?: Depot;
 }>();
 const emit = defineEmits<{ published: [label: string, result: SaveResult]; cancel: [] }>();
 const { sessionExpired } = inject(ADMIN_CONTEXT)!;
@@ -66,8 +67,19 @@ function downloadFile() {
 	downloadMarkdown(`annonce-${editing?.id ?? 'nouvelle'}.md`, annonceMarkdownFile(form));
 }
 
-async function loadFile(file: File) {
+/** Fichier `.md` chargé (une annonce n'a pas de photo : les autres fichiers sont ignorés). */
+async function loadFile(entree: File[] | Depot) {
 	error.value = '';
+	let depot: Depot;
+	if (Array.isArray(entree)) {
+		const lu = await lireDepot(entree);
+		if (!lu.depot) {
+			error.value = lu.error!;
+			return;
+		}
+		depot = lu.depot;
+	} else depot = entree;
+	const file = depot.markdown;
 	const read = await readMarkdownFile(file);
 	if (read.error) {
 		error.value = read.error;
@@ -144,7 +156,7 @@ async function submit(event: Event) {
 		</div>
 		<div>
 			<label for="annonce-message" class="champ-libelle">Message</label>
-			<textarea id="annonce-message" v-model="form.message" rows="2" required :maxlength="ANNONCE_MESSAGE_MAX" :class="inputClass"></textarea>
+			<textarea id="annonce-message" v-model="form.message" rows="6" required :maxlength="ANNONCE_MESSAGE_MAX" :class="inputClass"></textarea>
 			<p class="champ-aide">Une à deux phrases.</p>
 		</div>
 

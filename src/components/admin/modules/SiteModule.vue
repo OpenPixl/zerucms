@@ -168,7 +168,7 @@ const dateFr = (iso: string) =>
 				<textarea
 					id="site-maintenance-message"
 					v-model="message"
-					rows="3"
+					rows="6"
 					maxlength="500"
 					:placeholder="etat.messageParDefaut"
 					:class="inputClass"

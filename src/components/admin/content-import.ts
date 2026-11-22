@@ -11,6 +11,7 @@
  * jamais dans `src/content/` (frontmatter reconstruit champ par champ).
  */
 import { shallowRef } from 'vue';
+import type { Depot } from './depot';
 
 /** Clé de l'en-tête qui donne le type de contenu. */
 export const CONTENT_KEY = 'contenu';
@@ -44,17 +45,17 @@ export function contentKindProblem(data: Record<string, unknown>, expected: Cont
 	return `Ce fichier décrit ${CONTENT_KINDS[kind].une} (« ${CONTENT_KEY}: ${kind} »), pas ${CONTENT_KINDS[expected].une} : chargez-le depuis le module « ${CONTENT_KINDS[kind].moduleLabel} ».`;
 }
 
-/** Fichier choisi dans la modale, en attente du module qui va s'ouvrir. */
-const pending = shallowRef<{ kind: ContentKind; file: File } | null>(null);
+/** Dépôt choisi dans la modale (`.md` + photos, cf. ./depot.ts), en attente du module qui va s'ouvrir. */
+const pending = shallowRef<{ kind: ContentKind; depot: Depot } | null>(null);
 
-export function setPendingImport(kind: ContentKind, file: File): void {
-	pending.value = { kind, file };
+export function setPendingImport(kind: ContentKind, depot: Depot): void {
+	pending.value = { kind, depot };
 }
 
-/** Récupère (une seule fois) le fichier destiné à ce type de contenu. */
-export function takePendingImport(kind: ContentKind): File | null {
+/** Récupère (une seule fois) le dépôt destiné à ce type de contenu. */
+export function takePendingImport(kind: ContentKind): Depot | null {
 	if (pending.value?.kind !== kind) return null;
-	const { file } = pending.value;
+	const { depot } = pending.value;
 	pending.value = null;
-	return file;
+	return depot;
 }

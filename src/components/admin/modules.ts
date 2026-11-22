@@ -116,6 +116,14 @@ export const ADMIN_MODULES: AdminModule[] = [
 		component: defineAsyncComponent(() => import('./modules/AssociationModule.vue')),
 	},
 	{
+		id: 'charte',
+		label: 'Charte graphique',
+		icon: 'fa-palette',
+		groups: ['admin'],
+		menu: 'parametres',
+		component: defineAsyncComponent(() => import('./modules/CharteModule.vue')),
+	},
+	{
 		id: 'comptes',
 		label: 'Comptes',
 		icon: 'fa-users',

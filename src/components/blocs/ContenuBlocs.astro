@@ -1,0 +1,20 @@
+---
+/**
+ * Texte d'un contenu avec ses blocs (pages, actualités, activités) :
+ * morceaux de HTML nettoyé et blocs dans l'ordre (`decouperBlocs()`,
+ * `src/lib/bloc-parts.ts`). `dossier` = dossier du contenu relatif à
+ * `src/content/` (photos des blocs, `src/lib/bloc-images.ts`). À placer
+ * dans le conteneur `markdown-content` de la page.
+ */
+import BlocView from './BlocView.astro';
+import type { BlocPart } from '../../lib/bloc-parts';
+
+interface Props {
+	parts: BlocPart[];
+	dossier: string;
+}
+
+const { parts, dossier } = Astro.props;
+---
+
+{parts.map((part) => ('html' in part ? <Fragment set:html={part.html} /> : <BlocView bloc={part.bloc} dossier={dossier} />))}

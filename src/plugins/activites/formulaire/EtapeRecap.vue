@@ -38,7 +38,7 @@ const emit = defineEmits<{ recommencer: [] }>();
 			enregistrée{{ disponibilite === DISPO_ATTENTE ? ", en liste d'attente" : '' }}.
 		</p>
 
-		<dl class="mt-4 divide-y divide-primary/15 rounded-xl bg-white text-sm">
+		<dl class="mt-4 divide-y divide-primary/15 rounded-xl bg-surface text-sm">
 			<div class="flex justify-between gap-4 px-4 py-2">
 				<dt class="text-gray-600">Activité</dt>
 				<dd class="text-right text-gray-900">

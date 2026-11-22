@@ -1,7 +1,7 @@
 /**
  * Actualité dédiée à une activité (onglet « Partage » du formulaire d'une
  * fiche, module « Activités ») : reprend la fiche telle qu'elle est dans les
- * sources — titre, résumé, catégorie, texte, photo et crédit — datée du jour,
+ * sources — titre, résumé, catégorie, texte, blocs (leurs photos copiées), photo et crédit — datée du jour,
  * avec `activite: <adresse de la fiche>` dans son en-tête. La page de
  * l'actualité se termine alors par « S'inscrire » et un lien vers la fiche
  * (`src/pages/actualites/[slug].astro`).
@@ -15,6 +15,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify as stringifyYaml } from 'yaml';
 import { activitesSourceDir, readActivitySource } from './activity-writer';
+import { blocPhotos, type Bloc } from './blocs';
 import { getCategory } from './categories';
 import { listNewsSources, writeNews, type NewsSource } from './news-writer';
 
@@ -44,6 +45,7 @@ export async function writeActivityNews(activitySlug: string): Promise<{ slug?: 
 		tag: getCategory(activity.category)?.label,
 		imageCredit: activity.cover ? activity.imageCredit || undefined : undefined,
 		activite: activity.slug,
+		blocs: Object.keys(activity.blocs).length ? activity.blocs : undefined,
 	};
 	const yaml = stringifyYaml(
 		Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined && v !== '')),
@@ -54,5 +56,13 @@ export async function writeActivityNews(activitySlug: string): Promise<{ slug?: 
 	const cover = activity.cover
 		? await readFile(join(activitesSourceDir(), activity.slug, activity.cover)).catch(() => undefined)
 		: undefined;
-	return writeNews(markdown, cover);
+	// Photos des blocs : copiées (renumérotées dans le dossier de l'actualité).
+	const photos: Record<string, Buffer> = {};
+	for (const bloc of Object.values(activity.blocs) as Bloc[]) {
+		for (const photo of bloc && typeof bloc === 'object' ? blocPhotos(bloc) : []) {
+			const data = await readFile(join(activitesSourceDir(), activity.slug, photo)).catch(() => undefined);
+			if (data) photos[photo] = data;
+		}
+	}
+	return writeNews(markdown, cover, photos);
 }

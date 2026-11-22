@@ -26,6 +26,7 @@ import { ADMIN_CONTEXT, iconButtonClass, rememberOpenModule, sortableProps, take
 import { isDeferredSubmit, isPendingHref } from '../lot';
 import { usePublication } from '../usePublication';
 import { takePendingImport } from '../content-import';
+import type { Depot } from '../depot';
 import ActivityForm from './activites/ActivityForm.vue';
 import CategoryForm from './activites/CategoryForm.vue';
 import DragHandle from './pages/DragHandle.vue';
@@ -38,7 +39,7 @@ const inscriptionActive = outilActif('activites', 'inscription');
 
 type View =
 	| { name: 'list' }
-	| { name: 'form'; source: ActivitySourceView | null; category: string; file?: File }
+	| { name: 'form'; source: ActivitySourceView | null; category: string; file?: Depot }
 	| { name: 'category'; source: ActivityCategory | null };
 
 const view = ref<View>({ name: 'list' });

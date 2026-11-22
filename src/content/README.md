@@ -16,10 +16,10 @@ remplacer), personnalisable ensuite depuis l'Espace Admin.
 | `news/` | Articles d'actualité (un dossier par article ; photo citée par `cover: ./cover.jpg` dans le frontmatter) — voir `docs/actualites.md` |
 | `activites/` | Fiches d'activité (un dossier par fiche) et leurs catégories (`_categories.yaml`) ; aussi gérables depuis le module « Activités » de l'Espace Admin — voir `docs/activites.md` |
 | `annonces.yaml` | Annonces de la bannière en haut du site (liste, ordre = ordre de défilement) — voir `docs/annonces.md` |
-| `reglages.yaml` | Couleurs du site, bouton « Adhérer », lien « Je participe », partage, ouverture/fermeture des formulaires, plugins activés (`plugins:`, ex. prise de RDV) (commentaires dans le fichier) — couleurs modifiables aussi depuis l'Espace Admin, module « Association » (onglet Charte graphique) |
+| `reglages.yaml` | Couleurs du site, bouton « Adhérer » (modifiable depuis le module « Charte graphique », onglet En-tête), lien « Je participe », partage, ouverture/fermeture des formulaires, plugins activés (`plugins:`, ex. prise de RDV) (commentaires dans le fichier) — couleurs modifiables aussi depuis l'Espace Admin, module « Charte graphique » (menu Paramètres) |
 | `partenaires.yaml` | Partenaires (cartes de la page Adhérer et de l'accueil), relais d'adhésion, avantages adhérent·e·s (commentaires dans le fichier) |
 | `rdv.yaml` | Prise de rendez-vous en ligne (plugin `rdv`, à activer dans `reglages.yaml`) : adresse de la page, textes, encart d'accueil, permanences (jours, horaires, lieux), zones géographiques (commentaires dans le fichier) — voir `src/plugins/rdv/README.md` |
-| `images/` | Logo (`logo.png`, obligatoire), photo d'accueil (`accueil.jpg`), icône d'onglet (`favicon.svg` / `.ico`) — remplacer le fichier en gardant le nom, ou logo et icône depuis l'Espace Admin (module « Association », onglet Charte graphique) ; voir `docs/theme.md` |
+| `images/` | Logo (`logo.png`, obligatoire), photo d'accueil (`accueil.jpg`), icône d'onglet (`favicon.svg` / `.ico`) — remplacer le fichier en gardant le nom, ou logo et icône depuis l'Espace Admin (module « Charte graphique », menu Paramètres) ; voir `docs/theme.md` |
 | `association.yaml` | Nom, coordonnées, réseaux sociaux et mentions légales de l'association (commentaires dans le fichier) — modifiable aussi par le bureau depuis l'Espace Admin, module « Association » (onglet Généralités) |
 
 Les pages du site (Accueil, Activités, Actualités, Contact) sont fournies par

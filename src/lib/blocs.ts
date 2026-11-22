@@ -301,7 +301,17 @@ export function isBlocType(value: unknown): value is BlocType {
 
 const ICON = /^[a-z0-9-]{1,40}$/;
 
-export function checkBlocField(field: BlocField, value: unknown, where: string, errors: string[]): string | undefined {
+/**
+ * `photosEnAttente` (formulaire du module, fichier `.md` lu dans le
+ * navigateur) : un champ `photo` peut être vide ou valoir `nouvelle:<clé>`
+ * (photo choisie, pas encore envoyée) ; le serveur reste strict.
+ */
+export function checkBlocField(field: BlocField, value: unknown, where: string, errors: string[], options: { photosEnAttente?: boolean } = {}): string | undefined {
+	if (field.type === 'photo' && options.photosEnAttente) {
+		const texte = typeof value === 'string' ? value.trim() : '';
+		if (texte && !BLOC_PHOTO.test(texte) && !BLOC_PHOTO_NOUVELLE.test(texte)) errors.push(`${where} : photo invalide (« ${texte} »).`);
+		return texte;
+	}
 	if (field.type === 'interrupteur') {
 		if (value === undefined || value === null || value === '') return field.defaut ? 'oui' : 'non';
 		if (value === true || value === 'oui') return 'oui';
@@ -347,7 +357,11 @@ export function checkBlocField(field: BlocField, value: unknown, where: string, 
  * (extension retirée) est gardé tel quel, sans erreur, et noté dans la
  * liste ; il n'est pas affiché (`BlocView.astro`). Sans elle, refusé.
  */
-export function validateBloc(id: string, raw: unknown, options: { typesInconnus?: string[] } = {}): { bloc?: Bloc; errors: string[] } {
+export function validateBloc(
+	id: string,
+	raw: unknown,
+	options: { typesInconnus?: string[]; photosEnAttente?: boolean } = {},
+): { bloc?: Bloc; errors: string[] } {
 	const errors: string[] = [];
 	const where = `Bloc « ${id} »`;
 	if (!BLOC_ID.test(id)) errors.push(`${where} : identifiant invalide (minuscules, chiffres et tirets).`);
@@ -365,7 +379,7 @@ export function validateBloc(id: string, raw: unknown, options: { typesInconnus?
 	const def: BlocTypeDef = BLOC_TYPES[data.type];
 	const bloc: Bloc = { type: data.type };
 	for (const field of def.fields) {
-		const value = checkBlocField(field, data[field.name], where, errors);
+		const value = checkBlocField(field, data[field.name], where, errors, options);
 		if (value !== undefined) bloc[field.name] = value;
 	}
 	if (def.items) {
@@ -376,7 +390,7 @@ export function validateBloc(id: string, raw: unknown, options: { typesInconnus?
 			const out: Record<string, string> = {};
 			const source = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
 			for (const field of def.items!.fields) {
-				const value = checkBlocField(field, source[field.name], `${where}, ${def.items!.label.toLowerCase()} ${i + 1}`, errors);
+				const value = checkBlocField(field, source[field.name], `${where}, ${def.items!.label.toLowerCase()} ${i + 1}`, errors, options);
 				if (value !== undefined) out[field.name] = value;
 			}
 			return out;

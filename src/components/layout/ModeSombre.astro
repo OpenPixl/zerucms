@@ -1,0 +1,29 @@
+---
+/**
+ * Mode sombre (src/lib/mode-sombre.ts) : script placé en tête de page,
+ * avant tout affichage, qui pose `data-theme` sur <html> — choix du
+ * visiteur gardé dans `localStorage` (clé `theme`), sinon préférence du
+ * système — pour éviter un éclair blanc au chargement. Motif de la doc
+ * Astro (« theme toggle »). Rien n'est rendu si le mode sombre n'est pas
+ * proposé (charte graphique). Bouton : `ModeSombreBouton.astro`.
+ */
+import { site } from '../../config/site';
+---
+
+{
+	site.sombre.enabled && (
+		<>
+			<meta name="color-scheme" content="light dark" />
+			<script is:inline>
+				(function () {
+					var choix = null;
+					try {
+						choix = localStorage.getItem('theme');
+					} catch (e) {}
+					var sombre = choix === 'dark' || (choix !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+					document.documentElement.dataset.theme = sombre ? 'dark' : 'light';
+				})();
+			</script>
+		</>
+	)
+}

@@ -13,7 +13,7 @@ import TableOfContents from './TableOfContents.astro';
 import FigureImage from './FigureImage.astro';
 import ShareTools from './ShareTools.astro';
 import { association } from '../../lib/association';
-import BlocView from '../blocs/BlocView.astro';
+import ContenuBlocs from '../blocs/ContenuBlocs.astro';
 import { getGroups, groupMetaOf, pageParts, renderPage, type ContentPage } from '../../lib/content-pages';
 
 interface Props {
@@ -87,7 +87,7 @@ breadcrumbs.push({ label: page.title });
 
 			<div class="markdown-content font-light text-gray-700">
 				{md
-					? md.parts.map((part) => ('html' in part ? <Fragment set:html={part.html} /> : <BlocView bloc={part.bloc} chemin={page.slug} />))
+					? <ContenuBlocs parts={md.parts} dossier={`pages/${page.slug}`} />
 					: Content && <Content />}
 			</div>
 		</>

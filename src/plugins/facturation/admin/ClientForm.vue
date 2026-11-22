@@ -67,7 +67,7 @@ async function enregistrer() {
 			</div>
 			<div class="sm:col-span-2">
 				<label for="fc-notes" class="champ-libelle">Notes internes</label>
-				<textarea id="fc-notes" v-model="form.notes" rows="2" :class="inputClass"></textarea>
+				<textarea id="fc-notes" v-model="form.notes" rows="6" :class="inputClass"></textarea>
 			</div>
 		</div>
 		<p v-if="error" class="alerte-erreur" role="alert">{{ error }}</p>

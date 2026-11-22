@@ -2,6 +2,7 @@ import { getCollection, render, type CollectionEntry } from 'astro:content';
 import type { MarkdownHeading } from 'astro';
 import type { PageAccess } from './auth/access';
 import { blocMarkersIn, type Bloc } from './blocs';
+import { decouperBlocs, type BlocPart } from './bloc-parts';
 import { applyPageVariables } from './page-variables';
 import { sanitizeNewsHtml } from './sanitize-news';
 
@@ -135,10 +136,7 @@ export async function renderPage(page: ContentPage) {
 }
 
 /** Morceau du contenu d'une page `.md` : HTML nettoyé, ou bloc à rendre par son composant. */
-export type PagePart = { html: string } | { blocId: string; bloc: Bloc };
-
-/** Marqueur de bloc tel que rendu par le moteur Markdown : un paragraphe seul. */
-const RENDERED_MARKER = /<p>\s*\[\[bloc:([a-z0-9][a-z0-9-]{0,39})\]\]\s*<\/p>/g;
+export type PagePart = BlocPart;
 
 /**
  * Contenu d'une page `.md` prêt à afficher (HTML nettoyé et variables
@@ -149,17 +147,8 @@ export function pageParts(page: ContentPage): { parts: PagePart[]; headings: Mar
 	if (page.mdx) return null;
 	const rendered = page.entry.rendered;
 	const html = applyPageVariables(sanitizeNewsHtml(rendered?.html ?? ''));
-	const parts: PagePart[] = [];
-	let last = 0;
-	for (const match of html.matchAll(RENDERED_MARKER)) {
-		parts.push({ html: html.slice(last, match.index) });
-		const bloc = page.blocs[match[1]];
-		if (bloc) parts.push({ blocId: match[1], bloc });
-		last = match.index! + match[0].length;
-	}
-	parts.push({ html: html.slice(last) });
 	return {
-		parts: parts.filter((p) => !('html' in p) || p.html.trim() !== ''),
+		parts: decouperBlocs(html, page.blocs),
 		headings: (rendered?.metadata?.headings as MarkdownHeading[] | undefined) ?? [],
 	};
 }

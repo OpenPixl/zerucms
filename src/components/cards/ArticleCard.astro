@@ -17,7 +17,7 @@ interface Props {
 const { article, loading = 'lazy' } = Astro.props;
 ---
 
-<article class="group flex h-116 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition duration-300 ease-out hover:border-primary/30 hover:shadow-xl motion-safe:hover:-translate-y-1.5 motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.99] motion-safe:active:duration-150">
+<article class="group flex h-116 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-surface shadow-sm transition duration-300 ease-out hover:border-primary/30 hover:shadow-xl motion-safe:hover:-translate-y-1.5 motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.99] motion-safe:active:duration-150">
 	<a href={article.href} class="block aspect-video overflow-hidden">
 		{article.image ? (
 			<Image

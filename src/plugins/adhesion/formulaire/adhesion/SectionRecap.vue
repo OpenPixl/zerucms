@@ -40,7 +40,7 @@ const emit = defineEmits<{ recommencer: [] }>();
 			{{ adhesionDejaAJour ? 'votre inscription est bien enregistrée.' : "votre demande d'adhésion est bien enregistrée." }}
 		</p>
 
-		<dl class="mt-4 divide-y divide-primary/15 rounded-xl bg-white text-sm">
+		<dl class="mt-4 divide-y divide-primary/15 rounded-xl bg-surface text-sm">
 			<div class="flex justify-between px-4 py-2">
 				<dt class="text-gray-600">Cotisation</dt>
 				<dd class="text-gray-900">

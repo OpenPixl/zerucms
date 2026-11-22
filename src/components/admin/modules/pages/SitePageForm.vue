@@ -120,7 +120,7 @@ const variables = Object.entries(PAGE_VARIABLES).map(([name, v]) => ({ token: `{
 					v-if="t.multiline"
 					:id="`sp-${t.name}`"
 					v-model="form.textes[t.name]"
-					rows="2"
+					rows="6"
 					:placeholder="t.default"
 					:class="inputClass"
 				></textarea>

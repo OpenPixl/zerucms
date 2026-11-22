@@ -1,6 +1,6 @@
 /**
- * Charte graphique de l'association, depuis le module « Association »
- * (onglet « Charte graphique », bureau) : couleurs du thème (`colors:` de
+ * Charte graphique de l'association, depuis le module « Charte graphique »
+ * (menu Paramètres, bureau) : couleurs du thème (`colors:` de
  * `src/content/reglages.yaml`, lu par `src/config/site.ts`), logo et icône
  * d'onglet (`src/content/images/`, lus par `src/lib/site-images.ts`). La
  * publication (reconstruction du site) est faite par `site-build.ts`, via
@@ -10,6 +10,12 @@
  *   autres réglages gardés), fichier revalidé par `parseReglages()`.
  * - Logo : remplace `logo.*` (PNG, JPEG, WebP ou SVG). Image matricielle
  *   réduite à `LOGO_MAX_WIDTH` px de large au plus, métadonnées retirées.
+ * - Mode sombre (`sombre:`, `src/lib/mode-sombre.ts`) : seules les valeurs
+ *   qui s'écartent du défaut sont écrites (couleur de marque égale à sa
+ *   variante automatique = clé retirée, elle suivra la couleur claire) ;
+ *   logo du mode sombre facultatif (`logo-sombre.*`, mêmes règles que le logo).
+ * - Bouton d'action de l'en-tête (`cta:` : texte, lien, affiché) : valeurs
+ *   écrites en place.
  * - Icône d'onglet : remplace tous les `favicon.*`. PNG recadré en carré
  *   (fond transparent) de `FAVICON_SIZE` px au plus ; SVG accompagné d'un
  *   `favicon.png` tiré de lui (navigateurs anciens, `/favicon.ico`) ; ICO
@@ -28,7 +34,19 @@ import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { isMap, isScalar, isSeq, parseDocument, Scalar, YAMLMap, type Document } from 'yaml';
-import { COLOR_PATTERN, DEFAULT_COLORS, parseReglages, type SiteFonts, type ThemeColors, type UploadedFont } from '../config/site';
+import {
+	COLOR_PATTERN,
+	CTA_LABEL_MAX,
+	DEFAULT_COLORS,
+	DEFAULT_CTA,
+	parseReglages,
+	type LinkToggle,
+	type SiteFonts,
+	type ThemeColors,
+	type UploadedFont,
+} from '../config/site';
+import { pagesIndisponibles } from './liens-plugins';
+import { isSafeUrl } from './safe-url';
 import {
 	catalogueFont,
 	DEFAULT_FONTS,
@@ -43,6 +61,7 @@ import {
 } from './font-catalogue';
 import { CATALOGUE_FILES } from './fonts';
 import { contentTransaction, type Applied } from './content-transaction';
+import { couleurSombreAuto, DEFAULT_SOMBRE, MARQUE, type ReglageSombre } from './mode-sombre';
 import { siteRoot } from './news-writer';
 
 export const LOGO_MAX_WIDTH = 1600;
@@ -87,7 +106,14 @@ export interface BrandFonts extends Record<FontRole, string> {
 export interface BrandSource {
 	colors: ThemeColors;
 	defaults: ThemeColors;
+	/** Mode sombre : couleurs de marque présentes seulement si réglées (absentes = automatiques). */
+	sombre: ReglageSombre;
+	/** Bouton d'action de l'en-tête, son réglage d'origine et les pages de plugin inactives (bouton masqué si son lien y mène). */
+	cta: LinkToggle;
+	ctaDefaults: LinkToggle;
+	pagesIndisponibles: string[];
 	logo: BrandImage | null;
+	logoSombre: BrandImage | null;
 	favicons: BrandImage[];
 	fonts: BrandFonts;
 	fontDefaults: Record<FontRole, string>;
@@ -109,7 +135,7 @@ async function preview(file: string): Promise<BrandImage> {
 /** Ordre des icônes : comme `site-images.ts` (SVG, PNG, puis ICO). */
 const EXT_ORDER = ['svg', 'png', 'webp', 'jpg', 'jpeg', 'ico'];
 
-async function imageFiles(name: 'logo' | 'favicon'): Promise<string[]> {
+async function imageFiles(name: 'logo' | 'logo-sombre' | 'favicon'): Promise<string[]> {
 	const files = await readdir(imagesDir()).catch(() => [] as string[]);
 	const rank = (f: string) => EXT_ORDER.indexOf(f.split('.').pop()!.toLowerCase());
 	return files.filter((f) => f.startsWith(`${name}.`)).sort((a, b) => rank(a) - rank(b));
@@ -138,12 +164,18 @@ async function brandFonts(polices: SiteFonts): Promise<BrandFonts> {
 }
 
 export async function readBrandSource(): Promise<BrandSource> {
-	const { colors, polices } = parseReglages(await readFile(reglagesFile(), 'utf8').catch(() => ''));
+	const { colors, polices, sombre, cta } = parseReglages(await readFile(reglagesFile(), 'utf8').catch(() => ''));
 	const [logo] = await imageFiles('logo');
+	const [logoSombre] = await imageFiles('logo-sombre');
 	return {
 		colors,
 		defaults: DEFAULT_COLORS,
+		sombre,
+		cta,
+		ctaDefaults: DEFAULT_CTA,
+		pagesIndisponibles: pagesIndisponibles(),
 		logo: logo ? await preview(logo) : null,
+		logoSombre: logoSombre ? await preview(logoSombre) : null,
 		favicons: await Promise.all((await imageFiles('favicon')).map(preview)),
 		fonts: await brandFonts(polices),
 		fontDefaults: DEFAULT_FONTS,
@@ -172,7 +204,14 @@ export interface FontsInput extends Record<FontRole, string> {
 
 export interface BrandInput {
 	colors: ThemeColors;
+	/** `null` = mode sombre inchangé. */
+	sombre: ReglageSombre | null;
+	/** `null` = bouton d'action inchangé. */
+	cta: LinkToggle | null;
 	logo: BrandUpload | null;
+	logoSombre: BrandUpload | null;
+	/** Retire le logo du mode sombre (le logo normal sert alors partout). */
+	retirerLogoSombre: boolean;
 	favicon: BrandUpload | null;
 	/** `null` = polices inchangées. */
 	fonts: FontsInput | null;
@@ -198,6 +237,50 @@ function validateColors(colors: ThemeColors): string[] {
 	else if (colors.stripe.length > STRIPE_MAX) errors.push(`La bande de couleurs compte ${STRIPE_MAX} couleurs au plus.`);
 	else if (colors.stripe.some((c) => !COLOR_PATTERN.test(c))) errors.push('Une couleur de la bande est invalide (format #2f7fc1).');
 	return errors;
+}
+
+function validateSombre(sombre: ReglageSombre): string[] {
+	const names: Record<string, string> = { fond: 'du fond', surface: 'des surfaces', texte: 'du texte', primary: 'principale', secondary: 'secondaire', accent: "d'accent" };
+	return (['fond', 'surface', 'texte', ...MARQUE] as const)
+		.filter((k) => sombre[k] !== undefined && !COLOR_PATTERN.test(sombre[k]!))
+		.map((k) => `Mode sombre : couleur ${names[k]} invalide (format #2f7fc1).`);
+}
+
+function validateCta(cta: LinkToggle): string[] {
+	const errors: string[] = [];
+	if (!cta.label) errors.push("Bouton de l'en-tête : texte vide.");
+	else if (cta.label.length > CTA_LABEL_MAX) errors.push(`Bouton de l'en-tête : texte trop long (${CTA_LABEL_MAX} caractères au plus).`);
+	if (!cta.href) errors.push("Bouton de l'en-tête : lien vide.");
+	else if (/\s/.test(cta.href) || !isSafeUrl(cta.href)) errors.push("Bouton de l'en-tête : lien invalide (adresse du site, ex. /adherer, ou https://…).");
+	return errors;
+}
+
+/** `cta:` écrit dans le document (valeurs en place). */
+function setCta(doc: Document, cta: LinkToggle): void {
+	const map = ensureMap(doc, ['cta']);
+	for (const key of ['label', 'href'] as const) {
+		const node = map.get(key, true);
+		if (isScalar(node)) node.value = cta[key];
+		else map.set(key, quoted(cta[key]));
+	}
+	map.set('enabled', cta.enabled);
+}
+
+/**
+ * Réglage `sombre:` réduit à ce qui doit être écrit : écarts au défaut, et
+ * couleurs de marque différentes de leur variante automatique.
+ */
+function sombreEcrit(sombre: ReglageSombre, colors: ThemeColors): Partial<ReglageSombre> {
+	const out: Partial<ReglageSombre> = {};
+	if (sombre.enabled) out.enabled = true;
+	for (const k of ['fond', 'surface', 'texte'] as const) {
+		if (sombre[k].toLowerCase() !== DEFAULT_SOMBRE[k].toLowerCase()) out[k] = sombre[k].toLowerCase();
+	}
+	for (const k of MARQUE) {
+		const v = sombre[k]?.toLowerCase();
+		if (v && v !== couleurSombreAuto(colors[k])) out[k] = v;
+	}
+	return out;
 }
 
 // --- Écriture --------------------------------------------------------------
@@ -238,22 +321,38 @@ function setColors(doc: Document, colors: ThemeColors): void {
 
 const sameColors = (a: ThemeColors, b: ThemeColors) => JSON.stringify(a) === JSON.stringify(b);
 
-async function processLogo(upload: BrandUpload): Promise<{ ext: string; data: Buffer } | { error: string }> {
+/** `sombre:` écrit dans le document (valeurs en place ; table retirée si tout est par défaut). */
+function setSombre(doc: Document, valeurs: Partial<ReglageSombre>): void {
+	const map = ensureMap(doc, ['sombre']);
+	for (const key of ['enabled', 'fond', 'surface', 'texte', ...MARQUE] as const) {
+		const v = valeurs[key];
+		if (v === undefined) map.delete(key);
+		else if (typeof v === 'boolean') map.set(key, v);
+		else {
+			const node = map.get(key, true);
+			if (isScalar(node)) node.value = v;
+			else map.set(key, quoted(v));
+		}
+	}
+	if (!map.items.length) doc.delete('sombre');
+}
+
+async function processLogo(upload: BrandUpload, what = 'Logo'): Promise<{ ext: string; data: Buffer } | { error: string }> {
 	const ext = LOGO_TYPES[upload.type];
-	if (!ext) return { error: 'Logo : formats acceptés PNG, JPEG, WebP ou SVG.' };
+	if (!ext) return { error: `${what} : formats acceptés PNG, JPEG, WebP ou SVG.` };
 	if (ext === 'svg') {
-		const problem = svgProblem(upload.data, 'Logo');
+		const problem = svgProblem(upload.data, what);
 		return problem ? { error: problem } : { ext, data: upload.data };
 	}
 	try {
 		const image = sharp(upload.data).rotate();
 		const meta = await image.metadata();
-		if (!meta.width || !meta.height) return { error: 'Logo : image illisible.' };
+		if (!meta.width || !meta.height) return { error: `${what} : image illisible.` };
 		if (meta.width > LOGO_MAX_WIDTH) image.resize({ width: LOGO_MAX_WIDTH });
 		const out = ext === 'png' ? image.png() : ext === 'webp' ? image.webp({ quality: 90 }) : image.jpeg({ quality: 90 });
 		return { ext, data: await out.toBuffer() };
 	} catch {
-		return { error: 'Logo : image illisible.' };
+		return { error: `${what} : image illisible.` };
 	}
 }
 
@@ -397,8 +496,10 @@ function setFonts(doc: Document, polices: SiteFonts): void {
 export type BrandResult = { applied?: Applied; changes: string[]; errors: string[] };
 
 export async function saveBrand(input: BrandInput): Promise<BrandResult> {
-	const errors = validateColors(input.colors);
+	const errors = [...validateColors(input.colors), ...(input.sombre ? validateSombre(input.sombre) : []), ...(input.cta ? validateCta(input.cta) : [])];
 	const logo = input.logo ? await processLogo(input.logo) : null;
+	const logoSombre = input.logoSombre ? await processLogo(input.logoSombre, 'Logo du mode sombre') : null;
+	if (logoSombre && 'error' in logoSombre) errors.push(logoSombre.error);
 	const favicon = input.favicon ? await processFavicon(input.favicon) : null;
 	if (logo && 'error' in logo) errors.push(logo.error);
 	if (favicon && 'error' in favicon) errors.push(favicon.error);
@@ -407,19 +508,35 @@ export async function saveBrand(input: BrandInput): Promise<BrandResult> {
 	const originalReglages = await readFile(reglagesFile(), 'utf8').catch(() => null);
 	const current = parseReglages(originalReglages ?? '');
 	const colorsChanged = !sameColors(current.colors, input.colors);
+	// Comparé sous sa forme écrite : un changement de couleur claire ne « change » pas une variante automatique.
+	const sombreAvant = sombreEcrit(current.sombre, current.colors);
+	const sombreApres = input.sombre ? sombreEcrit(input.sombre, input.colors) : null;
+	const sombreChanged = sombreApres !== null && JSON.stringify(sombreApres) !== JSON.stringify(sombreAvant);
+	const ctaChanged = input.cta !== null && JSON.stringify(input.cta) !== JSON.stringify({ label: current.cta.label, href: current.cta.href, enabled: current.cta.enabled });
+	const logoSombreRetire = input.retirerLogoSombre && !logoSombre && (await imageFiles('logo-sombre')).length > 0;
 	const fontsPlan = input.fonts ? planFonts(current.polices, input.fonts, await readdir(fontsDir()).catch(() => [])) : null;
 	if (fontsPlan && 'errors' in fontsPlan) return { changes: [], errors: fontsPlan.errors };
 	const fontsChanged = Boolean(fontsPlan?.changed);
-	const changes = [colorsChanged && 'couleurs', fontsChanged && 'polices', logo && 'logo', favicon && 'icône d’onglet'].filter((c): c is string => Boolean(c));
+	const changes = [
+		colorsChanged && 'couleurs',
+		sombreChanged && 'mode sombre',
+		fontsChanged && 'polices',
+		ctaChanged && 'bouton de l’en-tête',
+		logo && 'logo',
+		(logoSombre || logoSombreRetire) && 'logo du mode sombre',
+		favicon && 'icône d’onglet',
+	].filter((c): c is string => Boolean(c));
 	if (!changes.length) return { changes, errors: ["Rien n'a changé."] };
 
 	let reglagesText: string | null = null;
-	if (colorsChanged || fontsChanged) {
+	if (colorsChanged || fontsChanged || sombreChanged || ctaChanged) {
 		const doc = parseDocument(originalReglages ?? '');
 		if (doc.errors.length) return { changes, errors: [`reglages.yaml illisible : ${doc.errors[0].message}`] };
 		if (doc.contents === null) doc.contents = new YAMLMap() as never;
 		if (colorsChanged) setColors(doc, input.colors);
+		if (sombreChanged) setSombre(doc, sombreApres!);
 		if (fontsChanged) setFonts(doc, fontsPlan!.polices);
+		if (ctaChanged) setCta(doc, input.cta!);
 		reglagesText = doc.toString({ lineWidth: 0, flowCollectionPadding: false });
 		parseReglages(reglagesText);
 	}
@@ -429,6 +546,10 @@ export async function saveBrand(input: BrandInput): Promise<BrandResult> {
 		if (logo && 'data' in logo) {
 			for (const f of existing.filter((f) => f.startsWith('logo.'))) await rm(join(root, f));
 			await writeFile(join(root, `logo.${logo.ext}`), logo.data);
+		}
+		if (logoSombre || logoSombreRetire) {
+			for (const f of existing.filter((f) => f.startsWith('logo-sombre.'))) await rm(join(root, f));
+			if (logoSombre && 'data' in logoSombre) await writeFile(join(root, `logo-sombre.${logoSombre.ext}`), logoSombre.data);
 		}
 		if (favicon && 'files' in favicon) {
 			for (const f of existing.filter((f) => f.startsWith('favicon.'))) await rm(join(root, f));
@@ -482,8 +603,10 @@ export function readBrandInput(raw: unknown): BrandInput | { error: string } {
 		return { type: String(u.type ?? ''), data };
 	};
 	const logo = upload(r.logo, 'Logo');
+	const logoSombre = upload(r.logoSombre, 'Logo du mode sombre');
 	const favicon = upload(r.favicon, 'Icône d’onglet');
 	if (logo && 'error' in logo) return logo;
+	if (logoSombre && 'error' in logoSombre) return logoSombre;
 	if (favicon && 'error' in favicon) return favicon;
 	const fonts = readFontsInput(r.fonts);
 	if (fonts && 'error' in fonts) return fonts;
@@ -496,8 +619,36 @@ export function readBrandInput(raw: unknown): BrandInput | { error: string } {
 			stripe: Array.isArray(c.stripe) ? c.stripe.map(color) : [],
 			stripeEnabled: c.stripeEnabled !== false,
 		},
+		sombre: readSombreInput(r.sombre, color),
+		cta: readCtaInput(r.cta),
 		logo,
+		logoSombre,
+		retirerLogoSombre: r.retirerLogoSombre === true,
 		favicon,
+	};
+}
+
+/** Partie `cta` du corps JSON ; `null` = absente (bouton inchangé). */
+function readCtaInput(raw: unknown): LinkToggle | null {
+	if (!raw || typeof raw !== 'object') return null;
+	const o = raw as Record<string, unknown>;
+	const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+	return { label: text(o.label), href: text(o.href), enabled: o.enabled !== false };
+}
+
+/** Partie `sombre` du corps JSON ; `null` = absente (mode sombre inchangé). */
+function readSombreInput(raw: unknown, color: (v: unknown) => string): ReglageSombre | null {
+	if (!raw || typeof raw !== 'object') return null;
+	const o = raw as Record<string, unknown>;
+	const facultative = (v: unknown) => color(v) || undefined;
+	return {
+		enabled: o.enabled === true,
+		fond: color(o.fond),
+		surface: color(o.surface),
+		texte: color(o.texte),
+		primary: facultative(o.primary),
+		secondary: facultative(o.secondary),
+		accent: facultative(o.accent),
 	};
 }
 

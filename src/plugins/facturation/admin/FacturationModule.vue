@@ -11,6 +11,8 @@ import { computed, inject, onMounted, ref } from 'vue';
 import { ApiError } from '../../../components/admin/client';
 import { ADMIN_CONTEXT, inputClass } from '../../../components/admin/context';
 import { euros, type Client } from '../lib/types';
+import FormTabs from '../../../components/admin/FormTabs.vue';
+import type { FormTab } from '../../../components/admin/form-tabs';
 import ClientForm from './ClientForm.vue';
 import DocumentForm from './DocumentForm.vue';
 import { dateFr, facturationApi, type DonneesFacturation } from './client';
@@ -22,6 +24,11 @@ const loading = ref(true);
 const error = ref('');
 type Onglet = 'devis' | 'factures' | 'clients';
 const onglet = ref<Onglet>('devis');
+const ONGLETS = [
+	{ id: 'devis', label: 'Devis', icon: 'fa-file-signature' },
+	{ id: 'factures', label: 'Factures', icon: 'fa-file-invoice' },
+	{ id: 'clients', label: 'Clients', icon: 'fa-users' },
+] as const satisfies readonly FormTab[];
 const recherche = ref('');
 /** Document ouvert (`id` null = nouveau) ou fiche client. */
 const ouvert = ref<{ type: 'devis' | 'facture'; id: number | null } | null>(null);
@@ -119,24 +126,7 @@ async function clientEnregistre() {
 			</div>
 		</div>
 
-		<div class="mb-3 flex flex-wrap items-center gap-2 border-b border-gray-200" role="tablist">
-			<button
-				v-for="o in [
-					{ id: 'devis', label: 'Devis', n: demandes },
-					{ id: 'factures', label: 'Factures', n: 0 },
-					{ id: 'clients', label: 'Clients', n: 0 },
-				] as const"
-				:key="o.id"
-				type="button"
-				role="tab"
-				:aria-selected="onglet === o.id"
-				class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold"
-				:class="onglet === o.id ? 'border-primary text-primary' : 'border-transparent text-gray-600 hover:text-gray-900'"
-				@click="onglet = o.id"
-			>
-				{{ o.label }}<span v-if="o.n" class="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950">{{ o.n }}</span>
-			</button>
-		</div>
+		<FormTabs v-model="onglet" :tabs="ONGLETS" prefix="facturation" :counts="{ devis: demandes }" />
 
 		<div class="mb-3 flex flex-wrap gap-2">
 			<input v-model="recherche" type="search" placeholder="Rechercher (numéro, client, objet, statut…)" :class="[inputClass, 'mt-0 min-w-0 flex-1']" />
@@ -152,7 +142,7 @@ async function clientEnregistre() {
 		</div>
 
 		<!-- Devis -->
-		<ul v-if="onglet === 'devis'" class="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
+		<ul v-if="onglet === 'devis'" id="facturation-panel-devis" role="tabpanel" aria-labelledby="facturation-tab-devis" class="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
 			<li v-for="d in devis" :key="d.id">
 				<button type="button" class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-gray-50" @click="ouvrir('devis', d.id)">
 					<span class="min-w-0 flex-1">
@@ -167,7 +157,7 @@ async function clientEnregistre() {
 		</ul>
 
 		<!-- Factures -->
-		<ul v-else-if="onglet === 'factures'" class="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
+		<ul v-else-if="onglet === 'factures'" id="facturation-panel-factures" role="tabpanel" aria-labelledby="facturation-tab-factures" class="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
 			<li v-for="f in factures" :key="f.id">
 				<button type="button" class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-gray-50" @click="ouvrir('facture', f.id)">
 					<span class="min-w-0 flex-1">
@@ -185,7 +175,7 @@ async function clientEnregistre() {
 		</ul>
 
 		<!-- Clients -->
-		<template v-else>
+		<div v-else id="facturation-panel-clients" role="tabpanel" aria-labelledby="facturation-tab-clients">
 			<ClientForm
 				v-if="clientOuvert"
 				:key="clientOuvert === 'nouveau' ? 'nouveau' : clientOuvert.id"
@@ -206,6 +196,6 @@ async function clientEnregistre() {
 				</li>
 				<li v-if="!clients.length" class="px-4 py-3 text-sm font-light text-gray-500">Aucun client.</li>
 			</ul>
-		</template>
+		</div>
 	</template>
 </template>

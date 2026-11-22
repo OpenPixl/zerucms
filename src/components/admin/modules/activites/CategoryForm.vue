@@ -131,7 +131,7 @@ async function submit(event: Event) {
 			<label for="cat-description" class="champ-libelle">
 				Description <span class="font-light text-gray-500">(facultative)</span>
 			</label>
-			<textarea id="cat-description" v-model="form.description" rows="3" maxlength="300" :class="inputClass"></textarea>
+			<textarea id="cat-description" v-model="form.description" rows="6" maxlength="300" :class="inputClass"></textarea>
 			<p class="champ-aide">Une phrase, affichée dans le bandeau de la page de la catégorie.</p>
 		</div>
 

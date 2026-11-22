@@ -30,6 +30,28 @@ function avertirTypesInconnus(quoi: string, types: string[]) {
 }
 
 /**
+ * Blocs d'un contenu (pages enrichies, actualités, activités), par
+ * identifiant, placés dans le texte par `[[bloc:<id>]]` (cf. `src/lib/blocs.ts`).
+ * Type inconnu (extension absente) : ignoré avec un avertissement.
+ */
+function blocsSchema() {
+	return z
+		.record(z.string(), z.unknown())
+		.optional()
+		.transform((value, ctx) => {
+			const blocs: Record<string, Bloc> = {};
+			for (const [id, raw] of Object.entries(value ?? {})) {
+				const typesInconnus: string[] = [];
+				const { bloc, errors } = validateBloc(id, raw, { typesInconnus });
+				avertirTypesInconnus('bloc', typesInconnus);
+				for (const message of errors) ctx.addIssue({ code: 'custom', message });
+				if (bloc) blocs[id] = bloc;
+			}
+			return blocs;
+		});
+}
+
+/**
  * Actualités : un dossier par article, `src/content/news/<AAAA-MM-JJ-slug>/`
  * contenant `index.md` (+ la photo citée par `cover:`). L'identifiant de
  * l'entrée — et donc l'URL `/actualites/<id>` — est le nom du dossier.
@@ -60,6 +82,8 @@ const news = defineCollection({
 			 * l'onglet « Partage » d'une activité, terminée par « S'inscrire ».
 			 */
 			activite: z.string().optional(),
+			/** Blocs placés dans le texte (photos, vidéo, carrousel…). */
+			blocs: blocsSchema(),
 		}),
 });
 
@@ -94,20 +118,7 @@ const pages = defineCollection({
 			/** `enrichie` = la page peut recevoir des blocs (`blocs:` + marqueurs `[[bloc:<id>]]`). */
 			type: z.enum(['classique', 'enrichie']).default('classique'),
 			/** Blocs d'une page enrichie, par identifiant (cf. `src/lib/blocs.ts`). */
-			blocs: z
-				.record(z.string(), z.unknown())
-				.optional()
-				.transform((value, ctx) => {
-					const blocs: Record<string, Bloc> = {};
-					for (const [id, raw] of Object.entries(value ?? {})) {
-						const typesInconnus: string[] = [];
-						const { bloc, errors } = validateBloc(id, raw, { typesInconnus });
-						avertirTypesInconnus('bloc', typesInconnus);
-						for (const message of errors) ctx.addIssue({ code: 'custom', message });
-						if (bloc) blocs[id] = bloc;
-					}
-					return blocs;
-				}),
+			blocs: blocsSchema(),
 			/**
 			 * Restriction d'accès (pages de `espace-benevoles/` uniquement) :
 			 * `true` (toute personne connectée), un groupe ou une liste. Un
@@ -223,6 +234,8 @@ const activites = defineCollection({
 			typeGrist: z.string().optional(),
 			cover: image().optional(),
 			imageCredit: z.string().optional(),
+			/** Blocs placés dans le texte (photos, vidéo, carrousel…). */
+			blocs: blocsSchema(),
 		}),
 });
 

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * Blocs d'une page enrichie : ajout depuis le catalogue (`src/lib/blocs.ts`),
- * champs de chaque bloc, éléments répétés (cartes…, ordre par glisser-déposer ou ↑/↓), et insertion du
- * marqueur `[[bloc:<id>]]` dans le texte (`insert`).
+ * champs de chaque bloc, éléments répétés (cartes…, ordre par glisser-déposer ou ↑/↓ ; photos en
+ * grille compacte : `PhotosGrille.vue`), et insertion du marqueur `[[bloc:<id>]]` dans le texte (`insert`).
  */
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
@@ -13,6 +13,7 @@ import BlocFields from './BlocFields.vue';
 import { useBlocPhotos } from './bloc-photos';
 import DragHandle from './DragHandle.vue';
 import OrderArrows from './OrderArrows.vue';
+import PhotosGrille from './PhotosGrille.vue';
 
 const props = defineProps<{ blocs: Record<string, Bloc>; body: string }>();
 const emit = defineEmits<{ insert: [id: string] }>();
@@ -88,7 +89,7 @@ function reorderItems(bloc: Bloc, list: NonNullable<Bloc['items']>) {
 
 <template>
 	<fieldset class="space-y-4">
-		<legend class="text-sm font-semibold text-gray-700">Blocs de la page</legend>
+		<legend class="text-sm font-semibold text-gray-700">Blocs <span class="font-light text-gray-500">(photos, vidéo, carrousel…)</span></legend>
 		<p class="text-xs font-light text-gray-500">
 			Chaque bloc s'affiche à l'endroit de son marqueur <code>[[bloc:…]]</code> dans le texte (seul sur sa ligne).
 		</p>
@@ -113,7 +114,11 @@ function reorderItems(bloc: Bloc, list: NonNullable<Bloc['items']>) {
 
 			<BlocFields :fields="def(bloc.type).fields" :values="bloc" :id-prefix="`bloc-${id}`" />
 
-			<div v-if="def(bloc.type).items" class="mt-4 space-y-3">
+			<div v-if="def(bloc.type).items && photos && champPhoto(bloc)" class="mt-4">
+				<PhotosGrille :bloc="bloc" :def="def(bloc.type)" :id-prefix="`bloc-${id}`" :champ="champPhoto(bloc)!" @ajouter="ajouterPhotos(String(id), bloc, $event)" />
+				<p v-if="erreurPhotos[String(id)]" class="mt-1 text-xs text-red-700" role="alert">{{ erreurPhotos[String(id)] }}</p>
+			</div>
+			<div v-else-if="def(bloc.type).items" class="mt-4 space-y-3">
 				<VueDraggable
 					v-bind="sortableProps"
 					:model-value="bloc.items ?? []"
@@ -157,10 +162,6 @@ function reorderItems(bloc: Bloc, list: NonNullable<Bloc['items']>) {
 					>
 						<i class="fa-solid fa-plus mr-1" aria-hidden="true"></i>Ajouter : {{ def(bloc.type).items!.label.toLowerCase() }}
 					</button>
-					<label v-if="photos && champPhoto(bloc)" class="cursor-pointer text-sm font-medium text-primary hover:underline">
-						<i class="fa-solid fa-images mr-1" aria-hidden="true"></i>Ajouter plusieurs photos d'un coup
-						<input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" @change="ajouterPhotos(String(id), bloc, $event)" />
-					</label>
 				</div>
 				<p v-if="erreurPhotos[String(id)]" class="text-xs text-red-700" role="alert">{{ erreurPhotos[String(id)] }}</p>
 			</div>

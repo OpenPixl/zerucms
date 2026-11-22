@@ -15,7 +15,11 @@
  * reconstruit, la modification rejoint le lot en attente (`../lot.ts`).
  * L'aperçu du frontmatter est indicatif ; le serveur fait la vraie validation.
  */
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, toRaw } from 'vue';
+import type { Bloc } from '../../../lib/blocs';
+import BlocsEditor from './pages/BlocsEditor.vue';
+import { fournirBlocPhotos } from './pages/bloc-photos';
+import { insererMarqueur } from './pages/marqueur';
 import ConfirmIconButton from '../ConfirmIconButton.vue';
 import EditFileBar from '../EditFileBar.vue';
 import FormHeader from '../FormHeader.vue';
@@ -29,7 +33,11 @@ import { ADMIN_CONTEXT, inputClass, rememberOpenModule, takeModuleToReopen } fro
 import { EDIT_TABS, useFormTabs, type EditTab } from '../form-tabs';
 import { isDeferredSubmit, isPendingHref } from '../lot';
 import { contentKindProblem, takePendingImport } from '../content-import';
-import { downloadMarkdown, parseMarkdownFile, readMarkdownFile } from '../markdown-file';
+import { parseMarkdownFile, readMarkdownFile, textField } from '../markdown-file';
+import { DEPOT_ACCEPT, lireDepot, photosDuDepot, remarquesDepot, trouverPhoto, type Depot } from '../depot';
+import { lireBlocsFichier } from '../blocs-fichier';
+import { photoPourEnvoi } from './pages/bloc-photos';
+import { telechargerContenu } from '../zip-contenu';
 import { usePublication } from '../usePublication';
 import { downloadNewsTemplate as downloadTemplate, newsMarkdownFile, parseNewsMarkdown } from './actualites/news-markdown';
 
@@ -106,13 +114,23 @@ const missing = computed(() =>
 	preview.value ? ['title', 'publishAt', 'excerpt'].filter((k) => !preview.value![k]) : [],
 );
 
-async function pickMarkdown(file: File | undefined) {
+/** Dépôt d'ajout : photos des blocs citées par le `.md` (nom cité → fichier) et remarques. */
+const depotAjout = ref<{ photos: Map<string, File>; remarques: string[]; nbPhotos: number } | null>(null);
+
+/** Fichier `.md` déposé, seul, avec ses photos ou en `.zip` (cf. `depot.ts`). */
+async function pickMarkdown(entree: File[] | Depot | undefined) {
 	error.value = '';
-	if (!file) return;
-	if (!/\.(md|markdown)$/i.test(file.name)) {
-		error.value = 'Le texte doit être un fichier Markdown (.md).';
-		return;
-	}
+	if (!entree || (Array.isArray(entree) && !entree.length)) return;
+	let depot: Depot;
+	if (Array.isArray(entree)) {
+		const lu = await lireDepot(entree);
+		if (!lu.depot) {
+			error.value = lu.error!;
+			return;
+		}
+		depot = lu.depot;
+	} else depot = entree;
+	const file = depot.markdown;
 	const text = await file.text();
 	const { data } = parseMarkdownFile(text);
 	const wrongKind = data && contentKindProblem(data, 'actualite');
@@ -120,6 +138,23 @@ async function pickMarkdown(file: File | undefined) {
 		error.value = wrongKind;
 		return;
 	}
+	// Photos citées par les blocs : envoyées sous le nom cité ; le serveur les range (photo_<n>.jpg).
+	const photos = new Map<string, File>();
+	const citees = new Set<File>();
+	const { warnings } = lireBlocsFichier(data?.blocs, (nom) => {
+		const f = trouverPhoto(depot, nom);
+		if (!f) return null;
+		photos.set(nom, f);
+		citees.add(f);
+		return 'nouvelle:depot';
+	});
+	const cover = textField(data?.cover);
+	const photoCouverture = cover ? trouverPhoto(depot, cover) : undefined;
+	if (photoCouverture) {
+		citees.add(photoCouverture);
+		if (!photo.value) pickPhoto(photoCouverture);
+	} else if (cover) warnings.push(`Photo de couverture « ${cover} » absente : déposez-la avec le fichier, ou ci-dessous.`);
+	depotAjout.value = { photos, remarques: [...warnings, ...remarquesDepot(depot, citees)], nbPhotos: depot.photos.length };
 	mdFile.value = file;
 	mdText.value = text;
 }
@@ -142,13 +177,14 @@ function pickPhoto(file: File | undefined) {
 
 function onDrop(kind: 'md' | 'photo', event: DragEvent) {
 	dragOver.value = null;
-	const file = event.dataTransfer?.files?.[0];
-	if (kind === 'md') pickMarkdown(file);
-	else pickPhoto(file);
+	const files = [...(event.dataTransfer?.files ?? [])];
+	if (kind === 'md') pickMarkdown(files);
+	else pickPhoto(files[0]);
 }
 
 function reset() {
 	mdFile.value = null;
+	depotAjout.value = null;
 	mdText.value = '';
 	photo.value = null;
 	if (photoUrl.value) URL.revokeObjectURL(photoUrl.value);
@@ -170,7 +206,9 @@ async function submit(event: Event) {
 	try {
 		const cover = photo.value ? { type: photo.value.type, data: await toBase64(photo.value) } : null;
 		rememberOpenModule('actualites');
-		const result = await newsApi.create(mdText.value, cover, { deferred: isDeferredSubmit(event) });
+		const photos: Record<string, { type: string; data: string }> = {};
+		for (const [nom, f] of depotAjout.value?.photos ?? []) photos[nom] = await photoPourEnvoi(f);
+		const result = await newsApi.create(mdText.value, cover, { deferred: isDeferredSubmit(event) }, photos);
 		afterSave(preview.value?.title || 'Nouvelle actualité', result);
 		reset();
 		view.value = 'list';
@@ -199,7 +237,7 @@ async function remove(item: NewsItem, deferred: boolean) {
 // --- Édition ---
 
 /** Actualité en cours d'édition (slug = dossier, inchangé). */
-const editing = ref<{ slug: string; title: string; coverUrl: string | null; hasCover: boolean } | null>(null);
+const editing = ref<{ slug: string; title: string; coverUrl: string | null; hasCover: boolean; cover: string | null } | null>(null);
 /** Zone du texte (curseur, pour `LinkPicker`). */
 const bodyField = ref<HTMLTextAreaElement | null>(null);
 const editForm = reactive<NewsFields & { body: string }>({
@@ -214,28 +252,73 @@ const editForm = reactive<NewsFields & { body: string }>({
 });
 const coverAction = ref<'keep' | 'replace' | 'remove'>('keep');
 const { tab: editTab, onInvalid } = useFormTabs<EditTab>('ed', 'infos');
+/** Blocs placés dans le texte (photos, vidéo, carrousel…), vignettes des photos publiées. */
+const blocs = reactive<Record<string, Bloc>>({});
+const apercus = reactive<Record<string, string>>({});
+const blocPhotos = fournirBlocPhotos(apercus);
+onBeforeUnmount(blocPhotos.liberer);
+function remplacerBlocs(nouveaux: Record<string, Bloc>) {
+	for (const id of Object.keys(blocs)) delete blocs[id];
+	Object.assign(blocs, structuredClone(toRaw(nouveaux)));
+}
+function insertMarker(id: string) {
+	return insererMarqueur(editForm.body, (texte) => (editForm.body = texte), bodyField.value, id);
+}
 /** Dernier fichier chargé dans le formulaire et remarques de lecture. */
 const imported = ref<{ name: string; warnings: string[] } | null>(null);
 
 function downloadFile() {
-	if (editing.value) downloadMarkdown(`${editing.value.slug}.md`, newsMarkdownFile(editForm));
+	if (!editing.value) return;
+	error.value = '';
+	const { slug, hasCover } = editing.value;
+	// `.md` d'après le formulaire, en `.zip` avec ses photos s'il y en a (`zip-contenu.ts`).
+	telechargerContenu({
+		nom: slug,
+		dossier: `news/${slug}`,
+		blocs,
+		photos: blocPhotos.api,
+		couverture: {
+			actuelle: hasCover ? (editing.value.cover ?? './cover.jpg') : null,
+			nouvelle: coverAction.value === 'replace' ? photo.value : null,
+			retiree: coverAction.value === 'remove',
+		},
+		construire: (b, cover) => newsMarkdownFile({ ...editForm, blocs: b }, cover),
+	}).catch((e: Error) => (error.value = e.message));
 }
 
-async function loadFile(file: File) {
+async function loadFile(fichiers: File[]) {
 	error.value = '';
+	const lu = await lireDepot(fichiers);
+	if (!lu.depot) {
+		error.value = lu.error!;
+		return;
+	}
+	const depot = lu.depot;
+	const file = depot.markdown;
 	const read = await readMarkdownFile(file);
 	if (read.error) {
 		error.value = read.error;
 		return;
 	}
-	const { fields, warnings, error: problem } = parseNewsMarkdown(await file.text());
+	const citees = new Set<File>();
+	const { fields, warnings, error: problem } = parseNewsMarkdown(await file.text(), photosDuDepot(depot, blocPhotos.api, citees));
 	if (!fields) {
 		error.value = problem!;
 		return;
 	}
-	Object.assign(editForm, { ...fields, publishAt: fields.publishAt || editForm.publishAt });
+	const { blocs: lus, cover, ...champs } = fields;
+	Object.assign(editForm, { ...champs, publishAt: fields.publishAt || editForm.publishAt });
+	remplacerBlocs(lus);
+	if (cover) {
+		const photoCouverture = trouverPhoto(depot, cover);
+		if (photoCouverture) {
+			citees.add(photoCouverture);
+			pickEditPhoto(photoCouverture);
+		} else warnings.push(`Photo de couverture « ${cover} » absente : déposez-la avec le fichier, ou choisissez-la dans l'onglet « Image ».`);
+	}
+	warnings.push(...remarquesDepot(depot, citees));
 	if (!fields.title) warnings.unshift('Titre absent du fichier : à saisir dans « Informations ».');
-	imported.value = { name: file.name, warnings };
+	imported.value = { name: depot.photos.length ? `${file.name} + ${depot.photos.length} photo(s)` : file.name, warnings };
 }
 
 async function openEdit(item: NewsItem) {
@@ -254,7 +337,11 @@ async function openEdit(item: NewsItem) {
 			imageCredit: source.imageCredit,
 			body: source.body,
 		});
-		editing.value = { slug: source.slug, title: source.title, coverUrl: source.coverUrl, hasCover: Boolean(source.cover) };
+		remplacerBlocs((source.blocs ?? {}) as Record<string, Bloc>);
+		blocPhotos.liberer();
+		for (const k of Object.keys(apercus)) delete apercus[k];
+		Object.assign(apercus, source.blocPhotoUrls ?? {});
+		editing.value = { slug: source.slug, title: source.title, coverUrl: source.coverUrl, hasCover: Boolean(source.cover), cover: source.cover };
 		coverAction.value = 'keep';
 		editTab.value = 'infos';
 		imported.value = null;
@@ -284,7 +371,7 @@ async function saveEdit(event: Event) {
 			cover = { action: 'replace', type: photo.value.type, data: await toBase64(photo.value) };
 		}
 		rememberOpenModule('actualites');
-		const result = await newsApi.update(editing.value.slug, fields, body, cover, { deferred: isDeferredSubmit(event) });
+		const result = await newsApi.update(editing.value.slug, fields, body, cover, { deferred: isDeferredSubmit(event) }, blocs, await blocPhotos.envoi(blocs));
 		afterSave(`Modification : ${editForm.title}`, result);
 		reset();
 		editing.value = null;
@@ -423,7 +510,8 @@ onMounted(async () => {
 				</button>
 			</div>
 			<p class="champ-aide">
-				Le modèle est daté du jour : complétez-le dans un éditeur de texte puis déposez-le ici.
+				Le modèle est daté du jour : complétez-le dans un éditeur de texte puis déposez-le ici, avec les photos qu'il cite
+				(ou le tout en .zip).
 			</p>
 			<label
 				class="mt-2 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-4 py-6 text-center text-sm transition-colors"
@@ -433,9 +521,9 @@ onMounted(async () => {
 				@drop.prevent="onDrop('md', $event)"
 			>
 				<i class="fa-solid fa-file-lines text-2xl text-gray-400" aria-hidden="true"></i>
-				<span v-if="mdFile" class="font-medium text-gray-900">{{ mdFile.name }}</span>
+				<span v-if="mdFile" class="font-medium text-gray-900">{{ mdFile.name }}<template v-if="depotAjout?.nbPhotos"> + {{ depotAjout.nbPhotos }} photo(s)</template></span>
 				<span v-else class="text-gray-600">Glissez le fichier ici ou <span class="text-primary underline">parcourez</span></span>
-				<input type="file" accept=".md,.markdown,text/markdown" class="sr-only" @change="pickMarkdown(($event.target as HTMLInputElement).files?.[0])" />
+				<input type="file" :accept="DEPOT_ACCEPT" multiple class="sr-only" @change="pickMarkdown([...(($event.target as HTMLInputElement).files ?? [])])" />
 			</label>
 
 			<div v-if="mdFile" class="mt-3 rounded-xl bg-gray-100 p-4 text-sm">
@@ -452,6 +540,9 @@ onMounted(async () => {
 					</p>
 					<p v-if="preview.excerpt" class="mt-2 font-light text-gray-600">{{ preview.excerpt }}</p>
 					<p v-if="missing.length" class="mt-2 text-red-700">Champ(s) manquant(s) : {{ missing.join(', ') }}.</p>
+					<ul v-if="depotAjout?.remarques.length" class="mt-2 list-disc pl-5 text-xs text-amber-800">
+						<li v-for="r in depotAjout.remarques" :key="r">{{ r }}</li>
+					</ul>
 				</template>
 			</div>
 		</div>
@@ -497,12 +588,12 @@ onMounted(async () => {
 	<!-- Édition -->
 	<form v-else-if="view === 'edit' && editing" class="space-y-4" @submit.prevent="saveEdit" @invalid.capture="onInvalid">
 		<FormHeader back="Toutes les actualités" :title="editForm.title.trim() || editing.title || editing.slug" editing @back="backToList" />
-		<p class="text-xs font-light text-gray-500">
-			Adresse de la page (inchangée) : <code class="font-mono">/actualites/{{ editing.slug }}</code>
-		</p>
-
 		<div>
-			<EditFileBar :imported="imported" @download="downloadFile" @load="loadFile" />
+			<EditFileBar :imported="imported" @download="downloadFile" @load="loadFile">
+				<p class="mb-3 text-xs font-light text-gray-500">
+					Adresse de la page (inchangée) : <code class="font-mono">/actualites/{{ editing.slug }}</code>
+				</p>
+			</EditFileBar>
 			<FormTabs v-model="editTab" :tabs="EDIT_TABS" prefix="ed" />
 
 			<div v-show="editTab === 'infos'" id="ed-panel-infos" role="tabpanel" aria-labelledby="ed-tab-infos" class="space-y-4">
@@ -525,7 +616,7 @@ onMounted(async () => {
 				</div>
 				<div>
 					<label for="ed-excerpt" class="champ-libelle">Résumé</label>
-					<textarea id="ed-excerpt" v-model="editForm.excerpt" rows="2" required :class="inputClass"></textarea>
+					<textarea id="ed-excerpt" v-model="editForm.excerpt" rows="6" required :class="inputClass"></textarea>
 					<SeoLength :text="editForm.excerpt" kind="description" />
 				</div>
 				<div>
@@ -551,7 +642,7 @@ onMounted(async () => {
 			<div v-show="editTab === 'contenu'" id="ed-panel-contenu" role="tabpanel" aria-labelledby="ed-tab-contenu">
 				<div>
 					<label for="ed-body" class="champ-libelle">Texte (Markdown)</label>
-					<textarea id="ed-body" ref="bodyField" v-model="editForm.body" rows="14" required :class="[inputClass, 'font-mono text-xs leading-relaxed']"></textarea>
+					<textarea id="ed-body" ref="bodyField" v-model="editForm.body" rows="6" required :class="[inputClass, 'font-mono text-sm leading-relaxed']"></textarea>
 					<p class="champ-aide">
 						<code>## Sous-titre</code>, <code>**gras**</code>, <code>*italique*</code>, <code>- liste</code>,
 						<code>[lien](https://…)</code>. Le HTML est accepté (tableaux, encadrés, vidéos YouTube/Vimeo…) ; le code
@@ -559,6 +650,7 @@ onMounted(async () => {
 					</p>
 					<LinkPicker v-model="editForm.body" :field="bodyField" />
 				</div>
+				<BlocsEditor class="mt-6" :blocs="blocs" :body="editForm.body" @insert="insertMarker" />
 			</div>
 
 			<div v-show="editTab === 'image'" id="ed-panel-image" role="tabpanel" aria-labelledby="ed-tab-image" class="space-y-4">

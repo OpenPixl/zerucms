@@ -6,6 +6,7 @@ import TableOfContents from '../../components/article/TableOfContents.astro';
 import ReadingProgress from '../../components/article/ReadingProgress.astro';
 import PageHeader from '../../components/sections/PageHeader.astro';
 import ShareTools from '../../components/article/ShareTools.astro';
+import ContenuBlocs from '../../components/blocs/ContenuBlocs.astro';
 import { getAllNews, renderNews, type NewsArticle } from '../../lib/news';
 import { getAllActivities } from '../../lib/activites';
 import { lienInscription } from '../../plugins/activites';
@@ -39,7 +40,7 @@ export async function getStaticPaths() {
 }
 
 const { article, activity, prev, next } = Astro.props;
-const { html, headings } = await renderNews(article);
+const { parts, headings } = await renderNews(article);
 const inscription = activity ? lienInscription(activity) : null;
 ---
 
@@ -85,7 +86,7 @@ const inscription = activity ? lienInscription(activity) : null;
 
 	<div class="markdown-content mt-6 font-light text-gray-700">
 		{/* HTML nettoyé : balisage de l'auteur·rice gardé, code exécutable retiré. */}
-		<Fragment set:html={html} />
+		<ContenuBlocs parts={parts} dossier={`news/${article.slug}`} />
 	</div>
 
 	{activity && (

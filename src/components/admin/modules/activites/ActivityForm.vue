@@ -10,7 +10,11 @@
  * en création, `initialFile` (« Ajouter un contenu ») pré-remplit le formulaire.
  * Le serveur valide tout (src/lib/activity-writer.ts) et reconstruit le site.
  */
-import { computed, inject, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, inject, onBeforeUnmount, reactive, ref, toRaw } from 'vue';
+import type { Bloc } from '../../../../lib/blocs';
+import BlocsEditor from '../pages/BlocsEditor.vue';
+import { fournirBlocPhotos } from '../pages/bloc-photos';
+import { insererMarqueur } from '../pages/marqueur';
 import { outilActif } from '../../../../plugins';
 import { TYPES_ACTIVITE_INSCRIPTION } from '../../../../lib/grist-asso/choices';
 import {
@@ -31,7 +35,9 @@ import FormTabs from '../../FormTabs.vue';
 import LinkPicker from '../../LinkPicker.vue';
 import SeoLength from '../../SeoLength.vue';
 import { EDIT_TABS, useFormTabs, type EditTab, type FormTab } from '../../form-tabs';
-import { downloadMarkdown, readMarkdownFile } from '../../markdown-file';
+import { readMarkdownFile } from '../../markdown-file';
+import { telechargerContenu } from '../../zip-contenu';
+import { lireDepot, photosDuDepot, remarquesDepot, trouverPhoto, type Depot } from '../../depot';
 import { activityMarkdownFile, parseActivityMarkdown } from './activity-markdown';
 
 const props = defineProps<{
@@ -39,8 +45,8 @@ const props = defineProps<{
 	source: ActivitySourceView | null;
 	category: string;
 	disabled: boolean;
-	/** Création à partir d'un fichier déposé dans « Ajouter un contenu » (menu Contenus). */
-	initialFile?: File;
+	/** Création à partir d'un dépôt fait dans « Ajouter un contenu » (menu Contenus) : `.md` + photos. */
+	initialFile?: Depot;
 }>();
 const emit = defineEmits<{ published: [label: string, result: SaveResult]; cancel: [] }>();
 const { sessionExpired } = inject(ADMIN_CONTEXT)!;
@@ -75,6 +81,14 @@ const form = reactive({
 	imageCredit: editing?.imageCredit ?? '',
 	body: editing?.body ?? '',
 });
+/** Blocs placés dans le texte (photos, vidéo, carrousel…) et leurs photos. */
+const blocs = reactive<Record<string, Bloc>>(structuredClone(toRaw(editing?.blocs ?? {})));
+const blocPhotos = fournirBlocPhotos(editing?.blocPhotoUrls);
+onBeforeUnmount(blocPhotos.liberer);
+function insertMarker(id: string) {
+	return insererMarqueur(form.body, (texte) => (form.body = texte), bodyField.value, id);
+}
+
 /** L'adresse suit le titre tant qu'elle n'a pas été modifiée à la main (création seulement). */
 const slugTouched = ref(false);
 const slug = computed(() => (editing ? editing.slug : slugTouched.value ? form.slug : slugify(form.title)));
@@ -118,28 +132,67 @@ const gristNames = () =>
 		.map((n) => n.trim())
 		.filter(Boolean);
 
-function downloadFile() {
-	downloadMarkdown(`${slug.value || 'activite'}.md`, activityMarkdownFile({ ...form, activiteGrist: gristNames() }));
+/** `.md` de la fiche d'après le formulaire, en `.zip` avec ses photos s'il y en a (`zip-contenu.ts`). */
+async function downloadFile() {
+	error.value = '';
+	try {
+		await telechargerContenu({
+			nom: slug.value || 'activite',
+			dossier: editing ? `activites/${editing.slug}` : null,
+			blocs,
+			photos: blocPhotos.api,
+			couverture: { actuelle: editing?.cover ?? null, nouvelle: coverAction.value === 'replace' ? photo.value : null, retiree: coverAction.value === 'remove' },
+			construire: (b, cover) => activityMarkdownFile({ ...form, activiteGrist: gristNames(), blocs: b }, cover),
+		});
+	} catch (e) {
+		error.value = (e as Error).message;
+	}
 }
 
-async function loadFile(file: File) {
+/** Fichier `.md` chargé, seul, avec ses photos ou en `.zip` (cf. `depot.ts`). */
+async function loadFile(entree: File[] | Depot) {
 	error.value = '';
+	let depot: Depot;
+	if (Array.isArray(entree)) {
+		const lu = await lireDepot(entree);
+		if (!lu.depot) {
+			error.value = lu.error!;
+			return;
+		}
+		depot = lu.depot;
+	} else depot = entree;
+	const file = depot.markdown;
 	const read = await readMarkdownFile(file);
 	if (read.error) {
 		error.value = read.error;
 		return;
 	}
-	const { fields, warnings, error: problem } = parseActivityMarkdown(await file.text(), props.categories.map((c) => c.slug));
+	const citees = new Set<File>();
+	const { fields, warnings, error: problem } = parseActivityMarkdown(
+		await file.text(),
+		props.categories.map((c) => c.slug),
+		photosDuDepot(depot, blocPhotos.api, citees),
+	);
 	if (!fields) {
 		error.value = problem!;
 		return;
 	}
-	const { category, typeGrist, activiteGrist, ...rest } = fields;
+	const { category, typeGrist, activiteGrist, blocs: lus, cover, ...rest } = fields;
+	if (cover) {
+		const photoCouverture = trouverPhoto(depot, cover);
+		if (photoCouverture) {
+			citees.add(photoCouverture);
+			pickPhoto(photoCouverture);
+		} else warnings.push(`Photo de couverture « ${cover} » absente : déposez-la avec le fichier, ou choisissez-la dans l'onglet « Image ».`);
+	}
+	warnings.push(...remarquesDepot(depot, citees));
 	Object.assign(form, rest, { activiteGrist: activiteGrist.join('\n') });
+	for (const id of Object.keys(blocs)) delete blocs[id];
+	Object.assign(blocs, lus);
 	if (category !== undefined) form.category = category;
 	if (typeGrist !== undefined) form.typeGrist = typeGrist;
 	if (!fields.title) warnings.unshift('Titre absent du fichier : à saisir dans « Informations ».');
-	imported.value = { name: file.name, warnings };
+	imported.value = { name: depot.photos.length ? `${file.name} + ${depot.photos.length} photo(s)` : file.name, warnings };
 }
 
 if (props.initialFile && !editing) void loadFile(props.initialFile);
@@ -192,6 +245,8 @@ async function submit(event: Event) {
 			typeGrist: form.typeGrist,
 			imageCredit: form.imageCredit,
 			body: form.body,
+			blocs,
+			photos: await blocPhotos.envoi(blocs),
 		};
 		const newPhoto = coverAction.value === 'replace' && photo.value ? { type: photo.value.type, data: await fileToBase64(photo.value) } : null;
 		rememberOpenModule('activites');
@@ -238,7 +293,7 @@ async function submit(event: Event) {
 				</div>
 				<div>
 					<label for="act-excerpt" class="champ-libelle">Résumé</label>
-					<textarea id="act-excerpt" v-model="form.excerpt" rows="2" required :class="inputClass"></textarea>
+					<textarea id="act-excerpt" v-model="form.excerpt" rows="6" required :class="inputClass"></textarea>
 					<SeoLength :text="form.excerpt" kind="description" />
 					<p class="champ-aide">Une ou deux phrases : affiché sur la carte de l'activité et dans les moteurs de recherche.</p>
 				</div>
@@ -304,7 +359,7 @@ async function submit(event: Event) {
 							<label for="act-grist" class="champ-libelle">
 								Activité(s) Grist visée(s) <span class="font-light text-gray-500">(facultatif, une par ligne)</span>
 							</label>
-							<textarea id="act-grist" v-model="form.activiteGrist" rows="2" :placeholder="form.title" :class="inputClass"></textarea>
+							<textarea id="act-grist" v-model="form.activiteGrist" rows="6" :placeholder="form.title" :class="inputClass"></textarea>
 							<p class="champ-aide">
 								Nom exact de la colonne « Nom » de la table Activite ; terminer par <code>*</code> pour viser tous les noms qui
 								commencent ainsi (ex. <code>Initiation*</code>). Vide : le titre de la fiche.
@@ -327,13 +382,14 @@ async function submit(event: Event) {
 				<!-- Texte -->
 				<div>
 					<label for="act-body" class="champ-libelle">Texte de la fiche (Markdown)</label>
-					<textarea id="act-body" ref="bodyField" v-model="form.body" rows="16" required :class="[inputClass, 'font-mono text-xs leading-relaxed']"></textarea>
+					<textarea id="act-body" ref="bodyField" v-model="form.body" rows="6" required :class="[inputClass, 'font-mono text-sm leading-relaxed']"></textarea>
 					<p class="champ-aide">
 						<code>## Titre de section</code> (alimente le sommaire), <code>**gras**</code>, <code>*italique*</code>,
 						<code>- liste</code>, <code>[lien](/contact)</code>. Le HTML est accepté (tableaux, encadrés…).
 					</p>
 					<LinkPicker v-model="form.body" :field="bodyField" />
 				</div>
+				<BlocsEditor class="mt-6" :blocs="blocs" :body="form.body" @insert="insertMarker" />
 			</div>
 
 			<div v-show="tab === 'image'" id="act-panel-image" role="tabpanel" aria-labelledby="act-tab-image">

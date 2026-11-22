@@ -104,7 +104,7 @@ const inlineInputClass = inputClass.replace('mt-1 ', '');
 				</div>
 				<div>
 					<label for="asso-description" class="champ-libelle">Présentation</label>
-					<textarea id="asso-description" v-model="form.description" rows="3" required maxlength="300" :class="inputClass"></textarea>
+					<textarea id="asso-description" v-model="form.description" rows="6" required maxlength="300" :class="inputClass"></textarea>
 					<p class="champ-aide">Une phrase : page d'accueil et résultats des moteurs de recherche ({{ form.description.length }}/300).</p>
 				</div>
 			</div>
@@ -128,7 +128,7 @@ const inlineInputClass = inputClass.replace('mt-1 ', '');
 				</div>
 				<div class="sm:col-span-2">
 					<label for="asso-street" class="champ-libelle">{{ entreprise ? 'Adresse' : 'Adresse du siège' }}</label>
-					<textarea id="asso-street" v-model="form.address.street" rows="3" required placeholder="N° et rue&#10;Complément (bâtiment, étage…)" :class="inputClass"></textarea>
+					<textarea id="asso-street" v-model="form.address.street" rows="6" required placeholder="N° et rue&#10;Complément (bâtiment, étage…)" :class="inputClass"></textarea>
 					<p class="champ-aide">Jusqu'à 3 lignes, sans le code postal ni la ville : chaque retour à la ligne est gardé à l'affichage.</p>
 				</div>
 				<div>

@@ -158,7 +158,7 @@ const gridStyle = [
 					const offset = lane > 0 ? `margin-left: ${0.125 + lane * 0.75}rem; margin-top: ${0.125 + lane * 0.5}rem;` : '';
 					return (
 						<div
-							class={`${LANE_Z[Math.min(lane, LANE_Z.length - 1)]} m-0.5 flex flex-col overflow-hidden rounded-xl border border-l-4 border-gray-100 bg-white p-2 transition-shadow hover:z-30 hover:shadow-lg ${lane > 0 ? 'shadow-md' : 'shadow-sm'}`}
+							class={`${LANE_Z[Math.min(lane, LANE_Z.length - 1)]} m-0.5 flex flex-col overflow-hidden rounded-xl border border-l-4 border-gray-100 bg-surface p-2 transition-shadow hover:z-30 hover:shadow-lg ${lane > 0 ? 'shadow-md' : 'shadow-sm'}`}
 							style={`grid-column: ${i + 2}; grid-row: ${row(s.start)} / ${row(s.end)}; border-left-color: ${meta.hex}; ${offset}`}
 							title={[
 								`${s.start} – ${s.end}`,

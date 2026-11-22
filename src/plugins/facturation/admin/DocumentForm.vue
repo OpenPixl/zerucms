@@ -215,7 +215,7 @@ async function clientCree(id: number) {
 
 		<div v-if="brouillon">
 			<label for="doc-notes" class="champ-libelle">Notes <span class="font-light text-gray-500">(imprimées sur le document)</span></label>
-			<textarea id="doc-notes" v-model="form.notes" rows="2" :class="inputClass"></textarea>
+			<textarea id="doc-notes" v-model="form.notes" rows="6" :class="inputClass"></textarea>
 		</div>
 
 		<div v-if="brouillon" class="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">

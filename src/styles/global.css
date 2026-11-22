@@ -16,21 +16,82 @@
 	--color-secondary: #2e2e2e;
 	--color-accent: #2e2e2e;
 
+	/* Fonds : `bg-fond` = page, `bg-surface` = cartes, en-tête, champs (à
+	   utiliser à la place de `bg-white`). Blancs en mode clair, teintes de la
+	   palette sombre en mode sombre (plus bas). */
+	--color-fond: #fff;
+	--color-surface: #fff;
+
 	/* Polices : remplacées au rendu par celles de reglages.yaml (polices:,
 	   fontsCss de src/lib/fonts.ts, injecté par les layouts). */
 	--font-heading: system-ui, sans-serif;
 	--font-body: system-ui, sans-serif;
 }
 
+/* Mode sombre proposé aux visiteurs (src/lib/mode-sombre.ts) : attribut
+   data-theme="dark" posé sur <html> par ModeSombre.astro ; palette
+   (--sombre-fond, --sombre-surface, --sombre-texte) et couleurs de marque
+   injectées par themeCss seulement si le mode est activé dans la charte.
+   L'échelle des gris est recalculée depuis la palette : les composants
+   gardent leurs classes (text-gray-900 = texte clair, bg-gray-100 = surface
+   foncée…) ; les tons clairs/foncés des couleurs d'alerte sont inversés. */
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--color-fond: var(--sombre-fond);
+	--color-surface: var(--sombre-surface);
+	--color-gray-50: color-mix(in oklab, var(--sombre-texte) 5%, var(--sombre-surface));
+	--color-gray-100: color-mix(in oklab, var(--sombre-texte) 9%, var(--sombre-surface));
+	--color-gray-200: color-mix(in oklab, var(--sombre-texte) 16%, var(--sombre-surface));
+	--color-gray-300: color-mix(in oklab, var(--sombre-texte) 30%, var(--sombre-fond));
+	--color-gray-400: color-mix(in oklab, var(--sombre-texte) 52%, var(--sombre-fond));
+	--color-gray-500: color-mix(in oklab, var(--sombre-texte) 64%, var(--sombre-fond));
+	--color-gray-600: color-mix(in oklab, var(--sombre-texte) 76%, var(--sombre-fond));
+	--color-gray-700: color-mix(in oklab, var(--sombre-texte) 86%, var(--sombre-fond));
+	--color-gray-800: color-mix(in oklab, var(--sombre-texte) 93%, var(--sombre-fond));
+	--color-gray-900: var(--sombre-texte);
+	--color-gray-950: color-mix(in oklab, var(--sombre-texte) 80%, white);
+	--color-red-50: oklch(25.8% 0.092 26.042); --color-red-100: oklch(39.6% 0.141 25.723); --color-red-200: oklch(44.4% 0.177 26.899); --color-red-300: oklch(50.5% 0.213 27.518); --color-red-700: oklch(80.8% 0.114 19.571); --color-red-800: oklch(88.5% 0.062 18.334); --color-red-900: oklch(93.6% 0.032 17.717); --color-red-950: oklch(97.1% 0.013 17.38);
+	--color-amber-50: oklch(27.9% 0.077 45.635); --color-amber-100: oklch(41.4% 0.112 45.904); --color-amber-200: oklch(47.3% 0.137 46.201); --color-amber-300: oklch(55.5% 0.163 48.998); --color-amber-700: oklch(87.9% 0.169 91.605); --color-amber-800: oklch(92.4% 0.12 95.746); --color-amber-900: oklch(96.2% 0.059 95.617); --color-amber-950: oklch(98.7% 0.022 95.277);
+	--color-green-50: oklch(26.6% 0.065 152.934); --color-green-100: oklch(39.3% 0.095 152.535); --color-green-200: oklch(44.8% 0.119 151.328); --color-green-300: oklch(52.7% 0.154 150.069); --color-green-700: oklch(87.1% 0.15 154.449); --color-green-800: oklch(92.5% 0.084 155.995); --color-green-900: oklch(96.2% 0.044 156.743); --color-green-950: oklch(98.2% 0.018 155.826);
+	--color-sky-50: oklch(29.3% 0.066 243.157); --color-sky-100: oklch(39.1% 0.09 240.876); --color-sky-200: oklch(44.3% 0.11 240.79); --color-sky-300: oklch(50% 0.134 242.749); --color-sky-700: oklch(82.8% 0.111 230.318); --color-sky-800: oklch(90.1% 0.058 230.902); --color-sky-900: oklch(95.1% 0.026 236.824); --color-sky-950: oklch(97.7% 0.013 236.62);
+}
+
+/* Logo propre au mode sombre (images/logo-sombre.*, facultatif). */
+.logo-sombre {
+	display: none;
+}
+:root[data-theme="dark"] .logo-sombre {
+	display: block;
+}
+:root[data-theme="dark"] .logo-clair {
+	display: none;
+}
+
+/* Bouton clair / sombre de l'en-tête : icône du mode vers lequel il bascule. */
+:root[data-theme="dark"] .mode-sombre-lune,
+:root:not([data-theme="dark"]) .mode-sombre-soleil {
+	display: none;
+}
+
 /* Espace Admin : couleurs propres, indépendantes de la charte du site
    (themeCss ne pose les siennes que sur :root). Îlot monté dans
    #espace-benevoles (mount.ts) et page d'installation (.theme-admin,
-   InstallationLayout.astro). */
+   InstallationLayout.astro). Toujours en clair : fonds, gris et couleurs
+   d'alerte d'origine (valeurs de Tailwind), même si le visiteur a choisi le
+   mode sombre. */
 #espace-benevoles,
 .theme-admin {
+	color-scheme: light;
 	--color-primary: #2f7fc1;
 	--color-secondary: #1fa39e;
 	--color-accent: #7cb93f;
+	--color-fond: #fff;
+	--color-surface: #fff;
+	--color-gray-50: oklch(98.5% 0.002 247.839); --color-gray-100: oklch(96.7% 0.003 264.542); --color-gray-200: oklch(92.8% 0.006 264.531); --color-gray-300: oklch(87.2% 0.01 258.338); --color-gray-400: oklch(70.7% 0.022 261.325); --color-gray-500: oklch(55.1% 0.027 264.364); --color-gray-600: oklch(44.6% 0.03 256.802); --color-gray-700: oklch(37.3% 0.034 259.733); --color-gray-800: oklch(27.8% 0.033 256.848); --color-gray-900: oklch(21% 0.034 264.665); --color-gray-950: oklch(13% 0.028 261.692);
+	--color-red-50: oklch(97.1% 0.013 17.38); --color-red-100: oklch(93.6% 0.032 17.717); --color-red-200: oklch(88.5% 0.062 18.334); --color-red-300: oklch(80.8% 0.114 19.571); --color-red-700: oklch(50.5% 0.213 27.518); --color-red-800: oklch(44.4% 0.177 26.899); --color-red-900: oklch(39.6% 0.141 25.723); --color-red-950: oklch(25.8% 0.092 26.042);
+	--color-amber-50: oklch(98.7% 0.022 95.277); --color-amber-100: oklch(96.2% 0.059 95.617); --color-amber-200: oklch(92.4% 0.12 95.746); --color-amber-300: oklch(87.9% 0.169 91.605); --color-amber-700: oklch(55.5% 0.163 48.998); --color-amber-800: oklch(47.3% 0.137 46.201); --color-amber-900: oklch(41.4% 0.112 45.904); --color-amber-950: oklch(27.9% 0.077 45.635);
+	--color-green-50: oklch(98.2% 0.018 155.826); --color-green-100: oklch(96.2% 0.044 156.743); --color-green-200: oklch(92.5% 0.084 155.995); --color-green-300: oklch(87.1% 0.15 154.449); --color-green-700: oklch(52.7% 0.154 150.069); --color-green-800: oklch(44.8% 0.119 151.328); --color-green-900: oklch(39.3% 0.095 152.535); --color-green-950: oklch(26.6% 0.065 152.934);
+	--color-sky-50: oklch(97.7% 0.013 236.62); --color-sky-100: oklch(95.1% 0.026 236.824); --color-sky-200: oklch(90.1% 0.058 230.902); --color-sky-300: oklch(82.8% 0.111 230.318); --color-sky-700: oklch(50% 0.134 242.749); --color-sky-800: oklch(44.3% 0.11 240.79); --color-sky-900: oklch(39.1% 0.09 240.876); --color-sky-950: oklch(29.3% 0.066 243.157);
 }
 
 body {
@@ -104,7 +165,7 @@ h6 {
 	margin: 1.5rem 0;
 	border-left: 4px solid var(--color-accent);
 	border-radius: 0.75rem;
-	background: color-mix(in oklab, var(--color-accent) 8%, white);
+	background: color-mix(in oklab, var(--color-accent) 8%, var(--color-surface));
 	padding: 1rem 1.25rem;
 }
 
@@ -139,5 +200,15 @@ html.has-admin-bar body {
 	&::-webkit-scrollbar-thumb {
 		background: var(--color-gray-300);
 		border-radius: 9999px;
+	}
+}
+
+/* Défilement sans ascenseur visible (barre d'onglets à chevrons :
+   `FormTabs.vue`). */
+@utility scrollbar-aucune {
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
 	}
 }

@@ -99,8 +99,8 @@ const keep = (name: string) => (el: unknown) => {
 				:ref="keep(f.name)"
 				:value="value(f.name)"
 				:required="f.required"
-				rows="4"
-				:class="[inputClass, f.type === 'markdown' ? 'font-mono text-xs leading-relaxed' : '']"
+				rows="6"
+				:class="[inputClass, f.type === 'markdown' ? 'font-mono text-sm leading-relaxed' : '']"
 				@input="set(f.name, $event)"
 			></textarea>
 			<div v-else class="relative">

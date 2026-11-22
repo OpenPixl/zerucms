@@ -326,7 +326,7 @@ const reload = () => window.location.reload();
 			</div>
 			<div>
 				<label for="inst-rue" :class="libelleChamp">{{ structure === 'entreprise' ? 'Adresse' : 'Adresse du siège' }}</label>
-				<textarea id="inst-rue" v-model="association.street" rows="3" placeholder="N° et rue&#10;Complément (bâtiment, étage…)" :class="inputClass"></textarea>
+				<textarea id="inst-rue" v-model="association.street" rows="6" placeholder="N° et rue&#10;Complément (bâtiment, étage…)" :class="inputClass"></textarea>
 				<p class="champ-aide">Jusqu'à 3 lignes, sans le code postal ni la ville : chaque retour à la ligne est gardé à l'affichage.</p>
 			</div>
 			<div class="grid gap-4 sm:grid-cols-[10rem_1fr]">

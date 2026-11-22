@@ -436,7 +436,7 @@ verticalement ; textarea : `--champ-py`).
 ```vue
 <input v-model="nom" type="text" class="mt-1 champ" />
 <select v-model="statut" :class="['mt-1 champ', { 'champ-erreur': erreur }]">…</select>
-<textarea rows="4" class="mt-1 champ font-mono"></textarea>
+<textarea rows="6" class="mt-1 champ font-mono"></textarea>
 
 <!-- préfixe + champ : la bordure va sur le conteneur -->
 <div class="mt-1 champ-groupe">
@@ -463,6 +463,14 @@ Espace Admin : `inputClass` (`mt-1 champ`) et `compactInputClass`
 (`champ`, largeur à ajouter) de `src/components/admin/context.ts`. Une classe
 Tailwind ajoutée à côté (`w-28`, `pl-9`…) l'emporte toujours (couche
 `components`). Cases à cocher et radios ne sont pas concernés.
+
+Formulaires de l'Espace Admin : texte en `text-sm` pour tout le formulaire
+(règle `#espace-benevoles form` / `.theme-admin form` de `forms.css`, couche
+`base` : une taille posée sur un élément, ex. `text-xs` d'une aide,
+l'emporte) — inutile de répéter `text-sm` ; zones de texte **toujours sur 6
+lignes** (`rows="6"`, redimensionnables à la souris), texte Markdown compris
+(`font-mono text-sm`). Seule exception : la ligne d'une facture
+(`LignesEditeur.vue`, `rows="1"` dans son tableau).
 
 ### Boutons de formulaire
 

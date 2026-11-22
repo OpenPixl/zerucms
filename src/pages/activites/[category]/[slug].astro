@@ -5,6 +5,7 @@ import ArticleLayout from '../../../layouts/ArticleLayout.astro';
 import TableOfContents from '../../../components/article/TableOfContents.astro';
 import ReadingProgress from '../../../components/article/ReadingProgress.astro';
 import PageHeader from '../../../components/sections/PageHeader.astro';
+import ContenuBlocs from '../../../components/blocs/ContenuBlocs.astro';
 import { getActivitiesByCategory, renderActivity } from '../../../lib/activites';
 import { categories, getCategory } from '../../../lib/categories';
 import { association } from '../../../lib/association';
@@ -27,7 +28,7 @@ export async function getStaticPaths() {
 }
 
 const { activity, prev, next } = Astro.props;
-const { html, headings } = await renderActivity(activity);
+const { parts, headings } = await renderActivity(activity);
 const category = getCategory(activity.category);
 const inscription = lienInscription(activity);
 ---
@@ -75,7 +76,7 @@ const inscription = lienInscription(activity);
 	)}
 
 	<div class="markdown-content mt-6 font-light text-gray-700">
-		<Fragment set:html={html} />
+		<ContenuBlocs parts={parts} dossier={`activites/${activity.slug}`} />
 	</div>
 
 	<div class="mt-12 border-t border-gray-100 pt-8">

@@ -15,7 +15,7 @@ interface Props {
 const { activity, loading = 'lazy' } = Astro.props;
 ---
 
-<article class="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
+<article class="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-surface shadow-sm transition-shadow hover:shadow-md">
 	<a href={activity.href} class="block aspect-video overflow-hidden">
 		{activity.image ? (
 			<Image

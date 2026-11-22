@@ -87,16 +87,43 @@ Deux mécanismes coexistent :
   Framatube / peertube.fr, `videoEmbed()` de `blocs.ts` ; aucun autre site,
   pas de fichier vidéo déposé). Types de champ `photo`, `video`,
   `interrupteur` (`oui` / `non`, `defaut`) et `si` (champ affiché selon un
-  interrupteur). Photos = fichiers `photo_<n>.jpg` du **dossier de la
-  page** (à côté de `cover.jpg`, déplacés avec elle) : choisies dans le
+  interrupteur). Photos = fichiers `photo_<n>.jpg` du **dossier du
+  contenu** (à côté de `cover.jpg`, déplacés avec lui) : choisies dans le
   module, réduites à 2 000 px dans le navigateur (`pages/bloc-photos.ts` :
-  `fournirBlocPhotos()` / `useBlocPhotos()`, champ `nouvelle:<clé>`),
-  envoyées avec la page (`PageInput.photos`), écrites par `page-writer.ts`
+  `fournirBlocPhotos()` / `useBlocPhotos()`, champ `nouvelle:<clé>`), ou
+  **déposées avec le `.md`** (citées par leur nom, `.zip` accepté :
+  `src/components/admin/depot.ts`), envoyées avec le contenu (`photos`,
+  sous la valeur du champ qui les cite), écrites par `src/lib/bloc-writer.ts`
   (sharp, 2 000 px, sans métadonnées ; n = numéro suivant le plus grand déjà
-  pris dans le dossier, jamais réutilisé dans le même enregistrement), celles
-  qu'aucun bloc ne cite plus supprimées ; rendu par `<Image>` via
-  `src/lib/bloc-images.ts` (`import.meta.glob`), fichier manquant ignoré ;
-  vignettes du module : `blocPhotoUrls` du `GET /api/admin/pages/<chemin>`.
+  pris dans le dossier), celles qu'aucun bloc ne cite plus supprimées ; rendu
+  par `<Image>` via `src/lib/bloc-images.ts` (`import.meta.glob`), fichier
+  manquant ignoré ; vignettes du module : `blocPhotoUrls` des GET.
+- **Photos dans le formulaire** (blocs dont les éléments ont un champ
+  `photo` : Photos, Carrousel) : `modules/pages/PhotosGrille.vue` au lieu
+  de la liste d'éléments de `BlocsEditor.vue` — grille de 4 vignettes par
+  ligne, numéro et pastille orange (champ obligatoire vide) sur chaque
+  vignette, corbeille dans un coin (masquée au minimum d'éléments du bloc),
+  dernière case « + Ajouter » (une ou plusieurs photos, `ajouterPhotos` de
+  `BlocsEditor` : d'abord les éléments sans photo). Clic sur une vignette =
+  panneau déroulé sous la grille (remplacer la photo, autres champs de
+  l'élément via `BlocFields`) ; l'élément ouvert est suivi par référence,
+  il reste ouvert quand l'ordre change. Ordre : glisser-déposer de la
+  vignette entière (`vue-draggable-plus`, `draggable: '.tuile'` pour
+  laisser la case d'ajout en place, `delay` 250 ms au doigt seulement pour
+  garder le défilement), et boutons « Reculer » / « Avancer » du panneau
+  pour le clavier. Les autres blocs à éléments (cartes…) gardent la liste
+  avec poignée et flèches ↑/↓.
+- **Blocs dans les actualités et les activités** : mêmes blocs, sans choix
+  « classique / enrichie » (`blocs:` facultatif dans leur en-tête, éditeur
+  dans l'onglet Contenu, rendu `ContenuBlocs.astro` par `renderNews()` /
+  `renderActivity()` qui renvoient `parts`). Marqueur sans bloc : refusé à
+  l'enregistrement, ignoré au rendu.
+- **Fichiers `.md` avec photos** : modèles commentés (`cover:`, `blocs:`),
+  dépôt du `.md` avec ses photos ou en `.zip` (« Ajouter un contenu »,
+  création d'actualité / de page, « Charger un fichier modifié ») ;
+  « Télécharger le fichier » produit un `.zip` (`.md` + `photo_<n>.jpg` +
+  `couverture.jpg`) dès que le contenu a des photos (`zip-contenu.ts`,
+  `GET /api/admin/photos-contenu`), redéposable tel quel.
 - **`.mdx`** : reste lu par la route attrape-tout (composant `Content`),
   pour une page écrite dans le code avec ses propres `import`. Le module
   « Pages » la montre comme **page technique** (lecture seule) : le MDX

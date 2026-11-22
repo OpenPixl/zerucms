@@ -1,7 +1,7 @@
 /**
  * Une actualité (groupes `redacteur` / `admin`, garde dans `src/middleware.ts`) :
  *  - GET    : contenu tel qu'il est dans les sources (formulaire d'édition) ;
- *  - PUT    : `{ fields, body, cover }` → nouvelle version du même dossier
+ *  - PUT    : `{ fields, body, blocs, photos, cover }` → nouvelle version du même dossier
  *             (l'URL ne change pas), site reconstruit ; sauvegarde remise en
  *             place si la reconstruction échoue ;
  *  - DELETE : `{ confirm: <slug> }` → dossier mis de côté, site reconstruit,
@@ -24,6 +24,7 @@ import {
 	type CoverChange,
 } from '../../../../lib/news-writer';
 import { publishBlocked, publishChange } from '../../../../lib/admin-publish';
+import { blocPhotoUrls } from '../../../../lib/bloc-images';
 
 export const prerender = false;
 
@@ -37,15 +38,16 @@ export const GET: APIRoute = withErrors(async ({ params }) => {
 	const coverUrl = entry?.data.cover
 		? (await getImage({ src: entry.data.cover, width: 640, height: 360, fit: 'cover' })).src
 		: null;
-	return json({ ...source, coverUrl });
+	return json({ ...source, coverUrl, blocPhotoUrls: await blocPhotoUrls(`news/${source.slug}`, source.blocs) });
 });
 
 /** Champs du formulaire → fichier Markdown, validé ensuite comme un dépôt. */
-function toMarkdown(fields: Record<string, unknown>, body: string): string {
+function toMarkdown(fields: Record<string, unknown>, body: string, blocs: unknown): string {
 	const text = (key: string) => (typeof fields[key] === 'string' ? (fields[key] as string).trim() : '');
 	const data: Record<string, unknown> = { title: text('title'), publishAt: text('publishAt'), excerpt: text('excerpt') };
 	if (fields.isPublish === false) data.isPublish = false;
 	for (const key of ['tag', 'author', 'imageCredit']) if (text(key)) data[key] = text(key);
+	if (blocs && typeof blocs === 'object' && !Array.isArray(blocs) && Object.keys(blocs).length) data.blocs = blocs;
 	return `---\n${stringifyYaml(data, { defaultStringType: 'QUOTE_DOUBLE', lineWidth: 0 })}---\n\n${body}\n`;
 }
 
@@ -57,7 +59,8 @@ export const PUT: APIRoute = withErrors(async ({ params, request, locals }) => {
 	const payload = (await readJson(request)) ?? {};
 	const fields = (payload.fields && typeof payload.fields === 'object' ? payload.fields : {}) as Record<string, unknown>;
 	const body = typeof payload.body === 'string' ? payload.body.replace(/\r\n?/g, '\n').trim() : '';
-	const markdown = toMarkdown(fields, body);
+	const markdown = toMarkdown(fields, body, payload.blocs);
+	const photos = payload.photos && typeof payload.photos === 'object' && !Array.isArray(payload.photos) ? (payload.photos as Record<string, unknown>) : {};
 	if (Buffer.byteLength(markdown) > MARKDOWN_MAX_BYTES) return jsonError('Le texte est trop long (200 Ko max).');
 
 	let coverChange: CoverChange = { action: 'keep' };
@@ -71,7 +74,7 @@ export const PUT: APIRoute = withErrors(async ({ params, request, locals }) => {
 		coverChange = { action: 'replace', data };
 	}
 
-	const { title, restore, purge, errors } = await updateNews(slug, markdown, coverChange);
+	const { title, restore, purge, errors } = await updateNews(slug, markdown, coverChange, photos);
 	if (!restore || !purge) return jsonError(errors.join(' '), errors[0]?.includes('introuvable') ? 404 : 422);
 
 	return publishChange({

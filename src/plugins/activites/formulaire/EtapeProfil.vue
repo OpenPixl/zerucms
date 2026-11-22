@@ -47,7 +47,7 @@ function onSubmitExterieur() {
 
 <template>
 	<li
-		class="rounded-2xl border bg-white p-6 shadow-sm transition-opacity"
+		class="rounded-2xl border bg-surface p-6 shadow-sm transition-opacity"
 		:class="active ? 'border-primary' : 'border-gray-100'"
 	>
 		<div class="flex items-center gap-3">
@@ -121,7 +121,7 @@ function onSubmitExterieur() {
 						<li v-for="c in candidats" :key="c.membreId">
 							<button
 								type="button"
-								class="w-full rounded-lg border border-amber-200 bg-white px-4 py-2 text-left text-sm hover:border-primary"
+								class="w-full rounded-lg border border-amber-200 bg-surface px-4 py-2 text-left text-sm hover:border-primary"
 								@click="emit('choisir', c)"
 							>
 								<span class="font-medium text-gray-900">{{ c.prenom }} {{ c.nom }}</span>

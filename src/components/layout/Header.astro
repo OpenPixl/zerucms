@@ -1,10 +1,11 @@
 ---
 import { Image } from 'astro:assets';
-import { logo, logoWidth } from '../../lib/site-images';
+import { logo, logoSombre, logoWidth } from '../../lib/site-images';
 import { association } from '../../lib/association';
 import { getNavTree } from '../../lib/navigation';
 import { site } from '../../config/site';
 import BrandStripe from './BrandStripe.astro';
+import ModeSombreBouton from './ModeSombreBouton.astro';
 import { lienPluginIndisponible } from '../../lib/liens-plugins';
 
 // Menu construit au build à partir des pages du site + des frontmatters
@@ -15,10 +16,22 @@ const cta = { ...site.cta, enabled: site.cta.enabled && !lienPluginIndisponible(
 const presence = { ...site.presence, enabled: site.presence.enabled && !lienPluginIndisponible(site.presence.href) };
 ---
 
-<header class:list={['sticky top-[var(--admin-bar-h,0px)] z-50 isolate bg-white/90 backdrop-blur', !site.colors.stripeEnabled && 'shadow-md shadow-black/10']}>
+<header class:list={['sticky top-[var(--admin-bar-h,0px)] z-50 isolate bg-surface/90 backdrop-blur', !site.colors.stripeEnabled && 'shadow-md shadow-black/10']}>
 	<div class="mx-auto flex min-h-16 max-w-6xl items-center justify-between sm:px-6">
 		<a href="/" class="flex items-center gap-2 font-heading text-xl text-gray-900">
-			<Image src={logo} alt={association.name} width={logoWidth(96)} height={96} loading="eager" fetchpriority="high" class="h-auto max-h-16 w-auto max-w-[min(60vw,16rem)]" />
+			<Image
+				src={logo}
+				alt={association.name}
+				width={logoWidth(96)}
+				height={96}
+				loading="eager"
+				fetchpriority="high"
+				class:list={['h-auto max-h-16 w-auto max-w-[min(60vw,16rem)]', site.sombre.enabled && logoSombre && 'logo-clair']}
+			/>
+			{/* Logo du mode sombre (images/logo-sombre.*) : affiché à la place du logo par global.css. */}
+			{site.sombre.enabled && logoSombre && (
+				<Image src={logoSombre} alt={association.name} width={logoWidth(96, logoSombre)} height={96} class="logo-sombre h-auto max-h-16 w-auto max-w-[min(60vw,16rem)]" />
+			)}
 		</a>
 
 		<nav class="hidden items-center gap-8 md:flex">
@@ -38,7 +51,7 @@ const presence = { ...site.presence, enabled: site.presence.enabled && !lienPlug
 							</svg>
 						</button>
 						<div
-							class="absolute left-0 top-full z-10 mt-2 hidden w-64 rounded-xl border border-gray-100 bg-white py-2 shadow-lg"
+							class="absolute left-0 top-full z-10 mt-2 hidden w-64 rounded-xl border border-gray-100 bg-surface py-2 shadow-lg"
 							data-dropdown-panel
 						>
 							{link.children.map((child) => (
@@ -59,16 +72,21 @@ const presence = { ...site.presence, enabled: site.presence.enabled && !lienPlug
 			)}
 		</nav>
 
-		{cta.enabled && (
-			<div class="hidden md:block">
-				<a
-					href={cta.href}
-					class="rounded-full bg-accent px-5 py-2 text-sm font-heading font-semibold text-white transition-opacity hover:opacity-90"
-				>
-					{cta.label}
-				</a>
+		{(cta.enabled || site.sombre.enabled) && (
+			<div class="hidden items-center gap-3 md:flex">
+				<ModeSombreBouton />
+				{cta.enabled && (
+					<a
+						href={cta.href}
+						class="rounded-full bg-accent px-5 py-2 text-sm font-heading font-semibold text-white transition-opacity hover:opacity-90"
+					>
+						{cta.label}
+					</a>
+				)}
 			</div>
 		)}
+
+		<ModeSombreBouton class="ml-auto md:hidden" />
 
 		<button
 			id="menu-toggle"
