@@ -77,7 +77,7 @@ export async function readStatus(): Promise<BuildStatus> {
 		return { state: 'idle' };
 	}
 	if (status.state === 'running' && !current) {
-		return { ...status, state: 'failed', message: 'La publication a été interrompue (serveur arrêté pendant la reconstruction). Relancez-la.' };
+		return { ...status, state: 'failed', message: 'La publication a été interrompue. Relancez-la.' };
 	}
 	return status;
 }
@@ -98,7 +98,8 @@ export async function canPublish(): Promise<{ ok: boolean; reason?: string }> {
 		return {
 			ok: false,
 			reason:
-				"La publication en ligne n'est pas disponible sur ce serveur : les sources du site (src/, node_modules/) sont absentes ou en lecture seule. Voir docs/publication.md.",
+				// Détail technique (sources absentes ou en lecture seule) : docs/publication.md.
+				"La publication n'est pas disponible sur ce serveur : contactez la personne qui gère le site.",
 		};
 	}
 	return { ok: true };
@@ -319,9 +320,11 @@ export async function publish(request: PublishRequest): Promise<{ started: boole
 			await request.onFailure?.().catch(() => {});
 			if (request.maintenance) fermerMaintenance(dataDir());
 			await rm(join(root(), outDir), { recursive: true, force: true });
-			const message = `La reconstruction du site a échoué, rien n'a été publié (${(err as Error).message}). Détail : ${join(statusDir(), 'build.log')}`;
+			// Message simple à l'écran ; le détail technique reste dans le journal (super admin) et build.log.
+			const detail = `La reconstruction du site a échoué, rien n'a été publié (${(err as Error).message}). Détail : ${join(statusDir(), 'build.log')}`;
+			const message = "La publication a échoué : le site en ligne n'a pas changé. Réessayez, ou contactez la personne qui gère le site.";
 			await writeStatus({ state: 'failed', label: request.label, startedAt, finishedAt: new Date().toISOString(), message, by });
-			await logEvent({ by, action: 'publication', label: request.label, outcome: 'echec', message });
+			await logEvent({ by, action: 'publication', label: request.label, outcome: 'echec', message: detail });
 		} finally {
 			log.end();
 			current = null;

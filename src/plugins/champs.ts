@@ -67,13 +67,18 @@ export interface ChampPlugin {
  * page de configuration ; on ne peut que le remplacer ou l'effacer, jamais le
  * relire depuis le navigateur.
  */
-export type TypeConnexion = 'identifiant' | 'cle' | 'version' | 'url';
+export type TypeConnexion = 'identifiant' | 'cle' | 'version' | 'url' | 'hote' | 'port' | 'email' | 'texte' | 'motdepasse';
 
 export const FORMATS_CONNEXION: Record<TypeConnexion, { re: RegExp; message: string }> = {
 	identifiant: { re: /^[A-Za-z0-9_-]+$/, message: 'lettres, chiffres, « - » et « _ » seulement' },
 	cle: { re: /^\S{8,}$/, message: 'au moins 8 caractères, sans espace' },
 	version: { re: /^v\d+\.\d+$/, message: 'version au format v23.0' },
 	url: { re: /^https?:\/\/[^\s/?#]+(\/[^\s?#]*)?$/, message: 'adresse web au format https://exemple.fr' },
+	hote: { re: /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/, message: 'nom de serveur, ex. smtp.exemple.fr' },
+	port: { re: /^([1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$/, message: 'numéro de port, ex. 587' },
+	email: { re: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'adresse e-mail, ex. contact@exemple.fr' },
+	texte: { re: /^[^\r\n]{1,200}$/, message: 'une ligne de texte (200 caractères au plus)' },
+	motdepasse: { re: /^[^\r\n]{1,500}$/, message: 'mot de passe sur une ligne' },
 };
 
 export interface ChampConnexion {

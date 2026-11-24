@@ -481,9 +481,7 @@ onMounted(async () => {
 				Voir la page Actualités <i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
 			</a>
 		</div>
-		<p v-if="!availability.ok" class="mb-4 alerte-attention">
-			{{ availability.reason }}
-		</p>
+		<p v-if="!availability.ok" class="mb-4 text-sm text-gray-500"><i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>{{ availability.reason }}</p>
 
 		<p v-if="loading" class="text-sm font-light text-gray-500">Chargement…</p>
 		<p v-else-if="news.length === 0" class="text-sm font-light text-gray-500">Aucune actualité pour l'instant.</p>
@@ -550,8 +548,7 @@ onMounted(async () => {
 				</button>
 			</div>
 			<p class="champ-aide">
-				Le modèle est daté du jour : complétez-le dans un éditeur de texte puis déposez-le ici, avec les photos qu'il cite
-				(ou le tout en .zip).
+				Complétez le modèle puis déposez-le ici, avec ses photos (ou le tout en .zip).
 			</p>
 			<label
 				class="mt-2 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-4 py-6 text-center text-sm transition-colors"
@@ -568,7 +565,7 @@ onMounted(async () => {
 
 			<div v-if="mdFile" class="mt-3 rounded-xl bg-gray-100 p-4 text-sm">
 				<p v-if="!preview" class="text-red-700">
-					En-tête (frontmatter) introuvable : le fichier doit commencer par un bloc <code>---</code> … <code>---</code>.
+					Ce fichier n'a pas la forme attendue : partez du modèle à télécharger.
 				</p>
 				<template v-else>
 					<p class="font-heading font-semibold text-gray-900">{{ preview.title || '(sans titre)' }}</p>
@@ -611,14 +608,12 @@ onMounted(async () => {
 				<input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" @change="pickPhoto(($event.target as HTMLInputElement).files?.[0])" />
 			</label>
 			<p v-if="photo" class="champ-aide">
-				{{ photo.name }} — la position GPS et les autres métadonnées sont retirées à l'envoi.
+				{{ photo.name }}
 			</p>
 		</div>
 
 		<p class="text-xs font-light text-gray-500">
-			À l'envoi, le site est reconstruit (environ une minute) : l'actualité apparaît ensuite sur la page Actualités,
-			l'accueil et le flux RSS. « Enregistrer sans publier » : elle attend les autres modifications pour être publiée
-			avec elles, en une fois.
+			L'actualité est en ligne environ une minute après l'envoi.
 		</p>
 		<div class="flex flex-wrap items-center gap-3">
 			<PublishButtons label="Publier l’actualité" :busy="busy" :disabled="!mdFile || !preview || missing.length > 0" />
@@ -631,7 +626,7 @@ onMounted(async () => {
 		<div>
 			<EditFileBar :imported="imported" @download="downloadFile" @load="loadFile">
 				<p class="mb-3 text-xs font-light text-gray-500">
-					Adresse de la page (inchangée) : <code class="font-mono">/actualites/{{ editing.slug }}</code>
+					Adresse de la page : /actualites/{{ editing.slug }}
 				</p>
 			</EditFileBar>
 			<FormTabs v-model="editTab" :tabs="editTabs" prefix="ed" />
@@ -685,8 +680,7 @@ onMounted(async () => {
 					<textarea id="ed-body" ref="bodyField" v-model="editForm.body" rows="6" required :class="[inputClass, 'font-mono text-sm leading-relaxed']"></textarea>
 					<p class="champ-aide">
 						<code>## Sous-titre</code>, <code>**gras**</code>, <code>*italique*</code>, <code>- liste</code>,
-						<code>[lien](https://…)</code>. Le HTML est accepté (tableaux, encadrés, vidéos YouTube/Vimeo…) ; le code
-						exécutable (scripts…) est retiré à l'affichage.
+						<code>[lien](https://…)</code>.
 					</p>
 					<LinkPicker v-model="editForm.body" :field="bodyField" />
 				</div>
@@ -749,9 +743,7 @@ onMounted(async () => {
 		</div>
 
 		<p class="text-xs font-light text-gray-500">
-			« Enregistrer et publier » reconstruit le site (environ une minute) ; si la reconstruction échoue, la version
-			actuelle est conservée. « Enregistrer sans publier » : la modification attend les autres pour être publiée avec
-			elles, en une fois.
+			La modification est en ligne environ une minute après l'enregistrement.
 		</p>
 		<div class="flex flex-wrap items-center gap-3">
 			<PublishButtons :busy="busy" :disabled="!editForm.title || !editForm.publishAt || !editForm.excerpt || !editForm.body" />

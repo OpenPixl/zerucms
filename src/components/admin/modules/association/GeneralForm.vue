@@ -73,9 +73,7 @@ const inlineInputClass = inputClass.replace('mt-1 ', '');
 	<form class="space-y-6" @submit.prevent="submit">
 		<p v-if="error" class="alerte-erreur" role="alert">{{ error }}</p>
 		<p class="text-sm font-light text-gray-600">
-			Ces informations sont affichées sur tout le site : en-tête, pied de page, page Contact, mentions légales, aperçus de
-			partage… et dans le texte des pages grâce aux variables <code class="text-gray-900" v-text="'{{association.nom}}'"></code>,
-			etc.
+			Ces informations s'affichent sur tout le site : en-tête, pied de page, page Contact, mentions légales…
 		</p>
 
 		<!-- Modifications en attente : enregistrées en une seule publication -->
@@ -129,7 +127,7 @@ const inlineInputClass = inputClass.replace('mt-1 ', '');
 				<div class="sm:col-span-2">
 					<label for="asso-street" class="champ-libelle">{{ entreprise ? 'Adresse' : 'Adresse du siège' }}</label>
 					<textarea id="asso-street" v-model="form.address.street" rows="6" required placeholder="N° et rue&#10;Complément (bâtiment, étage…)" :class="inputClass"></textarea>
-					<p class="champ-aide">Jusqu'à 3 lignes, sans le code postal ni la ville : chaque retour à la ligne est gardé à l'affichage.</p>
+					<p class="champ-aide">Jusqu'à 3 lignes, sans le code postal ni la ville.</p>
 				</div>
 				<div>
 					<label for="asso-postal" class="champ-libelle">Code postal</label>

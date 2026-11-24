@@ -57,6 +57,8 @@ export type JournalAction =
 	| 'charte.modification'
 	| 'plugin.modification'
 	| 'plugin.connexion'
+	| 'email.connexion'
+	| 'email.test'
 	| 'extension.installation'
 	| 'extension.modification'
 	| 'extension.suppression'

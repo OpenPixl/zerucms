@@ -88,13 +88,12 @@ async function diffuser() {
 		<p v-else-if="!etat" class="text-gray-500">Chargement…</p>
 
 		<template v-else-if="facebook">
-			<p v-if="!facebook.actif" class="alerte-attention">La diffusion sur Facebook est éteinte (module « Plugins », réservé au super admin).</p>
-			<p v-else-if="!facebook.configure" class="alerte-attention">
-				Aucune Page Facebook n'est configurée : le super admin doit renseigner l'identifiant de la Page et son jeton
-				(module « Plugins » → « Diffusion sur les réseaux sociaux »).
+			<p v-if="!facebook.actif" class="text-sm text-gray-500">La diffusion sur Facebook n'est pas activée.</p>
+			<p v-else-if="!facebook.configure" class="text-sm text-gray-500">
+				Facebook n'est pas encore connecté : demandez-le à la personne qui gère le site.
 			</p>
 			<p v-else-if="facebook.erreur" class="alerte-erreur" role="alert">{{ facebook.erreur }}</p>
-			<p v-if="facebook.rappel" :class="facebook.rappel.niveau === 'expire' ? 'alerte-erreur' : 'alerte-attention'">
+			<p v-if="facebook.rappel" :class="facebook.rappel.niveau === 'expire' ? 'alerte-erreur' : 'text-sm text-gray-500'">
 				<i class="fa-solid fa-clock-rotate-left mr-1.5" aria-hidden="true"></i>{{ facebook.rappel.message }}
 			</p>
 
@@ -110,23 +109,19 @@ async function diffuser() {
 					Diffusée sur Facebook le {{ dateFr(trace.date) }}<template v-if="trace.par"> par {{ trace.par }}</template>.
 					<a v-if="trace.lien" :href="trace.lien" target="_blank" rel="noopener" class="ml-1 font-semibold underline">Voir la publication</a>
 				</p>
-				<p v-if="avertissement" class="alerte-attention">{{ avertissement }}</p>
+				<p v-if="avertissement" class="text-sm text-gray-500">{{ avertissement }}</p>
 
-				<p v-if="!props.isPublish" class="alerte-attention">Cette actualité est un brouillon : publiez-la sur le site avant de la diffuser.</p>
-				<p v-else-if="programmee" class="alerte-attention">
-					Actualité programmée : elle pourra être diffusée à partir de sa date de publication.
-				</p>
-				<p v-else-if="props.modifie" class="alerte-attention">
-					Le formulaire a des modifications non enregistrées : la diffusion porte sur la version en ligne. Enregistrez et
-					publiez d'abord pour diffuser la nouvelle version.
+				<p v-if="!props.isPublish" class="text-sm text-gray-500">Publiez d'abord l'actualité sur le site.</p>
+				<p v-else-if="programmee" class="text-sm text-gray-500">Elle pourra être diffusée à partir de sa date de publication.</p>
+				<p v-else-if="props.modifie" class="text-sm text-gray-500">
+					Vos dernières modifications ne sont pas encore enregistrées : c'est la version en ligne qui sera diffusée.
 				</p>
 
 				<div>
 					<label for="diffusion-message" class="champ-libelle">Texte de la publication</label>
 					<textarea id="diffusion-message" v-model="message" rows="6" :maxlength="MESSAGE_MAX" :disabled="bloquee" :class="inputClass"></textarea>
 					<p class="champ-aide">
-						Le lien vers l'actualité est ajouté à la publication : Facebook en affiche l'aperçu (titre, résumé et photo de la
-						page en ligne).
+						Le lien vers l'actualité est ajouté, avec son aperçu (titre, résumé, photo).
 						<button
 							v-if="message !== messagePropose(props.titre, props.resume)"
 							type="button"
@@ -138,8 +133,7 @@ async function diffuser() {
 					</p>
 				</div>
 				<p v-if="etat.dev" class="champ-aide">
-					Serveur de développement : le lien pointe vers l'adresse du site de développement (<code>SITE_URL</code>), que
-					Facebook ne peut pas lire. Un vrai test se fait sur un site en ligne.
+					Site de test : Facebook ne pourra pas afficher l'aperçu du lien.
 				</p>
 
 				<p v-if="erreur" class="alerte-erreur" role="alert">{{ erreur }}</p>

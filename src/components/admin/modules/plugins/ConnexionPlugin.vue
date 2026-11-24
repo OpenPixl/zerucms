@@ -8,13 +8,24 @@
  * être remplacé ou effacé. Enregistrement à part du reste de la page, sans
  * reconstruction du site, suivi d'une vérification auprès du service
  * (état, échéance du jeton : rappel de renouvellement).
+ * Prop `api` : autre connexion que celle d'un plugin (ex. compte e-mail du
+ * site, module « Site ») ; `titre` remplace « Connexion ».
  */
 import { computed, onMounted, ref } from 'vue';
 import { ApiError, pluginsApi, type ConnexionEtat } from '../../client';
 import { inputClass } from '../../context';
 
+/** Accès à une connexion (défaut : celle du plugin, `pluginsApi`). */
+export interface ConnexionApi {
+	charger(): Promise<ConnexionEtat>;
+	enregistrer(valeurs: Record<string, string | null>): Promise<ConnexionEtat>;
+	verifier(): Promise<ConnexionEtat>;
+}
+
 const props = defineProps<{
 	plugin: string;
+	api?: ConnexionApi;
+	titre?: string;
 	/**
 	 * Outil dont on montre la connexion (page de réglage d'un réseau) ; absent =
 	 * champs communs au plugin (sans `outil`).
@@ -22,9 +33,17 @@ const props = defineProps<{
 	outil?: string;
 	aide?: string;
 	/** État des outils (champ d'un outil éteint : signalé comme tel). */
-	outils: Record<string, boolean>;
+	outils?: Record<string, boolean>;
 	disabled?: boolean;
 }>();
+const api = computed<ConnexionApi>(
+	() =>
+		props.api ?? {
+			charger: () => pluginsApi.connexion(props.plugin),
+			enregistrer: (v) => pluginsApi.enregistrerConnexion(props.plugin, v),
+			verifier: () => pluginsApi.verifierConnexion(props.plugin),
+		},
+);
 const emit = defineEmits<{ sessionExpiree: []; change: [etat: ConnexionEtat] }>();
 
 const etat = ref<ConnexionEtat | null>(null);
@@ -53,7 +72,7 @@ function echec(e: unknown) {
 
 onMounted(async () => {
 	try {
-		recevoir(await pluginsApi.connexion(props.plugin));
+		recevoir(await api.value.charger());
 	} catch (e) {
 		echec(e);
 	}
@@ -95,7 +114,7 @@ async function enregistrer() {
 	erreur.value = succes.value = '';
 	busy.value = true;
 	try {
-		recevoir(await pluginsApi.enregistrerConnexion(props.plugin, changements.value));
+		recevoir(await api.value.enregistrer(changements.value));
 		emit('change', etat.value!);
 		succes.value = 'Connexion enregistrée.';
 	} catch (e) {
@@ -109,7 +128,7 @@ async function verifier() {
 	erreur.value = succes.value = '';
 	verification.value = true;
 	try {
-		const e = await pluginsApi.verifierConnexion(props.plugin);
+		const e = await api.value.verifier();
 		if (etat.value) etat.value = { ...etat.value, statut: e.statut };
 	} catch (e) {
 		echec(e);
@@ -120,7 +139,7 @@ async function verifier() {
 
 const STYLES = {
 	ok: { classe: 'alerte-succes', icone: 'fa-circle-check' },
-	attention: { classe: 'alerte-attention', icone: 'fa-clock-rotate-left' },
+	attention: { classe: 'rounded-lg border border-gray-200 bg-gray-50 p-3 text-gray-700', icone: 'fa-clock-rotate-left' },
 	erreur: { classe: 'alerte-erreur', icone: 'fa-circle-xmark' },
 	inconnu: { classe: 'rounded-lg border border-gray-200 bg-gray-50 p-3 text-gray-600', icone: 'fa-circle-question' },
 } as const;
@@ -132,7 +151,7 @@ const dateFr = (iso?: string) =>
 <template>
 	<fieldset class="rounded-xl border border-gray-200 p-4" @keydown.enter.prevent="enregistrer">
 		<legend class="px-1 font-heading text-sm font-semibold text-gray-900">
-			<i class="fa-solid fa-key mr-1 text-gray-500" aria-hidden="true"></i>Connexion
+			<i class="fa-solid fa-key mr-1 text-gray-500" aria-hidden="true"></i>{{ titre ?? 'Connexion' }}
 		</legend>
 		<p v-if="aide" class="mb-3 text-xs text-gray-500">{{ aide }}</p>
 		<p v-if="!etat && !erreur" class="text-sm font-light text-gray-500">Chargement…</p>
@@ -154,7 +173,7 @@ const dateFr = (iso?: string) =>
 				<div v-for="c in champs" :key="c.cle">
 					<label :for="`connexion-${plugin}-${c.cle}`" class="champ-libelle">
 						{{ c.label }}<span v-if="c.obligatoire" class="text-red-600"> *</span>
-						<span v-if="!outil && c.outil && outils[c.outil] === false" class="ml-1 text-xs font-normal text-gray-500">(outil éteint)</span>
+						<span v-if="!outil && c.outil && outils?.[c.outil] === false" class="ml-1 text-xs font-normal text-gray-500">(outil éteint)</span>
 					</label>
 					<div v-if="masque(c)" class="mt-1 flex flex-wrap items-center gap-2">
 						<input

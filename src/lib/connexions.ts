@@ -53,7 +53,7 @@ async function lireDocument(plugin: string): Promise<{ texte: string | null; doc
 async function ecrire(plugin: string, doc: Document) {
 	await mkdir(dossierConnexions(), { recursive: true, mode: 0o700 });
 	if (!doc.commentBefore) {
-		doc.commentBefore = ` Connexion du plugin « ${plugin} » : écrite par l'Espace Admin (module « Plugins »).\n Contient des secrets : ne pas partager, ne pas versionner.`;
+		doc.commentBefore = ` Connexion « ${plugin} » : écrite par l'Espace Admin.\n Contient des secrets : ne pas partager, ne pas versionner.`;
 	}
 	const tmp = `${fichierConnexion(plugin)}.${process.pid}.tmp`;
 	await writeFile(tmp, doc.toString({ lineWidth: 0 }), { encoding: 'utf8', mode: 0o600 });

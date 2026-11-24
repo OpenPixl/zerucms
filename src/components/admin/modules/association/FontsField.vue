@@ -169,8 +169,7 @@ function removeAdded(key: number) {
 				</div>
 				<p v-if="missingWeights(r.role).length" class="text-xs text-amber-800">
 					<i class="fa-solid fa-triangle-exclamation mr-1" aria-hidden="true"></i>
-					Graisse{{ missingWeights(r.role).length > 1 ? 's' : '' }} {{ missingWeights(r.role).join(', ') }} absente{{ missingWeights(r.role).length > 1 ? 's' : '' }} de
-					« {{ labelOf(draft[r.role]) }} » : imitée{{ missingWeights(r.role).length > 1 ? 's' : '' }} par le navigateur (rendu moins net).
+					Cette police n'a pas toutes les épaisseurs utilisées par le site : certains textes seront un peu moins nets.
 				</p>
 			</div>
 		</div>
@@ -231,9 +230,7 @@ function removeAdded(key: number) {
 						<input type="file" multiple class="sr-only" :accept="ACCEPT" @change="pickFiles" />
 					</label>
 					<p class="champ-aide">
-						WOFF2 conseillé (WOFF, TTF, OTF acceptés), 2 Mo max : un fichier par graisse, ou un seul fichier « variable ». Le site
-						emploie les graisses 300, 400, 500 et 600 pour le texte, 600 pour les titres. Vérifiez que la licence autorise l'usage
-						sur un site web.
+						Fichiers de police (WOFF2 de préférence), 2 Mo max. Vérifiez que la licence autorise l'usage sur un site web.
 					</p>
 				</div>
 				<ul v-if="newFiles.length" class="space-y-1.5">
@@ -252,7 +249,7 @@ function removeAdded(key: number) {
 					<button type="button" class="bouton bouton-primaire bouton-mini" @click="confirmAdd">Ajouter à la liste</button>
 					<button type="button" class="text-xs text-gray-700 hover:underline" @click="cancelAdd">Annuler</button>
 				</div>
-				<p class="text-xs font-light text-gray-500">Puis choisissez-la pour les titres ou le texte ; elle est envoyée à l'enregistrement de la charte.</p>
+				<p class="text-xs font-light text-gray-500">Choisissez-la ensuite pour les titres ou le texte.</p>
 			</div>
 		</div>
 	</Encadre>

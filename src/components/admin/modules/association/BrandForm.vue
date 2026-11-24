@@ -421,7 +421,7 @@ onBeforeUnmount(() => {
 							<i class="fa-solid fa-upload mr-1.5" aria-hidden="true"></i>Remplacer le logo
 							<input type="file" class="sr-only" :accept="LOGO_TYPES.join(',')" @change="pick('logo', $event.target as HTMLInputElement, LOGO_TYPES, 'Logo')" />
 						</label>
-						<p class="text-xs font-light text-gray-500">PNG à fond transparent ou SVG de préférence ; JPEG ou WebP acceptés. 5 Mo max.</p>
+						<p class="text-xs font-light text-gray-500">PNG à fond transparent ou SVG de préférence, 5 Mo max.</p>
 					</div>
 				</div>
 			</Encadre>
@@ -438,7 +438,7 @@ onBeforeUnmount(() => {
 					</label>
 				</template>
 				<p v-if="!cta.enabled" class="px-4 py-3 text-sm font-light text-gray-500">
-					Pas de bouton dans l'en-tête. Son texte et son lien sont gardés : réactivez-le pour le retrouver.
+					Pas de bouton dans l'en-tête.
 				</p>
 				<div v-show="cta.enabled" class="space-y-4 p-4">
 					<div>
@@ -458,8 +458,8 @@ onBeforeUnmount(() => {
 							:class="[inputClass, 'font-mono', { 'champ-erreur': !ctaHrefValid }]"
 						/>
 						<p v-if="!ctaHrefValid" class="champ-erreur-texte">Adresse d'une page du site (ex. /adherer) ou adresse complète (https://…).</p>
-						<p v-else-if="ctaIndisponible" class="mt-2 alerte-attention">
-							Ce lien mène à la page d'un plugin inactif : le bouton ne s'affichera pas sur le site.
+						<p v-else-if="ctaIndisponible" class="champ-aide">
+							Cette page n'est pas active sur le site : le bouton ne s'affichera pas.
 						</p>
 						<LinkPicker v-model="cta.href" :field="ctaHrefField" mode="url" />
 					</div>
@@ -482,7 +482,7 @@ onBeforeUnmount(() => {
 					</label>
 				</template>
 				<p v-if="!stripeEnabled" class="px-4 py-3 text-sm font-light text-gray-500">
-					Pas de bande de couleurs sur le site. Ses couleurs sont gardées : réactivez-la pour les retrouver.
+					Pas de bande de couleurs sur le site.
 				</p>
 				<VueDraggable
 					v-show="stripeEnabled"
@@ -592,8 +592,7 @@ onBeforeUnmount(() => {
 					</label>
 				</template>
 				<p v-if="!sombre.enabled" class="px-4 py-3 text-sm font-light text-gray-500">
-					Le site reste en clair. Une fois proposé, chaque visiteur peut basculer en sombre ; à sa première visite, le site suit le réglage
-					de son appareil.
+					Une fois activé, chaque visiteur peut passer le site en sombre.
 				</p>
 				<template v-else>
 					<div class="space-y-2 px-4 py-3">
@@ -638,7 +637,7 @@ onBeforeUnmount(() => {
 						/>
 					</div>
 					<p class="border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-500">
-						Couleurs de la charte en mode sombre : éclaircies automatiquement pour rester visibles sur le fond, modifiables.
+						Couleurs adaptées automatiquement au fond sombre ; vous pouvez les modifier.
 					</p>
 					<div class="divide-y divide-gray-100 border-t border-gray-100">
 						<ColorField
@@ -716,13 +715,12 @@ onBeforeUnmount(() => {
 							Nouvelle : <strong class="font-medium">{{ favicon.file.name }}</strong>
 							<button type="button" class="ml-2 text-xs text-gray-600 hover:underline" @click="clear('favicon')">annuler</button>
 						</p>
-						<p v-else-if="source.favicons.length" class="text-xs text-gray-500">Fichiers actuels : {{ source.favicons.map((f) => f.file).join(', ') }}</p>
 						<label :class="fileButtonClass">
 							<i class="fa-solid fa-upload mr-1.5" aria-hidden="true"></i>Remplacer l'icône
 							<input type="file" class="sr-only" :accept="[...FAVICON_TYPES, '.ico'].join(',')" @change="pick('favicon', $event.target as HTMLInputElement, FAVICON_TYPES, 'Icône d’onglet')" />
 						</label>
 						<p class="text-xs font-light text-gray-500">
-							Image carrée, simple et lisible en tout petit : SVG ou PNG (512 × 512 conseillé), ICO accepté. Remplace toutes les icônes actuelles.
+							Image carrée, simple et lisible en tout petit (PNG ou SVG).
 						</p>
 					</div>
 				</div>

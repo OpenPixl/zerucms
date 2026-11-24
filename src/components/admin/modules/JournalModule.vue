@@ -55,6 +55,8 @@ const ACTIONS: Record<string, { label: string; icon: string }> = {
 	'charte.modification': { label: 'Charte graphique modifiée', icon: 'fa-palette' },
 	'plugin.modification': { label: 'Plugin modifié', icon: 'fa-puzzle-piece' },
 	'plugin.connexion': { label: 'Connexion d’un plugin modifiée', icon: 'fa-key' },
+	'email.connexion': { label: 'Compte e-mail modifié', icon: 'fa-envelope' },
+	'email.test': { label: 'E-mail de test envoyé', icon: 'fa-paper-plane' },
 	'extension.installation': { label: 'Extension installée', icon: 'fa-plug-circle-plus' },
 	'extension.modification': { label: 'Extension modifiée', icon: 'fa-plug' },
 	'extension.suppression': { label: 'Extension supprimée', icon: 'fa-plug-circle-minus' },
@@ -111,8 +113,7 @@ onMounted(() => load());
 
 <template>
 	<p class="mb-4 text-sm font-light text-gray-600">
-		Toutes les modifications faites depuis l'Espace Admin, avec leur auteur·rice et leur résultat. Visible par le
-		super admin uniquement.
+		Toutes les modifications faites depuis l'Espace Admin, avec leur auteur·rice.
 	</p>
 
 	<div class="mb-4 flex flex-wrap items-end gap-3">

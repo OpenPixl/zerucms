@@ -126,8 +126,7 @@ async function submit(event: Event) {
 	<FormHeader back="Toutes les annonces" :title="form.title.trim() || (editing ? editing.title : 'Nouvelle annonce')" :editing="Boolean(editing)" @back="emit('cancel')" />
 	<form class="space-y-5" @submit.prevent="submit">
 		<p class="text-sm font-light text-gray-600">
-			L'annonce s'affiche dans une bannière au-dessus du menu, sur toutes les pages, entre ses deux dates (incluses). Plusieurs
-			annonces en cours défilent dans l'ordre de la liste.
+			L'annonce s'affiche en haut de toutes les pages, entre ses deux dates.
 		</p>
 		<p v-if="error" class="alerte-erreur" role="alert">{{ error }}</p>
 
@@ -223,7 +222,7 @@ async function submit(event: Event) {
 			<input v-model="form.active" type="checkbox" class="mt-0.5" />
 			<span>
 				Annonce active
-				<span class="block text-xs font-light text-gray-500">Décochée : brouillon, jamais affiché, même pendant sa période.</span>
+				<span class="block text-xs font-light text-gray-500">Décochée : l'annonce reste en brouillon.</span>
 			</span>
 		</label>
 

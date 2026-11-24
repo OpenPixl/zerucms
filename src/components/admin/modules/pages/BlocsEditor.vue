@@ -91,7 +91,7 @@ function reorderItems(bloc: Bloc, list: NonNullable<Bloc['items']>) {
 	<fieldset class="space-y-4">
 		<legend class="text-sm font-semibold text-gray-700">Blocs <span class="font-light text-gray-500">(photos, vidéo, carrousel…)</span></legend>
 		<p class="text-xs font-light text-gray-500">
-			Chaque bloc s'affiche à l'endroit de son marqueur <code>[[bloc:…]]</code> dans le texte (seul sur sa ligne).
+			Chaque bloc s'affiche dans le texte là où se trouve son repère <code>[[bloc:…]]</code>.
 		</p>
 
 		<div v-for="(bloc, id) in props.blocs" :key="id" class="rounded-xl border border-gray-200 p-4">

@@ -94,8 +94,7 @@ async function clientEnregistre() {
 	<div v-else-if="!donnees" class="space-y-3">
 		<p class="alerte-erreur" role="alert">{{ error || 'Données indisponibles.' }}</p>
 		<p class="text-sm text-gray-600">
-			Vérifiez le document Grist de la facturation (GRIST_DOC_ID_FACTURATION, clé d'API) et son schéma : voir
-			<code>src/plugins/facturation/README.md</code>.
+			Le tableau Grist de la facturation est injoignable : contactez la personne qui gère le site.
 		</p>
 	</div>
 

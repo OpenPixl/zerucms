@@ -53,8 +53,8 @@ function drop(event: DragEvent) {
 			</label>
 		</div>
 		<p class="mt-1.5 text-xs font-light text-gray-500">
-			Le fichier <code>.md</code> reprend le formulaire. Modifiez-le dans un éditeur de texte puis chargez-le, avec ses
-			photos ou en <code>.zip</code> : le formulaire est rempli, rien n'est publié avant l'enregistrement.
+			Pour travailler hors ligne : téléchargez le fichier, modifiez-le, puis rechargez-le ici. Rien n'est publié avant
+			l'enregistrement.
 		</p>
 		<div v-if="props.imported" class="mt-2 rounded-lg bg-white px-3 py-2 text-sm text-gray-700" role="status">
 			<p>

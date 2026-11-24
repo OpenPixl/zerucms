@@ -977,7 +977,7 @@ encore payées ; une échéance dépassée est signalée en rouge.
 
 ### Mode maintenance (bureau)
 
-**Paramètres ▾** → module **Site** :
+**Paramètres ▾** → module **Site** → onglet **Maintenance** :
 
 - **Mettre le site en maintenance**, avec un message facultatif (vide : « Le
   site est momentanément indisponible pour maintenance… » ; **Aperçu de la
@@ -996,6 +996,26 @@ encore payées ; une échéance dépassée est signalée en rouge.
 
 Ce n'est pas une protection : le contenu reste public (qui connaît le
 mécanisme peut passer) ; seul l'affichage est suspendu.
+
+### Envoi des e-mails (bureau)
+
+**Paramètres ▾** → module **Site** → onglet **E-mails** : le compte avec
+lequel le site envoie ses messages.
+
+- Renseignez le **serveur d'envoi (SMTP)** et le **port** donnés par votre
+  messagerie (ex. `smtp.gmail.com` / `ssl0.ovh.net`, port 587 ou 465),
+  l'**identifiant** (souvent l'adresse e-mail) et le **mot de passe** —
+  pour Gmail ou Outlook, un *mot de passe d'application* créé dans les
+  réglages de sécurité du compte. Facultatifs : l'adresse et le nom
+  d'expéditeur (par défaut : l'identifiant et le nom de la structure).
+- **Enregistrer** vérifie aussitôt la connexion au serveur ; le mot de
+  passe n'est plus affiché ensuite (il peut seulement être remplacé ou
+  effacé).
+- **Envoyer un e-mail de test** à votre adresse pour vous assurer que tout
+  fonctionne (pensez à regarder les indésirables).
+
+Les identifiants restent sur le serveur (`data/connexions/email.yaml`) : ils
+ne sont ni dans le site ni dans les sauvegardes.
 
 ### Modifier mes informations
 

@@ -144,9 +144,8 @@ const taille = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)
 		@publish-lot="publishLot"
 	/>
 	<p class="mb-4 text-sm font-light text-gray-600">
-		Une sauvegarde est une archive <strong>.zip</strong> de tout ce qui appartient à l'association : contenu du site (pages,
-		actualités, activités, images, réglages), extensions installées et comptes + journal de l'Espace Admin. Les secrets du serveur (fichier
-		<code>.env</code>) n'y sont jamais. Gardez-en une copie hors du serveur.
+		Une sauvegarde contient tout le site (pages, actualités, activités, images, réglages) et les comptes de l'Espace Admin.
+		Pensez à en garder une copie sur votre ordinateur.
 	</p>
 	<p v-if="error" class="mb-4 alerte-erreur" role="alert">{{ error }}</p>
 	<p v-if="notice" class="mb-4 alerte-succes" role="status">{{ notice }}</p>
@@ -181,9 +180,7 @@ const taille = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)
 			<span>
 				Restaurer l'archive dès son dépôt (migration d'un site)
 				<span class="block text-xs font-light text-gray-500">
-					Le contenu, les extensions, les comptes et le journal sont remplacés sans autre confirmation ; le site passe en maintenance le temps
-					de sa reconstruction. L'état actuel est sauvegardé d'abord, sauf s'il l'est déjà ou s'il s'agit du contenu de
-					démonstration d'un site neuf.
+					Le site actuel est remplacé sans autre confirmation (il est sauvegardé avant).
 				</span>
 			</span>
 		</label>
@@ -236,15 +233,11 @@ const taille = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)
 				</span>
 			</div>
 			<!-- Confirmation de la restauration -->
-			<div v-if="restoring === s.nom" class="mt-3 alerte-attention" role="alert">
+			<div v-if="restoring === s.nom" class="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700" role="alert">
 				<p class="font-semibold">Restaurer « {{ s.nom }} » ?</p>
 				<p class="mt-1">
-					Tout le contenu du site, les extensions, les comptes et le journal de l'Espace Admin seront <strong>remplacés</strong> par ceux de
-					l'archive ({{ s.association }}, {{ dateFr(s.date) }}), puis le site sera reconstruit : il est en maintenance
-					pendant ce temps (page avec barre de progression). L'état actuel est d'abord sauvegardé (« avant-restauration »,
-					qui apparaîtra dans la liste ; sauf s'il l'est déjà) : vous pourrez y revenir. Les comptes étant ceux de
-					l'archive, vous serez <strong>déconnecté·e</strong> si votre compte n'y existe pas ou si son mot de passe y est
-					différent : reconnectez-vous avec le mot de passe de l'archive.
+					Le site et les comptes reviendront à leur état du {{ dateFr(s.date) }}. Le site actuel est sauvegardé avant : vous
+					pourrez y revenir. Il faudra peut-être vous reconnecter.
 				</p>
 				<div class="mt-3 flex flex-wrap gap-3">
 					<button type="button" class="bouton bouton-danger" :disabled="locked" @click="restore(s)">
@@ -256,7 +249,4 @@ const taille = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)
 		</li>
 	</ul>
 	<p v-if="superadmin && restaurationBloquee" class="mt-3 text-xs font-light text-gray-500">Restauration indisponible : {{ restaurationBloquee }}</p>
-	<p class="mt-4 text-xs font-light text-gray-500">
-		Sur le serveur : <code>./sauvegarde.sh</code> et <code>./restauration.sh &lt;archive.zip&gt;</code> (voir docs/sauvegarde.md).
-	</p>
 </template>

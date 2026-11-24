@@ -450,6 +450,14 @@ export const pluginsApi = {
 	verifierConnexion: (id: string) => request<ConnexionEtat>('POST', '/api/admin/plugins/connexion', { id }),
 };
 
+/** Compte e-mail du site (module « Site », bureau) : cf. src/pages/api/admin/email.ts. */
+export const emailApi = {
+	charger: () => request<ConnexionEtat>('GET', '/api/admin/email'),
+	enregistrer: (valeurs: Record<string, string | null>) => request<ConnexionEtat>('PUT', '/api/admin/email', { valeurs }),
+	verifier: () => request<ConnexionEtat>('POST', '/api/admin/email', { action: 'verifier' }),
+	tester: (a: string) => request<{ ok: true }>('POST', '/api/admin/email', { action: 'test', a }),
+};
+
 /** Extensions installées (module « Extensions », super admin) : cf. src/pages/api/admin/extensions.ts. */
 export const extensionsApi = {
 	list: () =>

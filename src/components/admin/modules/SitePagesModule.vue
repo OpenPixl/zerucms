@@ -304,7 +304,7 @@ onMounted(() => {
 		@cancel-reload="cancelReload"
 		@publish-lot="publishLot"
 	/>
-	<p v-if="!availability.ok" class="mb-4 alerte-attention">{{ availability.reason }}</p>
+	<p v-if="!availability.ok" class="mb-4 text-sm text-gray-500"><i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>{{ availability.reason }}</p>
 	<p v-if="error" class="mb-4 alerte-erreur" role="alert">{{ error }}</p>
 
 	<!-- Liste -->
@@ -544,8 +544,7 @@ onMounted(() => {
 										v-if="!dropdownPages(item.dropdown).some((p) => p.menu.show)"
 										:class="['py-2.5 pr-4 pl-8 text-sm font-light text-gray-500', { 'border-t border-gray-100': item.dropdown.pages.length }]"
 									>
-										{{ item.dropdown.pages.length ? 'Aucune page visible' : 'Aucune page' }} : ce menu déroulant n'apparaît pas
-										encore sur le site.
+										{{ item.dropdown.pages.length ? 'Aucune page visible' : 'Aucune page' }} : pas encore affiché sur le site.
 									</p>
 								</div>
 							</div>
@@ -619,7 +618,7 @@ onMounted(() => {
 							type="button"
 							class="text-xs font-medium text-primary hover:underline disabled:opacity-50"
 							:disabled="locked"
-							title="Activer sans reconstruire le site : l'activation rejoint les modifications en attente de publication."
+							title="Activer sans publier tout de suite (rejoint les modifications à publier)"
 							@click="updateSitePage(p, { active: true }, 'Page activée', true)"
 						>
 							sans publier
@@ -658,8 +657,7 @@ onMounted(() => {
 	<!-- Menu déroulant : création / modification -->
 	<form v-else-if="view.name === 'dropdown'" class="space-y-4" @submit.prevent="saveDropdown">
 		<p class="text-sm font-light text-gray-600">
-			Un menu déroulant (comme « Association ») regroupe des pages sous un même libellé du menu de navigation. Ce
-			libellé n'est pas cliquable et n'a pas de contenu propre : seules ses pages ont un lien.
+			Un menu déroulant (comme « Association ») regroupe plusieurs pages sous un même titre du menu.
 		</p>
 		<div>
 			<label for="dropdown-label" class="champ-libelle">Libellé</label>
@@ -670,10 +668,10 @@ onMounted(() => {
 				Adresse <span class="font-light text-gray-500">(facultative, déduite du libellé)</span>
 			</label>
 			<input id="dropdown-folder" v-model="dropdownForm.folder" type="text" pattern="[a-z0-9]+(-[a-z0-9]+)*" :class="inputClass" />
-			<p class="champ-aide">Début de l'adresse des pages du menu déroulant (/adresse/page). Ne change plus ensuite.</p>
+			<p class="champ-aide">Début de l'adresse de ses pages. Ne change plus ensuite.</p>
 		</div>
 		<p v-if="!view.dropdown" class="text-xs font-light text-gray-500">
-			Le menu déroulant se place en dernière position du menu de navigation ; les flèches ↑/↓ de la liste changent l'ordre.
+			Il se place en fin de menu.
 		</p>
 		<div class="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
 			<PublishButtons :label="view.dropdown ? 'Enregistrer et publier' : 'Créer et publier'" :disabled="locked" />

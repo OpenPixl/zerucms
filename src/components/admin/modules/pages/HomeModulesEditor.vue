@@ -65,8 +65,6 @@ function resetHome() {
 	open.value = null;
 }
 
-const VARIABLE_EXEMPLE = '{{association.nom}}';
-
 /** Résumé d'un module replié : son titre. */
 const summary = (m: HomeModule) => m.titre || '';
 </script>
@@ -75,8 +73,7 @@ const summary = (m: HomeModule) => m.titre || '';
 	<fieldset class="space-y-3">
 		<legend class="font-heading text-sm font-semibold text-gray-900">Modules de la page</legend>
 		<p class="text-xs font-light text-gray-500">
-			Dans l'ordre d'affichage. Cliquez sur un module pour modifier son contenu ; les variables
-			<code v-text="VARIABLE_EXEMPLE"></code>… sont acceptées.
+			Dans l'ordre d'affichage. Cliquez sur un module pour le modifier.
 		</p>
 
 		<VueDraggable

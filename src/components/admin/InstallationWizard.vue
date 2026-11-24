@@ -271,8 +271,7 @@ const reload = () => window.location.reload();
 		</p>
 		<template v-if="etat.dev">
 			<p class="text-gray-600">
-				Serveur de développement : rien n'est reconstruit. Relancez le serveur de dev pour que les secrets saisis soient pris
-				en compte.
+				Site de test : relancez le serveur pour que les clés saisies soient prises en compte.
 			</p>
 			<button type="button" class="bouton bouton-primaire" @click="reload">Continuer</button>
 		</template>
@@ -390,7 +389,7 @@ const reload = () => window.location.reload();
 			<div>
 				<label for="inst-rue" :class="libelleChamp">{{ structure === 'entreprise' ? 'Adresse' : 'Adresse du siège' }}</label>
 				<textarea id="inst-rue" v-model="association.street" rows="6" placeholder="N° et rue&#10;Complément (bâtiment, étage…)" :class="inputClass"></textarea>
-				<p class="champ-aide">Jusqu'à 3 lignes, sans le code postal ni la ville : chaque retour à la ligne est gardé à l'affichage.</p>
+				<p class="champ-aide">Jusqu'à 3 lignes, sans le code postal ni la ville.</p>
 			</div>
 			<div class="grid gap-4 sm:grid-cols-[10rem_1fr]">
 				<div>
@@ -447,8 +446,7 @@ const reload = () => window.location.reload();
 		<!-- 4. Réglages et secrets des plugins cochés -->
 		<section v-else-if="courante === 'reglages'" class="space-y-5">
 			<p class="text-gray-600">
-				Réglages des plugins cochés. Les clés et identifiants sont gardés sur le serveur, jamais dans le site ni dans les
-				sauvegardes, et ne se saisissent qu'ici : ensuite, ils se changent dans le fichier <code>.env</code> du serveur.
+				Réglages des plugins choisis. Les clés d'accès restent sur le serveur et ne sont plus affichées ensuite.
 			</p>
 			<fieldset v-for="p in aRegler" :key="p.id" class="rounded-xl border border-gray-200 p-4">
 				<legend class="px-1 font-heading font-semibold text-gray-900">
@@ -461,7 +459,7 @@ const reload = () => window.location.reload();
 							<span v-if="!s.obligatoire" class="font-light text-gray-500">(facultatif)</span>
 						</label>
 						<p v-if="s.dejaDefini" class="mt-1 text-xs text-green-800">
-							<i class="fa-solid fa-check mr-1" aria-hidden="true"></i>Déjà défini dans le <code>.env</code> du serveur.
+							<i class="fa-solid fa-check mr-1" aria-hidden="true"></i>Déjà en place sur le serveur.
 						</p>
 						<template v-else>
 							<input
@@ -473,7 +471,7 @@ const reload = () => window.location.reload();
 								:class="inputClass"
 							/>
 							<p class="champ-aide">
-								{{ s.aide }} <code class="text-[0.65rem] text-gray-400">{{ s.nom }}</code>
+								{{ s.aide }}
 							</p>
 						</template>
 					</div>
@@ -556,8 +554,7 @@ const reload = () => window.location.reload();
 				</div>
 			</dl>
 			<p class="text-xs text-gray-500">
-				Notez le mot de passe provisoire avant d'installer. Le site est ensuite reconstruit : il passe en maintenance quelques
-				minutes, avec une barre de progression.
+				Notez le mot de passe provisoire avant d'installer. La mise en place du site prend ensuite quelques minutes.
 			</p>
 		</section>
 
