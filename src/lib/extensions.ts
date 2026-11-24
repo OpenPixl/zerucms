@@ -44,6 +44,8 @@ export interface ExtensionInfo extends Omit<PluginInfo, 'actifParDefaut' | 'requ
 	/** Version minimale du CMS (X.Y.Z) : plus ancienne = construction refusée. */
 	cms: string;
 	auteur?: string;
+	/** Dépôt GitHub public (« propriétaire/dépôt ») dont les Releases portent les mises à jour (`extension-versions.ts`). */
+	depot?: string;
 	/** Routes `/api/admin/<…>` réservées à des groupes (ajoutées à `GUARDS` de `src/middleware.ts`). */
 	gardes?: { prefixe: string; groupes: AuthGroup[]; message: string }[];
 }

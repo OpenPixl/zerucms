@@ -59,6 +59,7 @@ const ACTIONS: Record<string, { label: string; icon: string }> = {
 	'email.test': { label: 'E-mail de test envoyé', icon: 'fa-paper-plane' },
 	'extension.installation': { label: 'Extension installée', icon: 'fa-plug-circle-plus' },
 	'extension.modification': { label: 'Extension modifiée', icon: 'fa-plug' },
+	'extension.mise-a-jour': { label: 'Extension mise à jour', icon: 'fa-plug-circle-check' },
 	'extension.suppression': { label: 'Extension supprimée', icon: 'fa-plug-circle-minus' },
 	// Actions des extensions installées (journal de leur definitions.ts).
 	...DEFINITIONS_EXTENSIONS.journal,

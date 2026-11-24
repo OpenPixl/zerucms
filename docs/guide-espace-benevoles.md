@@ -393,7 +393,11 @@ structure, installés à part du site (ex. prise de rendez-vous en ligne de
 numérik&Co) — jamais proposés aux autres structures. **Installer une
 extension (.zip)** : l'archive est vérifiée (dont la version du site qu'elle
 demande), installée, puis le site est reconstruit ; déposer une version plus
-récente la met à jour. La liste montre chaque extension, sa version et son
+récente la met à jour. Plus simple : quand une nouvelle version est
+publiée, la liste affiche **« Version X disponible »** avec le lien vers ses
+nouveautés et un bouton **Mettre à jour**, qui la télécharge et l'installe
+(si elle demande une version plus récente du site, mettez d'abord le site à
+jour). **Rechercher les mises à jour** vérifie tout de suite. La liste montre chaque extension, sa version et son
 état ; la roue dentée ouvre la même page de configuration que pour un plugin
 (case **Extension active**, réglages — pour la prise de RDV : adresse de la
 page, document Grist, noms des tables ; la clé d'API reste dans le `.env`) et

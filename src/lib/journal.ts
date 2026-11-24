@@ -61,6 +61,7 @@ export type JournalAction =
 	| 'email.test'
 	| 'extension.installation'
 	| 'extension.modification'
+	| 'extension.mise-a-jour'
 	| 'extension.suppression'
 	// Actions d'une extension (`<id>.<action>`, libellés : `journal` de son definitions.ts).
 	| `${string}.${string}`

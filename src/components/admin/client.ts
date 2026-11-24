@@ -481,7 +481,23 @@ export const extensionsApi = {
 		return data as SaveResult;
 	},
 	remove: (id: string) => request<SaveResult>('DELETE', `/api/admin/extensions?id=${encodeURIComponent(id)}`),
+	/** Dernières versions publiées (GitHub) des extensions qui déclarent leur dépôt. */
+	misesAJour: (rafraichir = false) =>
+		request<{ misesAJour: MiseAJourExtension[] }>('GET', `/api/admin/extensions/mises-a-jour${rafraichir ? '?rafraichir=1' : ''}`),
+	/** Télécharge et installe la dernière version ; le site est reconstruit. */
+	mettreAJour: (id: string) => request<SaveResult>('POST', '/api/admin/extensions/mises-a-jour', { id }),
 };
+
+export interface MiseAJourExtension {
+	id: string;
+	installee: string;
+	derniere: string | null;
+	url: string | null;
+	disponible: boolean;
+	cms: string | null;
+	compatible: boolean;
+	archive: boolean;
+}
 
 export const associationApi = {
 	get: () =>

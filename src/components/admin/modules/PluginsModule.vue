@@ -33,7 +33,7 @@ import Interrupteur from '../Interrupteur.vue';
 import PublishButtons from '../PublishButtons.vue';
 import PublishStatus from '../PublishStatus.vue';
 import ConnexionPlugin from './plugins/ConnexionPlugin.vue';
-import { ApiError, extensionsApi, pluginsApi, type ConnexionEtat, type PluginChamp, type PluginItem } from '../client';
+import { ApiError, extensionsApi, pluginsApi, type ConnexionEtat, type MiseAJourExtension, type PluginChamp, type PluginItem } from '../client';
 import { ADMIN_CONTEXT, iconButtonClass, inputClass, rememberOpenModule, takeModuleToReopen } from '../context';
 import { isDeferredSubmit } from '../lot';
 import { usePublication } from '../usePublication';
@@ -53,6 +53,10 @@ const plugins = ref<PluginItem[]>([]);
 /** Extensions : dossiers invalides de `extensions/`, version du CMS en place. */
 const invalides = ref<{ id: string; erreurs: string[] }[]>([]);
 const versionCms = ref('');
+/** Extensions : dernière version publiée de celles qui déclarent leur dépôt (GitHub), par identifiant. */
+const misesAJour = ref<Record<string, MiseAJourExtension>>({});
+const verification = ref(false);
+const miseAJourId = ref<string | null>(null);
 /** Suppression demandée (second clic pour confirmer). */
 const suppression = ref(false);
 const fichier = ref<HTMLInputElement | null>(null);
@@ -197,6 +201,7 @@ async function load() {
 			receive(res.status);
 			if (ouvert.value) ouvrir(ouvert.value);
 			else if (ouvertId.value) fermer(); // supprimée
+			void verifierMisesAJour();
 			return;
 		}
 		const res = await pluginsApi.list();
@@ -272,6 +277,34 @@ async function installer() {
 	} finally {
 		busy.value = false;
 		if (fichier.value) fichier.value.value = '';
+	}
+}
+
+/** Dernières versions publiées : sans bloquer la liste (GitHub injoignable = rien d'affiché). */
+async function verifierMisesAJour(rafraichir = false) {
+	verification.value = true;
+	try {
+		const { misesAJour: liste } = await extensionsApi.misesAJour(rafraichir);
+		misesAJour.value = Object.fromEntries(liste.map((m) => [m.id, m]));
+	} catch {
+		// vérification facultative
+	} finally {
+		verification.value = false;
+	}
+}
+
+async function mettreAJour(p: PluginItem) {
+	const m = misesAJour.value[p.id];
+	if (!m?.derniere) return;
+	error.value = '';
+	miseAJourId.value = p.id;
+	try {
+		rememberOpenModule(mot.module);
+		afterSave(`Mise à jour de « ${p.label} » en ${m.derniere}`, await extensionsApi.mettreAJour(p.id));
+	} catch (e) {
+		fail(e);
+	} finally {
+		miseAJourId.value = null;
 	}
 }
 
@@ -484,7 +517,10 @@ onMounted(load);
 					Installer une extension (.zip)
 					<input ref="fichier" type="file" accept=".zip,application/zip" class="sr-only" :disabled="locked || busy" @change="installer" />
 				</label>
-				<span class="text-xs text-gray-500">Le site est republié après l'installation.</span>
+				<span class="flex-1 text-xs text-gray-500">Le site est republié après l'installation.</span>
+				<button type="button" class="bouton bouton-mini bouton-neutre" :disabled="verification" @click="verifierMisesAJour(true)">
+					<i class="fa-solid fa-rotate" :class="{ 'fa-spin': verification }" aria-hidden="true"></i>Rechercher les mises à jour
+				</button>
 			</div>
 			<ul v-if="invalides.length" class="mb-4 space-y-1 alerte-erreur">
 				<li v-for="i in invalides" :key="i.id">
@@ -523,6 +559,27 @@ onMounted(load);
 						@click="ouvrir(p)"
 					>
 						<i class="fa-solid fa-gear" aria-hidden="true"></i>
+					</button>
+				</div>
+				<div
+					v-if="misesAJour[p.id]?.disponible"
+					class="mt-2 ml-10 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700"
+				>
+					<span class="flex-1">
+						<i class="fa-solid fa-circle-arrow-up mr-1 text-primary" aria-hidden="true"></i>
+						Version <strong>{{ misesAJour[p.id].derniere }}</strong> disponible
+						<a v-if="misesAJour[p.id].url" :href="misesAJour[p.id].url!" target="_blank" rel="noopener" class="ml-1 underline">voir les nouveautés</a>
+						<template v-if="!misesAJour[p.id].compatible"><br />Elle nécessite le CMS {{ misesAJour[p.id].cms }} (en place : {{ versionCms }}) : mettez d'abord le site à jour.</template>
+						<template v-else-if="!misesAJour[p.id].archive"><br />Pas d'archive jointe : téléchargez-la depuis la page des nouveautés.</template>
+					</span>
+					<button
+						v-if="misesAJour[p.id].compatible && misesAJour[p.id].archive"
+						type="button"
+						class="bouton bouton-mini bouton-primaire"
+						:disabled="locked || busy || miseAJourId !== null"
+						@click="mettreAJour(p)"
+					>
+						<i class="fa-solid" :class="miseAJourId === p.id ? 'fa-spinner fa-spin' : 'fa-download'" aria-hidden="true"></i>Mettre à jour
 					</button>
 				</div>
 				<p v-if="activationBloquee(p)" class="mt-1 pl-10 text-xs text-gray-500">

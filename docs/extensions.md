@@ -25,7 +25,17 @@ seul dossier (`rdv/extension.json`).
   minimale du CMS, chemins), installée, son fichier de réglages modèle copié
   dans `src/content/` s'il manque, puis le site est reconstruit ; échec de la
   construction = version précédente remise. Déposer une version plus récente
-  = mise à jour. Roue dentée : réglages (adresse de la page, document
+  = mise à jour. **Mise à jour depuis GitHub** (CMS ≥ 0.5.29) : une extension
+  dont la fiche déclare `depot` (« propriétaire/dépôt » GitHub public) est
+  comparée à la dernière Release de ce dépôt (`src/lib/extension-versions.ts`,
+  cache 6 h, bouton « Rechercher les mises à jour ») ; « Version X
+  disponible » + **Mettre à jour** = l'archive `.zip` jointe à la Release
+  téléchargée par le serveur (20 Mo au plus, adresse de téléchargement du
+  dépôt seulement) puis installée comme un dépôt à la main
+  (`POST /api/admin/extensions/mises-a-jour`, journal
+  `extension.mise-a-jour`). Version qui demande un CMS plus récent (`cms` de
+  son `extension.json` au tag) : « nécessite le CMS X », pas de bouton.
+  Roue dentée : réglages (adresse de la page, document
   Grist…), case « Extension active », bouton « Supprimer l'extension » (ses
   réglages de `src/content/` et ses données restent).
 - **Ligne de commande** (sur le serveur, dans le dossier du site) :
@@ -59,7 +69,7 @@ obligatoire.
 
 | Fichier | Lu par | Contenu |
 | :--- | :--- | :--- |
-| `extension.json` | CMS partout (`src/lib/extensions.ts`), installeur (`scripts/extension.mjs`) | `id`, `label`, `description`, `icon`, `version` (X.Y.Z), `cms` (version minimale du CMS), `auteur`, `doc` ; comme une fiche du catalogue des plugins : `requis` (fichiers de `src/content/`), `modele` (`{ fichier, source }`, source relative au dossier de l'extension, copiée à l'installation), `env` (secrets du `.env` signalés), `reglages` (`fichier` + `champs` de la page de configuration, cf. `src/plugins/champs.ts`) ; `gardes` (routes `/api/admin/…` réservées à des groupes) |
+| `extension.json` | CMS partout (`src/lib/extensions.ts`), installeur (`scripts/extension.mjs`) | `id`, `label`, `description`, `icon`, `version` (X.Y.Z), `cms` (version minimale du CMS), `auteur`, `doc`, `depot` (facultatif : dépôt GitHub public des mises à jour, Releases avec l'archive `.zip` jointe) ; comme une fiche du catalogue des plugins : `requis` (fichiers de `src/content/`), `modele` (`{ fichier, source }`, source relative au dossier de l'extension, copiée à l'installation), `env` (secrets du `.env` signalés), `reglages` (`fichier` + `champs` de la page de configuration, cf. `src/plugins/champs.ts`) ; `gardes` (routes `/api/admin/…` réservées à des groupes) |
 | `manifest.ts` | Config Astro (`src/integrations/extensions.ts`) | `routes(root)` (`entrypoint` relatif au dossier de l'extension), `env` (variables `astro:env`, toutes facultatives), `surveiller` (fichiers de `src/content/` qui changent les routes). **Pas d'import `@cms/…`** : chargé hors de Vite |
 | `definitions.ts` | CMS, aussi dans le navigateur | `accueil` (modules d'accueil), `blocs` (blocs de page enrichie), `typesRenommes`, `agenda` (familles du planning), `journal` (libellés de ses actions `<id>.<action>`) : données pures |
 | `site.ts` | Pages du CMS (`src/lib/extensions-site.ts`), si active | `accueil` / `blocs` (composant Astro de chaque type : props `champs` / `bloc`), `agenda()` (séances du planning de `/activites`), `pages()` (pages publiques : plan du site, liens de l'Espace Admin) |
