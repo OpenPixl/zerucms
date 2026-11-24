@@ -13,6 +13,8 @@ import type { APIRoute } from 'astro';
 import { json, jsonError, readJson, withErrors } from '../../../lib/auth/api';
 import { champsConnexion, enregistrerConnexion, fichierConnexionAffiche, lireConnexion } from '../../../lib/connexions';
 import { CHAMPS_EMAIL, CONNEXION_EMAIL, envoyerEmail, statutEmail, verifierEmail } from '../../../lib/email';
+import { association } from '../../../lib/association';
+import { adresseSite } from '../../../lib/email-modele';
 import { logEvent } from '../../../lib/journal';
 import type { StatutConnexion } from '../../../plugins/connexions';
 import { FORMATS_CONNEXION } from '../../../plugins/champs';
@@ -54,8 +56,13 @@ export const POST: APIRoute = withErrors(async ({ request, locals }) => {
 	try {
 		await envoyerEmail({
 			a,
-			sujet: 'E-mail de test du site',
-			texte: `Bonjour,\n\nCet e-mail de test a été envoyé depuis l'Espace Admin du site par ${locals.user!.fullname}.\nL'envoi d'e-mails fonctionne.\n`,
+			sujet: `${association.name} : l'envoi d'e-mails fonctionne`,
+			titre: "L'envoi d'e-mails fonctionne",
+			texte:
+				`Bonjour,\n\nCe message a été envoyé depuis l'Espace Admin du site par ${locals.user!.fullname}, pour vérifier le compte e-mail du site.\n\n` +
+				'Vous le recevez bien : les e-mails du site partent correctement.',
+			bouton: { texte: 'Ouvrir le site', lien: adresseSite() },
+			raison: "Vous recevez ce message parce que votre adresse a été saisie pour l'essai d'envoi dans l'Espace Admin.",
 		});
 	} catch (err) {
 		const message = (err as Error).message;

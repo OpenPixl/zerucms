@@ -1017,6 +1017,18 @@ lequel le site envoie ses messages.
 Les identifiants restent sur le serveur (`data/connexions/email.yaml`) : ils
 ne sont ni dans le site ni dans les sauvegardes.
 
+Les e-mails partent aux couleurs de la charte, avec le logo du site en tête
+et le nom, l'adresse et le
+site de la structure en bas de message. Pour qu'ils n'arrivent pas dans les
+indésirables :
+
+- gardez une **adresse d'expédition du même domaine** que le compte (un
+  avertissement s'affiche sinon) ;
+- utilisez une adresse au **nom de domaine du site** si possible, et
+  demandez à la personne qui gère le domaine de vérifier qu'il déclare bien
+  le serveur d'envoi (enregistrements **SPF**, **DKIM** et **DMARC** : votre
+  hébergeur de messagerie indique lesquels ajouter).
+
 ### Modifier mes informations
 
 Menu du **nom** (à droite de la barre) → **👤 Mon compte** : la fiche de
