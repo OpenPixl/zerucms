@@ -1017,6 +1017,15 @@ lequel le site envoie ses messages.
 Les identifiants restent sur le serveur (`data/connexions/email.yaml`) : ils
 ne sont ni dans le site ni dans les sauvegardes.
 
+Ce compte sert à :
+
+- envoyer les messages du **formulaire de contact** à l'adresse de la
+  structure (module **Association**) — « Répondre » écrit directement à la
+  personne ;
+- les e-mails des extensions, par exemple la **prise de rendez-vous** :
+  notification à l'« Adresse à prévenir » (Extensions → Prise de
+  rendez-vous) et détail du RDV envoyé à la personne si elle le demande.
+
 Les e-mails partent aux couleurs de la charte, avec le logo du site en tête
 et le nom, l'adresse et le
 site de la structure en bas de message. Pour qu'ils n'arrivent pas dans les

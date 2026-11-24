@@ -38,10 +38,10 @@ const { t } = page;
 		</div>
 
 		<FormGate form="contact">
-			<form class="space-y-4">
+			<form class="space-y-4" data-contact>
 				<div>
 					<label for="name" class="champ-libelle">Nom</label>
-					<input type="text" id="name" name="name" required class="mt-1 champ" />
+					<input type="text" id="name" name="nom" required class="mt-1 champ" />
 				</div>
 				<div>
 					<label for="email" class="champ-libelle">Email</label>
@@ -49,14 +49,52 @@ const { t } = page;
 				</div>
 				<div>
 					<label for="subject" class="champ-libelle">Sujet</label>
-					<input type="text" id="subject" name="subject" class="mt-1 champ" />
+					<input type="text" id="subject" name="sujet" class="mt-1 champ" />
 				</div>
 				<div>
 					<label for="message" class="champ-libelle">Message</label>
 					<textarea id="message" name="message" rows="5" required class="mt-1 champ"></textarea>
 				</div>
+				{/* Piège à robots : invisible, laissé vide par les personnes. */}
+				<div class="hidden" aria-hidden="true">
+					<label for="site">Ne pas remplir</label>
+					<input type="text" id="site" name="site" tabindex="-1" autocomplete="off" />
+				</div>
+				<p data-contact-message class="hidden" role="status"></p>
 				<Button variant="primary" class="w-full sm:w-auto">Envoyer le message</Button>
 			</form>
 		</FormGate>
 	</section>
 </Layout>
+
+<script>
+	// Envoi par `/api/contact` (e-mail à l'adresse de la structure) sans quitter la page.
+	const form = document.querySelector<HTMLFormElement>('form[data-contact]');
+	const message = form?.querySelector<HTMLElement>('[data-contact-message]');
+	const bouton = form?.querySelector<HTMLButtonElement>('button');
+	const afficher = (texte: string, ok: boolean) => {
+		if (!message) return;
+		message.textContent = texte;
+		message.className = ok ? 'alerte-succes' : 'alerte-erreur';
+	};
+	form?.addEventListener('submit', async (event) => {
+		event.preventDefault();
+		if (bouton) bouton.disabled = true;
+		const donnees = Object.fromEntries(new FormData(form));
+		try {
+			const reponse = await fetch('/api/contact', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(donnees),
+			});
+			const corps = await reponse.json().catch(() => ({}));
+			if (!reponse.ok) throw new Error(corps.error || 'Envoi impossible, réessayez plus tard.');
+			form.reset();
+			afficher('Merci, votre message a bien été envoyé. Nous vous répondrons rapidement.', true);
+		} catch (err) {
+			afficher((err as Error).message || 'Envoi impossible, réessayez plus tard.', false);
+		} finally {
+			if (bouton) bouton.disabled = false;
+		}
+	});
+</script>

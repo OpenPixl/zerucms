@@ -9,7 +9,7 @@
 /** `/rendez-vous`, `/services/rdv`… : minuscules, chiffres, tirets, sans « / » final. */
 export const ADRESSE_RE = /^(\/[a-z0-9]+(-[a-z0-9]+)*)+$/;
 
-export type TypeChamp = 'adresse' | 'url' | 'identifiant' | 'table';
+export type TypeChamp = 'adresse' | 'url' | 'identifiant' | 'table' | 'email';
 
 /** Format de chaque type de champ et message si la valeur ne le respecte pas. */
 export const FORMATS: Record<TypeChamp, { re: RegExp; message: string }> = {
@@ -20,6 +20,7 @@ export const FORMATS: Record<TypeChamp, { re: RegExp; message: string }> = {
 		re: /^[A-Za-z][A-Za-z0-9_]*$/,
 		message: 'identifiant de la table dans Grist (ex. Demarches) : lettres sans accent, chiffres et « _ », commence par une lettre',
 	},
+	email: { re: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, message: 'adresse e-mail au format nom@exemple.fr' },
 };
 
 /**
@@ -30,7 +31,7 @@ export const FORMATS: Record<TypeChamp, { re: RegExp; message: string }> = {
  */
 export function normaliserChamp(type: TypeChamp, brut: unknown): string {
 	let v = typeof brut === 'string' ? brut.trim() : '';
-	if (type === 'adresse') v = v.toLowerCase();
+	if (type === 'adresse' || type === 'email') v = v.toLowerCase();
 	if (type === 'adresse' || type === 'url') v = v.replace(/\/+$/, '');
 	if (type === 'table' && v) {
 		v = v

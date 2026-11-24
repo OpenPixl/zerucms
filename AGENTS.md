@@ -219,6 +219,17 @@ Grist…).
 - Câblé sur `src/plugins/adhesion/pages/formulaire.astro` (`adhesion`) et
   `src/pages/contact.astro` (`contact`). Nouveau formulaire : ajouter une clé
   dans `site.forms` puis l'entourer d'un `<FormGate>`.
+- Formulaire de **contact** : `POST /api/contact` (`src/pages/api/contact.ts`)
+  → e-mail à `association.email` (saisi à l'installation / module
+  « Association ») par `envoyerEmail()`, `repondreA` = la personne ; piège
+  `site`, 5 messages / 15 min / IP, compte e-mail non configuré = 503 avec
+  l'adresse à utiliser. Script d'envoi en bas de `contact.astro`.
+- **Jetons signés** `src/lib/jeton.ts` (`signerJeton(objet, valeur, durée)`,
+  `lireJeton(objet, jeton, { unique })`, `consommerJeton()`, HMAC
+  `AUTH_SECRET`) : une route publique autorise une action précise plus tard
+  sans qu'on puisse la détourner (ex. extension RDV : envoyer le détail d'un
+  RDV à l'adresse saisie, une fois). Type de réglage `email` dans
+  `src/plugins/champs.ts` (plugins et extensions).
 
 ## Espace Admin (authentification à plat)
 
