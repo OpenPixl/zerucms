@@ -1,3 +1,8 @@
+<script lang="ts">
+/** Calques ouverts, du plus ancien au plus récent (partagé entre instances). */
+const pile: string[] = [];
+</script>
+
 <script setup lang="ts">
 /**
  * Calque superposé au site : `variant="drawer"` = panneau latéral à droite
@@ -7,7 +12,8 @@
  * Échap ou clic sur le fond ferme (sauf `closable: false`, ex. changement de
  * mot de passe imposé) ; le focus est placé dans le calque à
  * l'ouverture et rendu à l'élément d'origine à la fermeture ; la page
- * dessous ne défile plus.
+ * dessous ne défile plus. Calques empilés (modale ouverte depuis un module) :
+ * seul le plus haut réagit au clavier.
  */
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 
@@ -26,6 +32,7 @@ const titleId = `admin-overlay-${Math.random().toString(36).slice(2, 8)}`;
 let previousFocus: HTMLElement | null = null;
 
 function onKeydown(event: KeyboardEvent) {
+	if (pile[pile.length - 1] !== titleId) return;
 	if (event.key === 'Escape') requestClose();
 	if (event.key !== 'Tab' || !panel.value) return;
 	// Garde le focus clavier dans le calque.
@@ -46,6 +53,7 @@ function onKeydown(event: KeyboardEvent) {
 
 onMounted(async () => {
 	previousFocus = document.activeElement as HTMLElement | null;
+	pile.push(titleId);
 	document.documentElement.style.overflow = 'hidden';
 	document.addEventListener('keydown', onKeydown);
 	await nextTick();
@@ -54,7 +62,8 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-	document.documentElement.style.overflow = '';
+	pile.splice(pile.indexOf(titleId), 1);
+	if (!pile.length) document.documentElement.style.overflow = '';
 	document.removeEventListener('keydown', onKeydown);
 	previousFocus?.focus?.();
 });

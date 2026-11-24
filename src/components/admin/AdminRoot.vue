@@ -16,7 +16,7 @@ import AdminOverlay from './AdminOverlay.vue';
 import LoginForm from './LoginForm.vue';
 import { hasAdminRights } from '../../lib/auth/groups';
 import type { ModelVersionInfo } from '../../lib/model-version';
-import { ApiError, authApi, installationApi, lotApi, versionApi, type AdminUser, type ReservedPage } from './client';
+import { ApiError, authApi, installationApi, lotApi, rappelsApi, versionApi, type AdminUser, type RappelAdmin, type ReservedPage } from './client';
 import { CONTENT_KIND_IDS, CONTENT_KINDS } from './content-import';
 import { ADMIN_CONTEXT, takeModuleToReopen } from './context';
 import { loadLot, lot, publishing } from './lot';
@@ -55,6 +55,28 @@ async function loadVersion() {
 		version.value = null;
 	}
 }
+
+/**
+ * Rappels (bureau et super admin) : connexion d'un plugin à renouveler bientôt
+ * ou en panne (jeton Facebook…, `GET /api/admin/rappels`). Badge de la barre ;
+ * le super admin, seul à pouvoir renouveler, ouvre le module « Plugins ».
+ */
+const rappels = ref<RappelAdmin[]>([]);
+async function loadRappels() {
+	if (!user.value || !hasAdminRights(user.value.groups) || mustChangePassword.value) return;
+	try {
+		rappels.value = (await rappelsApi.list()).rappels;
+	} catch {
+		rappels.value = [];
+	}
+}
+const rappelUrgent = computed(() => rappels.value.some((r) => r.niveau === 'erreur'));
+const rappelTitre = computed(() =>
+	[
+		...rappels.value.map((r) => `${r.label} — ${r.titre} : ${r.message}`),
+		modules.value.some((m) => m.id === 'plugins') ? 'Cliquer pour ouvrir le module « Plugins ».' : 'À signaler au super admin, seul à pouvoir renouveler.',
+	].join('\n'),
+);
 
 /**
  * Assistant d'installation (super admin, site neuf) : page à part
@@ -282,6 +304,7 @@ onMounted(async () => {
 	}
 	// `AdminLoader.astro` a pu poser la classe d'avance (indicateur présent) : on la confirme ou on la retire.
 	void loadVersion();
+	void loadRappels();
 	if (user.value) void chargerMaintenance();
 	await verifierInstallation();
 	document.documentElement.classList.toggle('has-admin-bar', barreVisible.value);
@@ -463,6 +486,16 @@ onBeforeUnmount(() => {
 				@click="modules.some((m) => m.id === 'site') ? (activeId = 'site') : undefined"
 			>
 				<i class="fa-solid fa-screwdriver-wrench mr-1" aria-hidden="true"></i><span class="hidden sm:inline">Maintenance</span>
+			</button>
+			<button
+				v-if="rappels.length"
+				type="button"
+				class="ml-1 shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
+				:class="rappelUrgent ? 'bg-red-500 text-white hover:bg-red-400' : 'bg-amber-400 text-amber-950 hover:bg-amber-300'"
+				:title="rappelTitre"
+				@click="modules.some((m) => m.id === 'plugins') ? (activeId = 'plugins') : undefined"
+			>
+				<i class="fa-solid fa-key mr-1" aria-hidden="true"></i><span class="hidden sm:inline">{{ rappelUrgent ? 'Connexion à renouveler' : 'Jeton à renouveler' }}</span>
 			</button>
 			<a
 				v-if="version?.updateAvailable"

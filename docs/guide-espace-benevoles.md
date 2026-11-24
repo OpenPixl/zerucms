@@ -369,10 +369,12 @@ Activités) et **inscription aux activités** (page `/inscription`, bouton
 du plugin restant en place ; désactiver le plugin éteint les deux. Le
 calendrier éteint, la page Activités ne montre plus que les fiches (sauf
 permanences d'une extension, comme la prise de RDV). La liste montre chaque
-plugin et son état (actif, inactif, ou activation / désactivation en attente
-de publication) ; l'icône **paramètres** (roue dentée) ouvre sa page de
+plugin avec son **interrupteur** : l'actionner active ou désactive le plugin et
+republie le site aussitôt (une confirmation est demandée si d'autres plugins
+en dépendent ; « activation / désactivation en attente » tant que la
+publication n'est pas terminée) ; l'icône **paramètres** (roue dentée) ouvre sa page de
 configuration, un seul formulaire : description, documentation, ce qui lui
-manque, la case **Plugin actif**, les interrupteurs de ses outils, puis ses réglages par rubrique — pour la
+manque, les interrupteurs de ses outils, puis ses réglages par rubrique — pour la
 facturation : **adresse de la page** « Demander un devis » (refusée si une
 page du site l'utilise déjà ; les liens déjà écrits vers l'ancienne adresse
 ne changent pas) et **document Grist** (adresse de l'instance, identifiant du
@@ -537,6 +539,27 @@ réservées et actualités à paraître sont signalés : le lien n'est pas encor
 
 > L'adresse de la page ne change pas, même si le titre ou la date sont
 > modifiés : les liens déjà partagés continuent de fonctionner.
+
+**Diffuser sur Facebook** (si le plugin « Diffusion sur les réseaux
+sociaux » est actif) : en modification, onglet **Diffusion**. Le texte
+proposé reprend le titre et le résumé ; modifiez-le si besoin, puis
+**Diffuser sur Facebook** et **Confirmer**. La publication paraît au nom de
+la Page, avec le lien vers l'actualité et son aperçu (photo, résumé).
+L'actualité doit être en ligne (ni brouillon, ni à paraître) ; une
+modification pas encore enregistrée n'est pas diffusée. Une fois diffusée,
+l'onglet l'indique (date, auteur·rice, lien « Voir la publication ») ;
+« Diffuser à nouveau » republie après confirmation. Mise en place de la Page
+(application Meta, jeton) : [src/plugins/diffusion/README.md](../src/plugins/diffusion/README.md).
+L'identifiant de la Page et son jeton se saisissent **une fois** par le
+super admin (module « Plugins » → « Diffusion sur les réseaux sociaux »,
+encart **Réseaux**, vide tant qu'aucun réseau n'est connecté : le bouton
+**+** déroule les réseaux disponibles — Facebook pour l'instant —, en choisir
+un ouvre une fenêtre où saisir sa connexion ; le réseau apparaît ensuite avec
+son interrupteur, et sa roue crantée rouvre cette fenêtre) : enregistrés, ils sont masqués (« •••• ») et ne
+peuvent plus qu'être remplacés ou effacés. Un jeton qui expire dans moins de
+30 jours (ou expiré, ou refusé par Facebook) est signalé dans l'onglet
+Diffusion, sur la page du plugin et par un badge « Jeton à renouveler » dans
+la barre (bureau et super admin).
 
 > Supprimer à la main le dossier dans `src/content/news/` ne retire
 > l'actualité du site qu'à la prochaine reconstruction : passez par le

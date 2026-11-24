@@ -10,6 +10,7 @@ import adhesion from './adhesion/plugin';
 import activites from './activites/plugin';
 import presence from './presence/plugin';
 import facturation from './facturation/plugin';
+import diffusion from './diffusion/plugin';
 
 export interface PluginManifest {
 	id: PluginId;
@@ -28,4 +29,4 @@ export interface PluginManifest {
 	env: Record<string, ReturnType<typeof envField.string>>;
 }
 
-export const PLUGIN_MANIFESTS: PluginManifest[] = [adhesion, activites, presence, facturation];
+export const PLUGIN_MANIFESTS: PluginManifest[] = [adhesion, activites, presence, facturation, diffusion];

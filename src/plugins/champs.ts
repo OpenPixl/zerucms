@@ -58,3 +58,34 @@ export interface ChampPlugin {
 	/** Signalé si vide partout (fichier, `.env`, défaut) : le plugin ne peut pas fonctionner. */
 	obligatoire?: boolean;
 }
+
+/**
+ * Champ de **connexion** d'un plugin (`connexion.champs` du catalogue) :
+ * identifiant, clé ou jeton d'un service extérieur. Jamais dans le `.env` ni
+ * dans `src/content/` : écrit dans `<DATA_DIR>/connexions/<plugin>.yaml`
+ * (`src/lib/connexions.ts`), saisi une fois puis **masqué** (`****`) dans la
+ * page de configuration ; on ne peut que le remplacer ou l'effacer, jamais le
+ * relire depuis le navigateur.
+ */
+export type TypeConnexion = 'identifiant' | 'cle' | 'version' | 'url';
+
+export const FORMATS_CONNEXION: Record<TypeConnexion, { re: RegExp; message: string }> = {
+	identifiant: { re: /^[A-Za-z0-9_-]+$/, message: 'lettres, chiffres, « - » et « _ » seulement' },
+	cle: { re: /^\S{8,}$/, message: 'au moins 8 caractères, sans espace' },
+	version: { re: /^v\d+\.\d+$/, message: 'version au format v23.0' },
+	url: { re: /^https?:\/\/[^\s/?#]+(\/[^\s?#]*)?$/, message: 'adresse web au format https://exemple.fr' },
+};
+
+export interface ChampConnexion {
+	/** Chemin de la clé dans le fichier de connexion, séparé par des points (ex. `facebook.jeton`). */
+	cle: string;
+	label: string;
+	type: TypeConnexion;
+	aide?: string;
+	/** Affiché en clair une fois saisi (réglage sans secret, ex. version d'une API) ; défaut : masqué. */
+	clair?: boolean;
+	/** Sans lui, la connexion ne fonctionne pas (signalé dans la page de configuration). */
+	obligatoire?: boolean;
+	/** Outil du plugin auquel le champ sert (absent = le plugin entier). */
+	outil?: string;
+}

@@ -362,8 +362,10 @@ depot)` puis ouverture du module, dont le formulaire de création se remplit
   `superadmin` seul ; Plugins : `PluginsModule.vue`, `src/lib/plugin-writer.ts`
   écrit `plugins.<id>` de `reglages.yaml` en place puis publie, activation
   refusée si un fichier `requis` du catalogue manque, `env` absentes
-  signalées ; liste → page de configuration (roue dentée), **un seul
-  formulaire** : case « Plugin actif » + réglages `reglages.champs` du
+  signalées ; liste = **interrupteur d'activation** par plugin (enregistré
+  et publié aussitôt, `basculer()` : `update(id, actif, {})`, confirmation
+  si des `dependants`) → page de configuration (roue dentée), **un seul
+  formulaire**, sans case d'activation : réglages `reglages.champs` du
   catalogue (types et formats `src/plugins/champs.ts`, écrits dans le
   fichier du plugin, vide = clé retirée → `.env` ou défaut, repli affiché en
   gris) ; `savePlugin(id, actif, valeurs)` ; champ `type: 'adresse'` refusé
@@ -759,6 +761,58 @@ montants recalculés serveur (`lib/types.ts`, partagé avec l'îlot). PDF
 **Facturation** (`admin/FacturationModule.vue`, `DocumentForm.vue`,
 `LignesEditeur.vue`, `ClientForm.vue`, routes `admin/api/` en `POST
 { action }`, garde `admin`, `logEvent('facturation')`).
+
+### Diffusion sur les réseaux sociaux (plugin `diffusion`)
+
+`src/plugins/diffusion/` ([README](src/plugins/diffusion/README.md) : mise en
+place de l'application Meta et du jeton), tous types de structure, inactif
+par défaut ; un réseau = un **outil** (`facebook` pour l'instant). Onglet
+**« Diffusion »** du formulaire de modification des actualités
+(`NewsModule.vue`, `outilActif('diffusion', 'facebook')`,
+`admin/DiffusionActualite.vue`) : bouton « Diffuser » confirmé en deux clics,
+texte relu (titre + résumé), lien vers l'actualité **en ligne** (refus si
+brouillon, programmée ou absente de `dist/`). API Graph : `lib/facebook.ts`
+(identifiant de Page, jeton, version facultative : **jamais dans le `.env`**,
+cf. « Connexions des plugins » ci-dessous ; jeton jamais renvoyé au
+navigateur ; vérifié par `debug_token` à l'enregistrement puis une fois par
+jour au plus, état `etat.facebook` : Page, échéances du jeton et de l'accès
+aux données, erreur ; jeton refusé à la publication = noté aussitôt ;
+**rappel de renouvellement** `rappelJeton()` de `lib/regles.ts`, 30 jours
+avant l'échéance, dans l'onglet Diffusion, la page du plugin et la barre), routes
+`/api/admin/diffusion` (état, Page vérifiée) et
+`/api/admin/diffusion/facebook` (garde `redacteur`). Trace `diffusion:` de
+l'en-tête de l'actualité (`src/lib/diffusion.ts`, `enregistrerDiffusion()`
+de `news-writer.ts`, valeurs entre guillemets ; jamais lue d'un fichier
+déposé, gardée par `updateNews`), journal `diffusion.facebook`.
+
+**Connexions des plugins** (identifiants d'un service extérieur : jeton
+Facebook…) : `connexion.champs` du catalogue (`ChampConnexion` de
+`src/plugins/champs.ts` : `clair` = affiché, sinon masqué ; `outil`,
+`obligatoire`), écrits **uniquement** dans `<DATA_DIR>/connexions/<id>.yaml`
+(`src/lib/connexions.ts` : droits 600, écriture atomique, rubrique `etat:`
+réservée au plugin ; hors `src/content/`, du build et des sauvegardes), lus à
+chaque usage (ni reconstruction ni redémarrage). Page de configuration du
+module « Plugins » : encart des outils (`outilsTitre` du catalogue, « Réseaux »
+pour la diffusion) = interrupteur, icône + nom (`fa-brands …` admis) ; un
+outil dont des champs de connexion portent l'`outil` est un **connecteur** :
+masqué tant qu'aucun de ses champs n'est renseigné ; encart des outils =
+`Encadre.vue` (comme la charte), `repliable: false` quand il y a des
+connecteurs : sans chevron, à sa place le bouton
+**« + »** (menu des connecteurs restants) qui ouvre une **modale**
+(`AdminOverlay` empilé : seul le calque du dessus réagit au clavier), roue
+crantée = rouvrir cette modale ; rubrique **Connexion** (`modules/plugins/ConnexionPlugin.vue`,
+prop `outil` ; champs sans outil dans la page du plugin),
+saisie une fois puis « •••• » — remplacer ou effacer seulement, valeur
+jamais renvoyée au navigateur —, enregistrement à part, état vérifié +
+« Vérifier maintenant » ; route `/api/admin/plugins/connexion` (GET / PUT
+`{ id, valeurs }` vide = inchangé, `null` = effacé / POST = revérifier ;
+garde `superadmin`, journal `plugin.connexion` sans les valeurs). État par
+plugin : `statut()` / `verifier()` de `src/plugins/connexions.ts` (registre
+`CONNEXIONS`, ex. `diffusion/lib/connexion.ts`). **Rappels** :
+`GET /api/admin/rappels` (bureau + super admin) → badge « Jeton à
+renouveler » / « Connexion à renouveler » de la barre (`AdminRoot.vue`,
+ouvre « Plugins » pour le super admin). Nouveau plugin avec connexion =
+`connexion` au catalogue + entrée `CONNEXIONS`.
 
 ### Extensions (développements propres à une structure)
 

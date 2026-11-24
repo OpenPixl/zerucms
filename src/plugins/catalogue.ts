@@ -10,7 +10,7 @@
  * ici + son dossier `src/plugins/<id>/` + son manifeste dans `manifests.ts`
  * (cf. `src/plugins/README.md`).
  */
-import type { ChampPlugin } from './champs';
+import type { ChampConnexion, ChampPlugin } from './champs';
 import type { Structure } from '../lib/structure';
 import { ADRESSE_DEFAUT as DEVIS_ADRESSE_DEFAUT } from './facturation/lib/adresse';
 
@@ -39,7 +39,7 @@ export interface OutilPlugin {
 	id: string;
 	label: string;
 	description: string;
-	/** Icône Font Awesome. */
+	/** Icône Font Awesome (style plein ; `fa-brands fa-…` pour une marque). */
 	icon: string;
 }
 
@@ -70,6 +70,10 @@ export interface PluginInfo {
 	structures?: readonly Structure[];
 	/** Outils allumés ou éteints un à un, le plugin actif (absent = aucun). */
 	outils?: readonly OutilPlugin[];
+	/** Nom de l'encart des outils dans la page de configuration (défaut « Outils », ex. « Réseaux »). */
+	outilsTitre?: string;
+	/** Texte sous ce titre (défaut : ce que fait l'interrupteur d'un outil). */
+	outilsAide?: string;
 	/** Icône Font Awesome (module « Plugins » de l'Espace Admin). */
 	icon: string;
 	/** Documentation du plugin (chemin dans le projet). */
@@ -88,6 +92,13 @@ export interface PluginInfo {
 	 * l'adresse de la page publique (contrôlée contre les pages du site).
 	 */
 	reglages?: { fichier: string; champs: ChampPlugin[] };
+	/**
+	 * Identifiants de connexion à un service extérieur, saisis dans la page de
+	 * configuration du plugin puis masqués, écrits dans
+	 * `<DATA_DIR>/connexions/<id>.yaml` (jamais dans le `.env`) : cf.
+	 * `src/lib/connexions.ts`. Pris en compte sans reconstruire le site.
+	 */
+	connexion?: { champs: ChampConnexion[]; aide?: string };
 	/** Secrets demandés par l'assistant d'installation (ensuite : `.env` seulement). */
 	secrets?: SecretPlugin[];
 	/** Fichier de `src/content/` créé à l'activation par l'assistant s'il manque, copié de ce modèle (chemin du projet). */
@@ -208,6 +219,52 @@ export const PLUGINS = {
 			{ nom: 'GRIST_API_KEY_FACTURATION', label: 'Clé d’API Grist', type: 'cle', obligatoire: true, aide: 'Grist → Paramètres du compte → Clé d’API.' },
 			{ nom: 'GOTENBERG_URL', label: 'Adresse du service PDF (Gotenberg)', type: 'url', aide: 'Facultatif, mais nécessaire pour les PDF des devis et factures. Ex. http://gotenberg:3000' },
 		],
+	},
+	diffusion: {
+		label: 'Diffusion sur les réseaux sociaux',
+		description:
+			'Onglet « Diffusion » du formulaire des actualités : publie une actualité en ligne sur la Page Facebook de la structure (texte relu, lien vers l’article, aperçu avec sa photo), au nom de la Page. Chaque réseau s’allume ou s’éteint ici.',
+		icon: 'fa-share-nodes',
+		doc: 'src/plugins/diffusion/README.md',
+		outilsTitre: 'Réseaux',
+		outilsAide: 'Éteint, un réseau disparaît de l’onglet « Diffusion » des actualités ; sa connexion reste enregistrée. « + » ajoute un réseau (saisie de sa connexion) ; la roue crantée la rouvre.',
+		outils: [
+			{
+				id: 'facebook',
+				label: 'Page Facebook',
+				description: 'Publication sur une Page Facebook par l’API Graph de Meta (application Meta + jeton de la Page, cf. la documentation du plugin).',
+				icon: 'fa-brands fa-facebook',
+			},
+		],
+		connexion: {
+			aide: 'Jeton de la Page longue durée (permission pages_manage_posts) : marche à suivre dans src/plugins/diffusion/README.md. Enregistré, il n’est plus affiché : on peut seulement le remplacer.',
+			champs: [
+				{
+					cle: 'facebook.page_id',
+					label: 'Identifiant de la Page Facebook',
+					type: 'identifiant',
+					obligatoire: true,
+					outil: 'facebook',
+					aide: 'Page Facebook → À propos → Transparence de la Page (ou Explorateur de l’API Graph : me/accounts).',
+				},
+				{
+					cle: 'facebook.jeton',
+					label: 'Jeton d’accès de la Page',
+					type: 'cle',
+					obligatoire: true,
+					outil: 'facebook',
+					aide: 'Jeton de Page tiré d’un jeton utilisateur longue durée : sa date d’expiration est vérifiée à l’enregistrement.',
+				},
+				{
+					cle: 'facebook.version',
+					label: 'Version de l’API Graph',
+					type: 'version',
+					clair: true,
+					outil: 'facebook',
+					aide: 'Facultatif, ex. v23.0 (vide : version par défaut de l’application Meta).',
+				},
+			],
+		},
 	},
 } as const satisfies Record<string, PluginInfo>;
 

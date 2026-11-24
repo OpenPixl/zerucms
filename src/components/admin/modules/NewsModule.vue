@@ -15,7 +15,7 @@
  * reconstruit, la modification rejoint le lot en attente (`../lot.ts`).
  * L'aperçu du frontmatter est indicatif ; le serveur fait la vraie validation.
  */
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, toRaw } from 'vue';
+import { computed, defineAsyncComponent, inject, onBeforeUnmount, onMounted, reactive, ref, toRaw } from 'vue';
 import type { Bloc } from '../../../lib/blocs';
 import BlocsEditor from './pages/BlocsEditor.vue';
 import { fournirBlocPhotos } from './pages/bloc-photos';
@@ -30,7 +30,9 @@ import PublishStatus from '../PublishStatus.vue';
 import SeoLength from '../SeoLength.vue';
 import { ApiError, newsApi, type CoverUpdate, type NewsFields, type NewsItem } from '../client';
 import { ADMIN_CONTEXT, inputClass, rememberOpenModule, takeModuleToReopen } from '../context';
-import { EDIT_TABS, useFormTabs, type EditTab } from '../form-tabs';
+import { EDIT_TABS, useFormTabs, type EditTab, type FormTab } from '../form-tabs';
+import { outilActif } from '../../../plugins/index';
+import type { Diffusion } from '../../../lib/diffusion';
 import { isDeferredSubmit, isPendingHref } from '../lot';
 import { contentKindProblem, takePendingImport } from '../content-import';
 import { parseMarkdownFile, readMarkdownFile, textField } from '../markdown-file';
@@ -237,7 +239,34 @@ async function remove(item: NewsItem, deferred: boolean) {
 // --- Édition ---
 
 /** Actualité en cours d'édition (slug = dossier, inchangé). */
-const editing = ref<{ slug: string; title: string; coverUrl: string | null; hasCover: boolean; cover: string | null } | null>(null);
+const editing = ref<{
+	slug: string;
+	title: string;
+	coverUrl: string | null;
+	hasCover: boolean;
+	cover: string | null;
+	/** Valeurs enregistrées utiles à l'onglet « Diffusion » (version en ligne). */
+	excerpt: string;
+	isPublish: boolean;
+	publishAt: string;
+	body: string;
+	diffusion: Diffusion;
+} | null>(null);
+
+/** Onglet « Diffusion » (plugin diffusion, outil Facebook allumé) : réseaux sociaux. */
+const diffusionActive = outilActif('diffusion', 'facebook');
+const DiffusionActualite = diffusionActive ? defineAsyncComponent(() => import('../../../plugins/diffusion/admin/DiffusionActualite.vue')) : null;
+const editTabs = computed<readonly FormTab[]>(() =>
+	diffusionActive ? [...EDIT_TABS, { id: 'diffusion', label: 'Diffusion', icon: 'fa-share-nodes' }] : EDIT_TABS,
+);
+/** Formulaire modifié depuis l'ouverture (la diffusion porte sur la version en ligne). */
+const editModifie = computed(() => {
+	const e = editing.value;
+	return Boolean(
+		e &&
+			(editForm.title !== e.title || editForm.excerpt !== e.excerpt || editForm.body !== e.body || editForm.isPublish !== e.isPublish || editForm.publishAt !== e.publishAt),
+	);
+});
 /** Zone du texte (curseur, pour `LinkPicker`). */
 const bodyField = ref<HTMLTextAreaElement | null>(null);
 const editForm = reactive<NewsFields & { body: string }>({
@@ -251,7 +280,7 @@ const editForm = reactive<NewsFields & { body: string }>({
 	body: '',
 });
 const coverAction = ref<'keep' | 'replace' | 'remove'>('keep');
-const { tab: editTab, onInvalid } = useFormTabs<EditTab>('ed', 'infos');
+const { tab: editTab, onInvalid } = useFormTabs<EditTab | 'diffusion'>('ed', 'infos');
 /** Blocs placés dans le texte (photos, vidéo, carrousel…), vignettes des photos publiées. */
 const blocs = reactive<Record<string, Bloc>>({});
 const apercus = reactive<Record<string, string>>({});
@@ -341,7 +370,18 @@ async function openEdit(item: NewsItem) {
 		blocPhotos.liberer();
 		for (const k of Object.keys(apercus)) delete apercus[k];
 		Object.assign(apercus, source.blocPhotoUrls ?? {});
-		editing.value = { slug: source.slug, title: source.title, coverUrl: source.coverUrl, hasCover: Boolean(source.cover), cover: source.cover };
+		editing.value = {
+			slug: source.slug,
+			title: source.title,
+			coverUrl: source.coverUrl,
+			hasCover: Boolean(source.cover),
+			cover: source.cover,
+			excerpt: source.excerpt,
+			isPublish: source.isPublish,
+			publishAt: source.publishAt,
+			body: source.body,
+			diffusion: source.diffusion ?? {},
+		};
 		coverAction.value = 'keep';
 		editTab.value = 'infos';
 		imported.value = null;
@@ -594,7 +634,7 @@ onMounted(async () => {
 					Adresse de la page (inchangée) : <code class="font-mono">/actualites/{{ editing.slug }}</code>
 				</p>
 			</EditFileBar>
-			<FormTabs v-model="editTab" :tabs="EDIT_TABS" prefix="ed" />
+			<FormTabs v-model="editTab" :tabs="editTabs" prefix="ed" />
 
 			<div v-show="editTab === 'infos'" id="ed-panel-infos" role="tabpanel" aria-labelledby="ed-tab-infos" class="space-y-4">
 				<div>
@@ -691,6 +731,20 @@ onMounted(async () => {
 					</label>
 					<input id="ed-credit" v-model="editForm.imageCredit" type="text" placeholder="Photo : Prénom Nom" :class="inputClass" />
 				</div>
+			</div>
+
+			<div v-if="DiffusionActualite" v-show="editTab === 'diffusion'" id="ed-panel-diffusion" role="tabpanel" aria-labelledby="ed-tab-diffusion">
+				<component
+					:is="DiffusionActualite"
+					:slug="editing.slug"
+					:titre="editing.title"
+					:resume="editing.excerpt"
+					:is-publish="editing.isPublish"
+					:publish-at="editing.publishAt"
+					:diffusion="editing.diffusion"
+					:modifie="editModifie"
+					@diffusee="(d: Diffusion) => editing && (editing.diffusion = d)"
+				/>
 			</div>
 		</div>
 

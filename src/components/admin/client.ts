@@ -10,6 +10,7 @@ import type { Association } from '../../lib/association';
 import type { AuthGroup } from '../../lib/auth/groups';
 import type { LinkToggle, ThemeColors } from '../../config/site';
 import type { ReglageSombre } from '../../lib/mode-sombre';
+import type { Diffusion } from '../../lib/diffusion';
 import type { Bloc } from '../../lib/blocs';
 import type { HomeModule } from '../../lib/home-modules';
 import type { ModelVersionInfo } from '../../lib/model-version';
@@ -69,6 +70,8 @@ export interface NewsSource {
 	coverUrl: string | null;
 	/** Vignettes des photos des blocs déjà publiées, par valeur (`./photo_1.jpg`). */
 	blocPhotoUrls?: Record<string, string>;
+	/** Diffusions sur les réseaux sociaux (plugin `diffusion`). */
+	diffusion: Diffusion;
 }
 
 /** Photos des blocs envoyées avec un contenu, sous la valeur du champ qui les cite (`nouvelle:<clé>`, nom de fichier). */
@@ -364,7 +367,53 @@ export interface PluginItem {
 	/** Outils du plugin, allumés ou éteints un à un (cf. `OutilState`). */
 	outils: PluginOutil[];
 	champs: PluginChamp[];
+	/** Connexion à un service extérieur : rubrique « Connexion » (`pluginsApi.connexion`). */
+	connexion: boolean;
 }
+
+/** Champ de connexion d'un plugin (cf. `ChampConnexionEtat`, src/lib/connexions.ts) : jamais la valeur d'un champ masqué. */
+export interface ConnexionChamp {
+	cle: string;
+	label: string;
+	type: string;
+	aide?: string;
+	clair?: boolean;
+	obligatoire?: boolean;
+	outil?: string;
+	renseigne: boolean;
+	valeur: string;
+}
+
+/** État vérifié d'une connexion (cf. `StatutConnexion`, src/plugins/connexions.ts). */
+export interface ConnexionStatut {
+	outil?: string;
+	titre: string;
+	niveau: 'ok' | 'attention' | 'erreur' | 'inconnu';
+	message: string;
+	verifieLe?: string;
+	echeance?: string;
+	lien?: string;
+}
+
+export interface ConnexionEtat {
+	champs: ConnexionChamp[];
+	fichier: string;
+	statut: ConnexionStatut[];
+}
+
+/** Rappel de la barre d'admin (connexion à renouveler…) : cf. src/pages/api/admin/rappels.ts. */
+export interface RappelAdmin {
+	plugin: string;
+	label: string;
+	titre: string;
+	niveau: 'attention' | 'erreur';
+	message: string;
+	echeance?: string;
+}
+
+export const rappelsApi = {
+	list: () => request<{ rappels: RappelAdmin[] }>('GET', '/api/admin/rappels'),
+};
 
 /** Outil d'un plugin (interrupteur de sa page de configuration). */
 export interface PluginOutil {
@@ -394,6 +443,11 @@ export const pluginsApi = {
 		request<{ plugins: PluginItem[]; status: PublishStatus; availability: { ok: boolean; reason?: string } }>('GET', '/api/admin/plugins'),
 	update: (id: string, actif: boolean, valeurs: Record<string, string>, options?: SaveOptions, outils?: Record<string, boolean>) =>
 		request<SaveResult>('PUT', saveUrl('/api/admin/plugins', options), { id, actif, valeurs, outils }),
+	/** Connexion (sans reconstruction) : état, enregistrement (`null` = effacer), nouvelle vérification. */
+	connexion: (id: string) => request<ConnexionEtat>('GET', `/api/admin/plugins/connexion?id=${encodeURIComponent(id)}`),
+	enregistrerConnexion: (id: string, valeurs: Record<string, string | null>) =>
+		request<ConnexionEtat>('PUT', '/api/admin/plugins/connexion', { id, valeurs }),
+	verifierConnexion: (id: string) => request<ConnexionEtat>('POST', '/api/admin/plugins/connexion', { id }),
 };
 
 /** Extensions installées (module « Extensions », super admin) : cf. src/pages/api/admin/extensions.ts. */
