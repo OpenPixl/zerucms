@@ -74,8 +74,10 @@ Le tag déclenche `.github/workflows/release.yml` :
 2. relance la CI complète (`ci.yml`) ;
 3. publie l'image Docker `ghcr.io/openpixl/zerucms` (propriétaire/nom du dépôt) avec les
    étiquettes `X.Y.Z`, `X.Y` et `latest` ;
-4. crée la **Release** GitHub : notes = consignes de mise à jour + liste des
-   commits depuis la version précédente ; GitHub y joint l'archive des
+4. crée la **Release** GitHub : notes = **Nouveautés** en langage simple
+   (fichier `.github/notes/vX.Y.Z.md`, à écrire sur DEV avant de fusionner,
+   facultatif) + consignes de mise à jour + liste des commits depuis la
+   version précédente ; GitHub y joint l'archive des
    sources (installations Node seul).
 
 Suivi : onglet **Actions** du dépôt ; résultat : onglet **Releases** et
