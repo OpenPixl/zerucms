@@ -223,21 +223,21 @@ export const PLUGINS = {
 	diffusion: {
 		label: 'Diffusion sur les réseaux sociaux',
 		description:
-			'Onglet « Diffusion » du formulaire des actualités : publie une actualité en ligne sur la Page Facebook de la structure (texte relu, lien vers l’article, aperçu avec sa photo), au nom de la Page. Chaque réseau s’allume ou s’éteint ici.',
+			'Publie vos actualités sur vos réseaux sociaux, depuis l’onglet « Diffusion » de chaque actualité.',
 		icon: 'fa-share-nodes',
 		doc: 'src/plugins/diffusion/README.md',
 		outilsTitre: 'Réseaux',
-		outilsAide: 'Éteint, un réseau disparaît de l’onglet « Diffusion » des actualités ; sa connexion reste enregistrée. « + » ajoute un réseau (saisie de sa connexion) ; la roue crantée la rouvre.',
+		outilsAide: 'Les réseaux sur lesquels publier vos actualités.',
 		outils: [
 			{
 				id: 'facebook',
 				label: 'Page Facebook',
-				description: 'Publication sur une Page Facebook par l’API Graph de Meta (application Meta + jeton de la Page, cf. la documentation du plugin).',
+				description: 'Publie sur la Page Facebook de votre structure.',
 				icon: 'fa-brands fa-facebook',
 			},
 		],
 		connexion: {
-			aide: 'Jeton de la Page longue durée (permission pages_manage_posts) : marche à suivre dans src/plugins/diffusion/README.md. Enregistré, il n’est plus affiché : on peut seulement le remplacer.',
+			aide: 'Ces informations s’obtiennent une fois depuis votre compte Facebook (voir le guide du plugin).',
 			champs: [
 				{
 					cle: 'facebook.page_id',
@@ -245,7 +245,7 @@ export const PLUGINS = {
 					type: 'identifiant',
 					obligatoire: true,
 					outil: 'facebook',
-					aide: 'Page Facebook → À propos → Transparence de la Page (ou Explorateur de l’API Graph : me/accounts).',
+					aide: 'Sur Facebook : votre Page → À propos → Transparence de la Page.',
 				},
 				{
 					cle: 'facebook.jeton',
@@ -253,7 +253,7 @@ export const PLUGINS = {
 					type: 'cle',
 					obligatoire: true,
 					outil: 'facebook',
-					aide: 'Jeton de Page tiré d’un jeton utilisateur longue durée : sa date d’expiration est vérifiée à l’enregistrement.',
+					aide: 'Sa date d’expiration est vérifiée à l’enregistrement ; un rappel vous prévient avant qu’il expire.',
 				},
 				{
 					cle: 'facebook.version',
@@ -261,7 +261,7 @@ export const PLUGINS = {
 					type: 'version',
 					clair: true,
 					outil: 'facebook',
-					aide: 'Facultatif, ex. v23.0 (vide : version par défaut de l’application Meta).',
+					aide: 'Facultatif : laissez vide en cas de doute.',
 				},
 			],
 		},

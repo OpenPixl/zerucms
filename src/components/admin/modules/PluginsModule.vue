@@ -162,11 +162,14 @@ const modifie = computed(
 			ouvert.value.champs.some((c) => (valeurs.value[c.cle] ?? '').trim() !== c.valeur)),
 );
 
+/** Réglages obligatoires encore vides (cf. `avertissements`) : marqués d'un astérisque. */
+const aRenseigner = computed(() => new Set((ouvert.value?.avertissements ?? []).map((a) => a.nom)));
+
 /** Texte de repli affiché dans un champ vide. */
 function repli(c: PluginChamp): string {
-	if (c.source === 'env') return `${c.repli} (valeur du .env, ${c.env})`;
+	if (c.source === 'env') return `${c.repli} (réglé sur le serveur)`;
 	if (c.source === 'defaut') return `${c.repli} (par défaut)`;
-	return c.env ? `vide : à renseigner ici ou dans le .env (${c.env})` : '';
+	return aRenseigner.value.has(c.label) ? 'À renseigner' : '';
 }
 
 /** État affiché : celui des sources, ou le changement pas encore en ligne. */
@@ -302,7 +305,9 @@ onMounted(load);
 		@cancel-reload="cancelReload"
 		@publish-lot="publishLot"
 	/>
-	<p v-if="!availability.ok" class="mb-4 alerte-attention">{{ availability.reason }}</p>
+	<p v-if="!availability.ok" class="mb-4 text-sm text-gray-500">
+		<i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>{{ availability.reason }}
+	</p>
 
 	<p v-if="loading" class="text-sm font-light text-gray-500">Chargement…</p>
 
@@ -315,34 +320,20 @@ onMounted(load);
 
 		<div class="space-y-4">
 			<p class="text-sm font-light text-gray-600">{{ ouvert.description }}</p>
-			<p class="text-xs text-gray-500">
-				<template v-if="ouvert.version">Version {{ ouvert.version }}<template v-if="ouvert.auteur"> · {{ ouvert.auteur }}</template> · </template>
-				Documentation : <code class="rounded bg-gray-100 px-1">{{ ouvert.doc }}</code> (identifiant
-				<code class="rounded bg-gray-100 px-1">{{ ouvert.id }}</code>)
+			<p v-if="ouvert.version" class="text-xs text-gray-500">
+				Version {{ ouvert.version }}<template v-if="ouvert.auteur"> · {{ ouvert.auteur }}</template>
 			</p>
 
 			<p v-if="ouvert.requisInactifs.length" class="alerte-erreur">
 				<i class="fa-solid fa-circle-xmark mr-1" aria-hidden="true"></i>
-				Requiert le plugin « {{ ouvert.requisInactifs.map((r) => r.label).join(' », « ') }} », inactif : activez-le d'abord.
+				À activer d'abord : « {{ ouvert.requisInactifs.map((r) => r.label).join(' », « ') }} ».
 			</p>
 			<ul v-if="ouvert.manquants.length" class="space-y-1 alerte-erreur">
 				<li v-for="m in ouvert.manquants" :key="m.fichier">
 					<i class="fa-solid fa-circle-xmark mr-1" aria-hidden="true"></i>
-					<code>{{ m.fichier }}</code> absent : {{ m.aide }}
+					Fichier de réglages manquant : {{ m.aide }}
 				</li>
 			</ul>
-			<ul v-if="ouvert.avertissements.length" class="space-y-1 alerte-attention">
-				<li v-for="a in ouvert.avertissements" :key="a.nom">
-					<i class="fa-solid fa-triangle-exclamation mr-1" aria-hidden="true"></i>
-					<code>{{ a.nom }}</code> : {{ a.aide }}
-				</li>
-			</ul>
-
-			<p v-if="!ouvert.actif" class="alerte-attention">
-				<i class="fa-solid fa-power-off mr-1" aria-hidden="true"></i>
-				{{ mot.un }} inactif{{ ext ? 'e' : '' }} : le site n'a plus rien de {{ ext ? 'cette extension' : 'ce plugin' }} ; ses réglages et son
-				contenu sont gardés. L'activation se fait par l'interrupteur de la liste.
-			</p>
 
 			<Encadre
 				v-if="ouvert.outils.length"
@@ -384,12 +375,11 @@ onMounted(load);
 				</template>
 				<div class="space-y-3 p-4">
 					<p class="text-xs text-gray-500">
-						{{ infoOuvert?.outilsAide ?? 'Éteint, un outil disparaît du site (pages, liens, boutons) ; ses données restent dans Grist.' }}
-						<template v-if="!ouvert.actif"> {{ mot.un }} inactif : tout est éteint (activation depuis la liste).</template>
+						{{ infoOuvert?.outilsAide ?? 'Un outil éteint n’apparaît plus sur le site ; ses données sont gardées.' }}
 					</p>
 					<p v-if="!outilsAffiches.length" class="text-sm font-light text-gray-500">
 						<template v-if="!connexionEtat && outilsReglables.size">Chargement…</template>
-						<template v-else>Aucun connecteur configuré : ajoutez-en un avec le bouton « + ».</template>
+						<template v-else>Aucun pour l'instant : ajoutez-en un avec le bouton +.</template>
 					</p>
 					<ul v-else class="divide-y divide-gray-100">
 						<li v-for="o in outilsAffiches" :key="o.id" class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
@@ -437,7 +427,9 @@ onMounted(load);
 				<legend class="px-1 font-heading text-sm font-semibold text-gray-900">{{ groupe }}</legend>
 				<div class="space-y-4">
 					<div v-for="c in champs" :key="c.cle">
-						<label :for="`plugin-${ouvert.id}-${c.cle}`" class="champ-libelle">{{ c.label }}</label>
+						<label :for="`plugin-${ouvert.id}-${c.cle}`" class="champ-libelle">
+							{{ c.label }}<span v-if="aRenseigner.has(c.label)" class="text-red-600"> *</span>
+						</label>
 						<input
 							:id="`plugin-${ouvert.id}-${c.cle}`"
 							v-model.trim="valeurs[c.cle]"
@@ -453,22 +445,11 @@ onMounted(load);
 					</div>
 				</div>
 			</fieldset>
-			<p v-if="ouvert.fichierReglages" class="text-xs text-gray-500">
-				Réglages enregistrés dans <code class="rounded bg-gray-100 px-1">{{ ouvert.fichierReglages }}</code> ; un champ
-				vide reprend la valeur indiquée en gris.
+			<p v-if="ouvert.secrets.length" class="text-xs text-gray-500">
+				<i class="fa-solid fa-key mr-1" aria-hidden="true"></i>
+				<template v-if="ouvert.secrets.every((s) => s.utilise)">Clé d'accès en place sur le serveur.</template>
+				<template v-else>Clé d'accès manquante : à ajouter par la personne qui gère le serveur.</template>
 			</p>
-			<ul v-if="ouvert.secrets.length" class="space-y-1 text-xs text-gray-500">
-				<li v-for="s in ouvert.secrets" :key="s.nom">
-					<i class="fa-solid fa-key mr-1" aria-hidden="true"></i>
-					Clé secrète (dans le .env, jamais ici) :
-					<template v-if="s.utilise === s.nom"><code class="rounded bg-gray-100 px-1">{{ s.nom }}</code>, {{ mot.propre }}.</template>
-					<template v-else-if="s.utilise">
-						<code class="rounded bg-gray-100 px-1">{{ s.utilise }}</code>, partagée ; ajouter
-						<code class="rounded bg-gray-100 px-1">{{ s.nom }}</code> pour une clé {{ mot.propre }}.
-					</template>
-					<template v-else>aucune.</template>
-				</li>
-			</ul>
 		</div>
 
 		<p v-if="error" class="mt-6 alerte-erreur" role="alert">{{ error }}</p>
@@ -485,10 +466,7 @@ onMounted(load);
 				<i class="fa-solid fa-trash" aria-hidden="true"></i>{{ suppression ? 'Confirmer la suppression' : "Supprimer l'extension" }}
 			</button>
 		</div>
-		<p v-if="ext && suppression" class="mt-2 text-xs text-gray-500">
-			Le code de l'extension est retiré et le site reconstruit ; ses réglages
-			<template v-if="ouvert.fichierReglages">(<code>{{ ouvert.fichierReglages }}</code>)</template> et ses données restent.
-		</p>
+		<p v-if="ext && suppression" class="mt-2 text-xs text-gray-500">L'extension est retirée du site ; ses réglages et ses données sont gardés.</p>
 	</form>
 
 
@@ -497,9 +475,8 @@ onMounted(load);
 		<p v-if="error" class="mb-4 alerte-erreur" role="alert">{{ error }}</p>
 		<template v-if="ext">
 			<p class="mb-4 text-sm font-light text-gray-600">
-				Les extensions sont des développements propres à une structure, installés à part (dossier
-				<code class="rounded bg-gray-100 px-1">extensions/</code>, conservé par les mises à jour). Une archive déjà
-				installée est remplacée par la nouvelle version.
+				Fonctions faites sur mesure pour votre structure. Déposez l'archive .zip reçue pour installer une extension ou la
+				mettre à jour.
 			</p>
 			<div class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-gray-300 p-4">
 				<label class="bouton bouton-primaire" :class="{ 'pointer-events-none opacity-60': locked || busy }">
@@ -507,12 +484,12 @@ onMounted(load);
 					Installer une extension (.zip)
 					<input ref="fichier" type="file" accept=".zip,application/zip" class="sr-only" :disabled="locked || busy" @change="installer" />
 				</label>
-				<span class="text-xs text-gray-500">CMS {{ versionCms }} · le site est reconstruit après l'installation.</span>
+				<span class="text-xs text-gray-500">Le site est republié après l'installation.</span>
 			</div>
 			<ul v-if="invalides.length" class="mb-4 space-y-1 alerte-erreur">
 				<li v-for="i in invalides" :key="i.id">
 					<i class="fa-solid fa-circle-xmark mr-1" aria-hidden="true"></i>
-					<code>extensions/{{ i.id }}/</code> : {{ i.erreurs.join(' ') }}
+					« {{ i.id }} » ne peut pas être utilisée : {{ i.erreurs.join(' ') }}
 				</li>
 			</ul>
 			<p v-if="!plugins.length" class="text-sm font-light text-gray-500">Aucune extension installée.</p>
@@ -550,11 +527,11 @@ onMounted(load);
 				</div>
 				<p v-if="activationBloquee(p)" class="mt-1 pl-10 text-xs text-gray-500">
 					<i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>
-					<template v-if="p.requisInactifs.length">Requiert « {{ p.requisInactifs.map((r) => r.label).join(' », « ') }} », inactif.</template>
-					<template v-else>Fichier requis absent : voir la configuration.</template>
+					<template v-if="p.requisInactifs.length">Activez d'abord « {{ p.requisInactifs.map((r) => r.label).join(' », « ') }} ».</template>
+					<template v-else>À configurer avant de l'activer.</template>
 				</p>
-				<div v-if="aConfirmer === p.id" class="mt-2 flex flex-wrap items-center gap-2 alerte-attention text-xs">
-					<span class="flex-1">Le désactiver retire aussi : {{ p.dependants.map((d) => d.label).join(', ') }}.</span>
+				<div v-if="aConfirmer === p.id" class="mt-2 flex flex-wrap items-center gap-2 pl-10 text-xs text-gray-600">
+					<span class="flex-1">Cela désactive aussi : {{ p.dependants.map((d) => d.label).join(', ') }}.</span>
 					<button type="button" class="bouton bouton-mini bouton-danger" :disabled="locked || busy" @click="basculer(p, false)">Désactiver</button>
 					<button type="button" class="bouton bouton-mini bouton-neutre" @click="aConfirmer = null">Annuler</button>
 				</div>
@@ -574,10 +551,6 @@ onMounted(load);
 			<p class="flex items-start gap-2 text-sm font-light text-gray-600">
 				<i class="mt-0.5 text-lg text-primary" :class="icone(outilOuvert.icon)" aria-hidden="true"></i>
 				<span>{{ outilOuvert.description }}</span>
-			</p>
-			<p v-if="!ouvert.actif || !outils[outilOuvert.id]" class="alerte-attention text-sm">
-				{{ !ouvert.actif ? `${mot.un} inactif` : 'Éteint' }} : la connexion peut être préparée, elle servira une fois
-				{{ !ouvert.actif ? `${mot.le} activé (liste des ${mot.module}) et ` : '' }}l'interrupteur allumé (puis enregistré).
 			</p>
 			<ConnexionPlugin
 				:key="`connexion-${ouvert.id}-${outilOuvert.id}`"

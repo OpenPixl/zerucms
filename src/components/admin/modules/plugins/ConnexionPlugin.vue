@@ -97,7 +97,7 @@ async function enregistrer() {
 	try {
 		recevoir(await pluginsApi.enregistrerConnexion(props.plugin, changements.value));
 		emit('change', etat.value!);
-		succes.value = 'Connexion enregistrée (prise en compte immédiatement, sans republier le site).';
+		succes.value = 'Connexion enregistrée.';
 	} catch (e) {
 		echec(e);
 	} finally {
@@ -146,7 +146,7 @@ const dateFr = (iso?: string) =>
 						<template v-else>{{ s.titre }}</template>
 					</p>
 					<p class="mt-1">{{ s.message }}</p>
-					<p v-if="s.verifieLe" class="mt-1 text-xs opacity-80">Vérifié le {{ dateFr(s.verifieLe) }} (revérifié chaque jour).</p>
+					<p v-if="s.verifieLe" class="mt-1 text-xs opacity-80">Vérifié le {{ dateFr(s.verifieLe) }}</p>
 				</li>
 			</ul>
 
@@ -189,7 +189,7 @@ const dateFr = (iso?: string) =>
 						:type="c.clair ? 'text' : 'password'"
 						spellcheck="false"
 						autocomplete="off"
-						:placeholder="c.renseigne && !c.clair ? 'Nouvelle valeur (remplace celle enregistrée)' : 'Non renseigné'"
+						:placeholder="c.renseigne && !c.clair ? 'Nouvelle valeur' : ''"
 						:disabled="disabled || busy"
 						:class="inputClass"
 					/>
@@ -198,8 +198,7 @@ const dateFr = (iso?: string) =>
 			</div>
 
 			<p class="mt-3 text-xs text-gray-500">
-				Enregistré dans <code class="rounded bg-gray-100 px-1">{{ etat.fichier }}</code> (sur le serveur, jamais affiché ni
-				sauvegardé avec le contenu) ; pris en compte sans republier le site.
+				<i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>Gardé sur le serveur : une fois enregistré, il n'est plus affiché.
 			</p>
 		</template>
 
