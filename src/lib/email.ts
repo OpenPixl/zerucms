@@ -19,7 +19,9 @@
  *     etat:
  *       smtp: { verifie_le: "…", erreur: "…" }
  *
- * Pour envoyer depuis une fonction du site : `envoyerEmail({ a, sujet, texte })`.
+ * Pour envoyer depuis une fonction du site : `envoyerEmail({ a, sujet, texte })`
+ * (+ `titre`, `bouton`, `raison` facultatifs) : message mis en forme par
+ * `src/lib/email-modele.ts` (HTML + texte, pied de page de la structure).
  * Code serveur uniquement.
  */
 import nodemailer from 'nodemailer';
@@ -27,6 +29,7 @@ import type { ChampConnexion } from '../plugins/champs';
 import type { StatutConnexion } from '../plugins/connexions';
 import { association } from './association';
 import { ecrireEtatConnexion, lireConnexion, lireEtatConnexion, valeurConnexion } from './connexions';
+import { adresseSite, logoEmail, mettreEnForme, type ContenuEmail } from './email-modele';
 
 /** Nom du fichier de connexion (`data/connexions/email.yaml`). */
 export const CONNEXION_EMAIL = 'email';
@@ -82,8 +85,15 @@ async function config(): Promise<ConfigEmail | null> {
 	};
 }
 
+/** Domaine d'une adresse e-mail, en minuscules (`''` sans « @ »). */
+const domaine = (adresse: string) => (adresse.includes('@') ? adresse.split('@').pop()!.toLowerCase() : '');
+
 function transport(c: ConfigEmail) {
+	// Nom annoncé au serveur (EHLO) : le domaine du site plutôt que le nom de
+	// la machine ou du conteneur, que certains filtres anti-spam pénalisent.
+	const nom = new URL(adresseSite()).hostname;
 	return nodemailer.createTransport({
+		...(nom !== 'localhost' ? { name: nom } : {}),
 		host: c.hote,
 		port: c.port,
 		secure: c.port === 465,
@@ -116,7 +126,20 @@ function statutDe(c: ConfigEmail | null, etat: EtatEmail | null): StatutConnexio
 	if (!c) return [];
 	if (etat?.erreur) return [{ titre: STATUT_TITRE, niveau: 'erreur', message: etat.erreur, verifieLe: etat.verifie_le }];
 	if (!etat?.verifie_le) return [{ titre: STATUT_TITRE, niveau: 'inconnu', message: 'Pas encore vérifié.' }];
-	return [{ titre: STATUT_TITRE, niveau: 'ok', message: `Envois au nom de ${c.de.name} <${c.de.address}>.`, verifieLe: etat.verifie_le }];
+	const ok: StatutConnexion = { titre: STATUT_TITRE, niveau: 'ok', message: `Envois au nom de ${c.de.name} <${c.de.address}>.`, verifieLe: etat.verifie_le };
+	// Adresse d'expédition d'un autre domaine que le compte : souvent classée en indésirable.
+	const compte = domaine(c.identifiant);
+	if (compte && domaine(c.de.address) !== compte) {
+		return [
+			ok,
+			{
+				titre: "Adresse d'expédition",
+				niveau: 'attention',
+				message: `${c.de.address} n'est pas du même domaine que le compte (${compte}) : les e-mails risquent d'arriver dans les indésirables.`,
+			},
+		];
+	}
+	return [ok];
 }
 
 /** État enregistré (sans contacter le serveur). */
@@ -138,10 +161,10 @@ export async function verifierEmail(): Promise<StatutConnexion[]> {
 	return statutDe(c, etat);
 }
 
-export interface Email {
+export interface Email extends ContenuEmail {
 	a: string | string[];
 	sujet: string;
-	texte: string;
+	/** HTML déjà prêt : remplace la mise en forme (le `texte` est alors envoyé tel quel). */
 	html?: string;
 	repondreA?: string;
 }
@@ -151,12 +174,17 @@ export async function envoyerEmail(email: Email): Promise<void> {
 	const c = await config();
 	if (!c) throw new Error('Le compte e-mail du site n’est pas configuré (module « Site »).');
 	try {
+		const logo = email.html ? null : await logoEmail();
+		const corps = email.html ? { html: email.html, texte: email.texte } : mettreEnForme(email, logo);
 		await transport(c).sendMail({
 			from: c.de,
 			to: email.a,
 			subject: email.sujet,
-			text: email.texte,
-			...(email.html ? { html: email.html } : {}),
+			text: corps.texte,
+			html: corps.html,
+			// Message envoyé par le site, pas par une personne : pas de réponse automatique.
+			headers: { 'Auto-Submitted': 'auto-generated' },
+			...(logo ? { attachments: [{ filename: 'logo.png', content: logo.contenu, cid: logo.cid, contentDisposition: 'inline' as const }] } : {}),
 			...(email.repondreA ? { replyTo: email.repondreA } : {}),
 		});
 	} catch (err) {
