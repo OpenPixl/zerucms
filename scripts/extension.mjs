@@ -27,6 +27,8 @@ import { strFromU8, unzipSync } from 'fflate';
 /** Identifiant = nom du dossier : minuscules, chiffres, tirets (cf. `EXTENSION_ID` de src/lib/extensions.ts). */
 export const EXTENSION_ID = /^[a-z][a-z0-9-]{1,39}$/;
 const VERSION = /^\d+\.\d+\.\d+$/;
+/** `depot` de la fiche : dépôt GitHub public « propriétaire/dépôt » dont les Releases portent les mises à jour. */
+export const DEPOT_RE = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
 export const FICHE = 'extension.json';
 /** Archive et contenu extrait : au-delà, refusé. */
 export const TAILLE_MAX = 20 * 1024 * 1024;
@@ -67,6 +69,7 @@ export function verifierFiche(fiche, { id, cms } = {}) {
 	if (typeof f.version !== 'string' || !VERSION.test(f.version)) erreurs.push(`${FICHE} : « version » attendue au format X.Y.Z.`);
 	if (typeof f.cms !== 'string' || !VERSION.test(f.cms)) erreurs.push(`${FICHE} : « cms » (version minimale du CMS) attendue au format X.Y.Z.`);
 	else if (cms && !versionAuMoins(cms, f.cms)) erreurs.push(`Cette extension demande le CMS ${f.cms} ou plus récent (version en place : ${cms}). Mettez d'abord le site à jour.`);
+	if (f.depot !== undefined && (typeof f.depot !== 'string' || !DEPOT_RE.test(f.depot))) erreurs.push(`${FICHE} : « depot » attendu au format propriétaire/dépôt (GitHub).`);
 	if (f.gardes !== undefined && !Array.isArray(f.gardes)) erreurs.push(`${FICHE} : « gardes » doit être une liste.`);
 	for (const g of Array.isArray(f.gardes) ? f.gardes : []) {
 		if (!g || typeof g.prefixe !== 'string' || !g.prefixe.startsWith('/api/admin/') || !Array.isArray(g.groupes) || !texte(g.message)) {

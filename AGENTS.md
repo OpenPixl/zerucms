@@ -861,6 +861,12 @@ unique d'installation **`scripts/extension.mjs`** (`verifierFiche`,
 `lireArchive` : `.zip` à plat ou avec un seul dossier, 20 Mo, chemins
 contrôlés ; `installerArchive` / `supprimerExtension` : ancienne version
 mise de côté dans `extensions/.ancienne-…`, `restaurer()` / `purger()` ;
+**mises à jour depuis GitHub** : `depot` de la fiche → dernière Release
+comparée (`src/lib/extension-versions.ts`, cache 6 h, `cms` lu dans son
+`extension.json` au tag), « Version X disponible » + « Mettre à jour » du
+module, route `/api/admin/extensions/mises-a-jour` (GET, POST `{ id }` :
+archive jointe téléchargée puis `installExtension()`, journal
+`extension.mise-a-jour`) ;
 jamais de suppression du dossier `extensions/` lui-même) : CLI `npm run
 extension -- liste | install <zip> | supprimer <id>` et module
 **« Extensions »** (super admin, `exclusive` ; `PluginsModule.vue` prop
