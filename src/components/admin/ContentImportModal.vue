@@ -84,9 +84,8 @@ function open() {
 <template>
 	<div class="space-y-4">
 		<p class="text-sm font-light text-gray-600">
-			Déposez un fichier <code>.md</code>, avec ses photos ou dans un <code>.zip</code> : le type de contenu est lu dans son en-tête
-			(<code>{{ CONTENT_KEY }}: actualite</code>, <code>page</code>, <code>activite</code> ou <code>annonce</code>), puis le formulaire de création
-			s'ouvre, rempli. Rien n'est publié avant l'enregistrement.
+			Déposez un fichier préparé à partir d'un modèle (avec ses photos, ou le tout en .zip) : le formulaire s'ouvre, déjà
+			rempli. Rien n'est publié avant l'enregistrement.
 		</p>
 
 		<label
@@ -99,7 +98,7 @@ function open() {
 			<i class="fa-solid fa-file-import text-3xl text-gray-400" aria-hidden="true"></i>
 			<span v-if="file" class="font-medium text-gray-900">{{ file.name }}<template v-if="depot?.photos.length"> + {{ depot.photos.length }} photo(s)</template></span>
 			<span v-else class="text-gray-600">Glissez le fichier ici ou <span class="text-primary underline">parcourez</span></span>
-			<span class="text-xs font-light text-gray-500">Fichier Markdown (200 Ko max), seul, avec ses photos ou en .zip</span>
+			<span class="text-xs font-light text-gray-500">Fichier .md, avec ses photos ou en .zip</span>
 			<input type="file" :accept="DEPOT_ACCEPT" multiple class="sr-only" @change="onInput" />
 		</label>
 

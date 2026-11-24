@@ -87,8 +87,7 @@ const variables = Object.entries(PAGE_VARIABLES).map(([name, v]) => ({ token: `{
 <template>
 	<form class="space-y-5" @submit.prevent="submit">
 		<p class="text-sm font-light text-gray-600">
-			Page du site <strong class="font-medium text-gray-800">{{ def.label }}</strong> ({{ props.page.href }}) : sa mise en
-			page est fournie par le site ; vous réglez son lien dans le menu et {{ def.modules ? 'ses modules' : 'ses textes' }}.
+			Vous réglez ici son lien dans le menu et {{ def.modules ? 'ses modules' : 'ses textes' }}.
 		</p>
 		<p v-if="error" class="alerte-erreur" role="alert">{{ error }}</p>
 

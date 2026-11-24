@@ -274,7 +274,7 @@ onBeforeUnmount(stopCloseRequest);
 						</span>
 					</label>
 				</div>
-				<p v-if="props.self" class="mt-2 text-xs font-light text-gray-500">Les groupes se changent par le bureau, dans le module « Comptes ».</p>
+				<p v-if="props.self" class="mt-2 text-xs font-light text-gray-500">Seul le bureau peut changer vos groupes.</p>
 			</fieldset>
 			<div v-if="view.name === 'create'">
 				<label for="acc-password" class="champ-libelle">

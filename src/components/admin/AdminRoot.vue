@@ -16,7 +16,7 @@ import AdminOverlay from './AdminOverlay.vue';
 import LoginForm from './LoginForm.vue';
 import { hasAdminRights } from '../../lib/auth/groups';
 import type { ModelVersionInfo } from '../../lib/model-version';
-import { ApiError, authApi, installationApi, lotApi, versionApi, type AdminUser, type ReservedPage } from './client';
+import { ApiError, authApi, installationApi, lotApi, rappelsApi, versionApi, type AdminUser, type RappelAdmin, type ReservedPage } from './client';
 import { CONTENT_KIND_IDS, CONTENT_KINDS } from './content-import';
 import { ADMIN_CONTEXT, takeModuleToReopen } from './context';
 import { loadLot, lot, publishing } from './lot';
@@ -55,6 +55,28 @@ async function loadVersion() {
 		version.value = null;
 	}
 }
+
+/**
+ * Rappels (bureau et super admin) : connexion d'un plugin à renouveler bientôt
+ * ou en panne (jeton Facebook…, `GET /api/admin/rappels`). Badge de la barre ;
+ * le super admin, seul à pouvoir renouveler, ouvre le module « Plugins ».
+ */
+const rappels = ref<RappelAdmin[]>([]);
+async function loadRappels() {
+	if (!user.value || !hasAdminRights(user.value.groups) || mustChangePassword.value) return;
+	try {
+		rappels.value = (await rappelsApi.list()).rappels;
+	} catch {
+		rappels.value = [];
+	}
+}
+const rappelUrgent = computed(() => rappels.value.some((r) => r.niveau === 'erreur'));
+const rappelTitre = computed(() =>
+	[
+		...rappels.value.map((r) => `${r.label} — ${r.titre} : ${r.message}`),
+		modules.value.some((m) => m.id === 'plugins') ? 'Cliquer pour ouvrir le module « Plugins ».' : 'À signaler au super admin, seul à pouvoir renouveler.',
+	].join('\n'),
+);
 
 /**
  * Assistant d'installation (super admin, site neuf) : page à part
@@ -282,6 +304,7 @@ onMounted(async () => {
 	}
 	// `AdminLoader.astro` a pu poser la classe d'avance (indicateur présent) : on la confirme ou on la retire.
 	void loadVersion();
+	void loadRappels();
 	if (user.value) void chargerMaintenance();
 	await verifierInstallation();
 	document.documentElement.classList.toggle('has-admin-bar', barreVisible.value);
@@ -403,8 +426,7 @@ onBeforeUnmount(() => {
 				>
 					<p class="font-heading font-semibold text-gray-900">Modifications en attente de publication</p>
 					<p class="mt-1 text-xs font-light text-gray-600">
-						Enregistrées mais pas encore visibles sur le site. Une seule reconstruction (environ une minute) les publie
-						toutes.
+						Enregistrées mais pas encore visibles sur le site. Publiez-les toutes en une fois (environ une minute).
 					</p>
 					<p v-if="lotError" class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">{{ lotError }}</p>
 					<ul v-if="lot.length" class="mt-3 max-h-60 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-100">
@@ -459,10 +481,20 @@ onBeforeUnmount(() => {
 				v-if="enMaintenance"
 				type="button"
 				class="ml-1 shrink-0 rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white hover:bg-red-400"
-				title="Le site est en maintenance : les visiteurs voient la page de maintenance, les membres connectés voient le site. Cliquer pour gérer."
+				title="Le site est en maintenance pour les visiteurs. Cliquer pour gérer."
 				@click="modules.some((m) => m.id === 'site') ? (activeId = 'site') : undefined"
 			>
 				<i class="fa-solid fa-screwdriver-wrench mr-1" aria-hidden="true"></i><span class="hidden sm:inline">Maintenance</span>
+			</button>
+			<button
+				v-if="rappels.length"
+				type="button"
+				class="ml-1 shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
+				:class="rappelUrgent ? 'bg-red-500 text-white hover:bg-red-400' : 'bg-amber-400 text-amber-950 hover:bg-amber-300'"
+				:title="rappelTitre"
+				@click="modules.some((m) => m.id === 'plugins') ? (activeId = 'plugins') : undefined"
+			>
+				<i class="fa-solid fa-key mr-1" aria-hidden="true"></i><span class="hidden sm:inline">{{ rappelUrgent ? 'Connexion à renouveler' : 'Jeton à renouveler' }}</span>
 			</button>
 			<a
 				v-if="version?.updateAvailable"
@@ -477,14 +509,14 @@ onBeforeUnmount(() => {
 			<span
 				v-if="isDev"
 				class="ml-1 shrink-0 rounded-full bg-amber-400 px-2 py-0.5 text-xs font-semibold text-amber-950"
-				title="Serveur de développement : les modifications sont visibles aussitôt, sans reconstruction du site."
+				title="Site de test : les modifications sont visibles aussitôt."
 			>
 				<i class="fa-solid fa-flask mr-1" aria-hidden="true"></i><span class="hidden sm:inline">Développement</span><span class="sm:hidden">Dév.</span><span v-if="version" class="ml-1 font-normal opacity-80">v{{ version.current }}</span>
 			</span>
 			<span
 				v-else
 				class="ml-1 shrink-0 rounded-full bg-green-400 px-2 py-0.5 text-xs font-semibold text-green-950"
-				:title="`Serveur de production : chaque publication reconstruit le site.${version ? ` Version ${version.current}.` : ''}`"
+				:title="`Site en ligne.${version ? ` Version ${version.current}.` : ''}`"
 			>
 				<i class="fa-solid fa-server mr-1" aria-hidden="true"></i><span class="hidden sm:inline">Production</span><span class="sm:hidden">Prod.</span><span v-if="version" class="ml-1 font-normal opacity-80">v{{ version.current }}</span>
 			</span>

@@ -73,7 +73,7 @@ onMounted(load);
 		@cancel-reload="cancelReload"
 		@publish-lot="publishLot"
 	/>
-	<p v-if="!availability.ok" class="mb-4 alerte-attention">{{ availability.reason }}</p>
+	<p v-if="!availability.ok" class="mb-4 text-sm text-gray-500"><i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>{{ availability.reason }}</p>
 	<p v-if="error" class="mb-4 alerte-erreur" role="alert">{{ error }}</p>
 
 	<p v-if="loading" class="text-sm font-light text-gray-500">Chargement…</p>

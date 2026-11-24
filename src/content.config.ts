@@ -84,6 +84,8 @@ const news = defineCollection({
 			activite: z.string().optional(),
 			/** Blocs placés dans le texte (photos, vidéo, carrousel…). */
 			blocs: blocsSchema(),
+			/** Diffusions sur les réseaux sociaux, écrites par le serveur (plugin `diffusion`, `src/lib/diffusion.ts`). */
+			diffusion: z.record(z.string(), z.object({ id: z.string(), date: z.union([z.string(), z.date()]), lien: z.string().optional(), par: z.string().optional() })).optional(),
 		}),
 });
 

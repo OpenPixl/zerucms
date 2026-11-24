@@ -43,6 +43,7 @@
     "hast-util-to-html": "^9.0.5",
     "mdast-util-from-markdown": "^2.1.0",
     "mdast-util-to-hast": "^13.2.1",
+    "nodemailer": "^7.0.13",
     "qrcode": "^1.5.4",
     "tailwindcss": "^4.3.3",
     "vue": "^3.5.42",
@@ -55,6 +56,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@types/node": "^22.20.1",
+    "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.6",
     "esbuild": "^0.28.2",
     "typescript": "^6.0.3"

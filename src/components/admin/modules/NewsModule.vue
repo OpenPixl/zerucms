@@ -15,7 +15,7 @@
  * reconstruit, la modification rejoint le lot en attente (`../lot.ts`).
  * L'aperçu du frontmatter est indicatif ; le serveur fait la vraie validation.
  */
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, toRaw } from 'vue';
+import { computed, defineAsyncComponent, inject, onBeforeUnmount, onMounted, reactive, ref, toRaw } from 'vue';
 import type { Bloc } from '../../../lib/blocs';
 import BlocsEditor from './pages/BlocsEditor.vue';
 import { fournirBlocPhotos } from './pages/bloc-photos';
@@ -30,7 +30,9 @@ import PublishStatus from '../PublishStatus.vue';
 import SeoLength from '../SeoLength.vue';
 import { ApiError, newsApi, type CoverUpdate, type NewsFields, type NewsItem } from '../client';
 import { ADMIN_CONTEXT, inputClass, rememberOpenModule, takeModuleToReopen } from '../context';
-import { EDIT_TABS, useFormTabs, type EditTab } from '../form-tabs';
+import { EDIT_TABS, useFormTabs, type EditTab, type FormTab } from '../form-tabs';
+import { outilActif } from '../../../plugins/index';
+import type { Diffusion } from '../../../lib/diffusion';
 import { isDeferredSubmit, isPendingHref } from '../lot';
 import { contentKindProblem, takePendingImport } from '../content-import';
 import { parseMarkdownFile, readMarkdownFile, textField } from '../markdown-file';
@@ -237,7 +239,34 @@ async function remove(item: NewsItem, deferred: boolean) {
 // --- Édition ---
 
 /** Actualité en cours d'édition (slug = dossier, inchangé). */
-const editing = ref<{ slug: string; title: string; coverUrl: string | null; hasCover: boolean; cover: string | null } | null>(null);
+const editing = ref<{
+	slug: string;
+	title: string;
+	coverUrl: string | null;
+	hasCover: boolean;
+	cover: string | null;
+	/** Valeurs enregistrées utiles à l'onglet « Diffusion » (version en ligne). */
+	excerpt: string;
+	isPublish: boolean;
+	publishAt: string;
+	body: string;
+	diffusion: Diffusion;
+} | null>(null);
+
+/** Onglet « Diffusion » (plugin diffusion, outil Facebook allumé) : réseaux sociaux. */
+const diffusionActive = outilActif('diffusion', 'facebook');
+const DiffusionActualite = diffusionActive ? defineAsyncComponent(() => import('../../../plugins/diffusion/admin/DiffusionActualite.vue')) : null;
+const editTabs = computed<readonly FormTab[]>(() =>
+	diffusionActive ? [...EDIT_TABS, { id: 'diffusion', label: 'Diffusion', icon: 'fa-share-nodes' }] : EDIT_TABS,
+);
+/** Formulaire modifié depuis l'ouverture (la diffusion porte sur la version en ligne). */
+const editModifie = computed(() => {
+	const e = editing.value;
+	return Boolean(
+		e &&
+			(editForm.title !== e.title || editForm.excerpt !== e.excerpt || editForm.body !== e.body || editForm.isPublish !== e.isPublish || editForm.publishAt !== e.publishAt),
+	);
+});
 /** Zone du texte (curseur, pour `LinkPicker`). */
 const bodyField = ref<HTMLTextAreaElement | null>(null);
 const editForm = reactive<NewsFields & { body: string }>({
@@ -251,7 +280,7 @@ const editForm = reactive<NewsFields & { body: string }>({
 	body: '',
 });
 const coverAction = ref<'keep' | 'replace' | 'remove'>('keep');
-const { tab: editTab, onInvalid } = useFormTabs<EditTab>('ed', 'infos');
+const { tab: editTab, onInvalid } = useFormTabs<EditTab | 'diffusion'>('ed', 'infos');
 /** Blocs placés dans le texte (photos, vidéo, carrousel…), vignettes des photos publiées. */
 const blocs = reactive<Record<string, Bloc>>({});
 const apercus = reactive<Record<string, string>>({});
@@ -341,7 +370,18 @@ async function openEdit(item: NewsItem) {
 		blocPhotos.liberer();
 		for (const k of Object.keys(apercus)) delete apercus[k];
 		Object.assign(apercus, source.blocPhotoUrls ?? {});
-		editing.value = { slug: source.slug, title: source.title, coverUrl: source.coverUrl, hasCover: Boolean(source.cover), cover: source.cover };
+		editing.value = {
+			slug: source.slug,
+			title: source.title,
+			coverUrl: source.coverUrl,
+			hasCover: Boolean(source.cover),
+			cover: source.cover,
+			excerpt: source.excerpt,
+			isPublish: source.isPublish,
+			publishAt: source.publishAt,
+			body: source.body,
+			diffusion: source.diffusion ?? {},
+		};
 		coverAction.value = 'keep';
 		editTab.value = 'infos';
 		imported.value = null;
@@ -441,9 +481,7 @@ onMounted(async () => {
 				Voir la page Actualités <i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
 			</a>
 		</div>
-		<p v-if="!availability.ok" class="mb-4 alerte-attention">
-			{{ availability.reason }}
-		</p>
+		<p v-if="!availability.ok" class="mb-4 text-sm text-gray-500"><i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>{{ availability.reason }}</p>
 
 		<p v-if="loading" class="text-sm font-light text-gray-500">Chargement…</p>
 		<p v-else-if="news.length === 0" class="text-sm font-light text-gray-500">Aucune actualité pour l'instant.</p>
@@ -510,8 +548,7 @@ onMounted(async () => {
 				</button>
 			</div>
 			<p class="champ-aide">
-				Le modèle est daté du jour : complétez-le dans un éditeur de texte puis déposez-le ici, avec les photos qu'il cite
-				(ou le tout en .zip).
+				Complétez le modèle puis déposez-le ici, avec ses photos (ou le tout en .zip).
 			</p>
 			<label
 				class="mt-2 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-4 py-6 text-center text-sm transition-colors"
@@ -528,7 +565,7 @@ onMounted(async () => {
 
 			<div v-if="mdFile" class="mt-3 rounded-xl bg-gray-100 p-4 text-sm">
 				<p v-if="!preview" class="text-red-700">
-					En-tête (frontmatter) introuvable : le fichier doit commencer par un bloc <code>---</code> … <code>---</code>.
+					Ce fichier n'a pas la forme attendue : partez du modèle à télécharger.
 				</p>
 				<template v-else>
 					<p class="font-heading font-semibold text-gray-900">{{ preview.title || '(sans titre)' }}</p>
@@ -571,14 +608,12 @@ onMounted(async () => {
 				<input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" @change="pickPhoto(($event.target as HTMLInputElement).files?.[0])" />
 			</label>
 			<p v-if="photo" class="champ-aide">
-				{{ photo.name }} — la position GPS et les autres métadonnées sont retirées à l'envoi.
+				{{ photo.name }}
 			</p>
 		</div>
 
 		<p class="text-xs font-light text-gray-500">
-			À l'envoi, le site est reconstruit (environ une minute) : l'actualité apparaît ensuite sur la page Actualités,
-			l'accueil et le flux RSS. « Enregistrer sans publier » : elle attend les autres modifications pour être publiée
-			avec elles, en une fois.
+			L'actualité est en ligne environ une minute après l'envoi.
 		</p>
 		<div class="flex flex-wrap items-center gap-3">
 			<PublishButtons label="Publier l’actualité" :busy="busy" :disabled="!mdFile || !preview || missing.length > 0" />
@@ -591,10 +626,10 @@ onMounted(async () => {
 		<div>
 			<EditFileBar :imported="imported" @download="downloadFile" @load="loadFile">
 				<p class="mb-3 text-xs font-light text-gray-500">
-					Adresse de la page (inchangée) : <code class="font-mono">/actualites/{{ editing.slug }}</code>
+					Adresse de la page : /actualites/{{ editing.slug }}
 				</p>
 			</EditFileBar>
-			<FormTabs v-model="editTab" :tabs="EDIT_TABS" prefix="ed" />
+			<FormTabs v-model="editTab" :tabs="editTabs" prefix="ed" />
 
 			<div v-show="editTab === 'infos'" id="ed-panel-infos" role="tabpanel" aria-labelledby="ed-tab-infos" class="space-y-4">
 				<div>
@@ -645,8 +680,7 @@ onMounted(async () => {
 					<textarea id="ed-body" ref="bodyField" v-model="editForm.body" rows="6" required :class="[inputClass, 'font-mono text-sm leading-relaxed']"></textarea>
 					<p class="champ-aide">
 						<code>## Sous-titre</code>, <code>**gras**</code>, <code>*italique*</code>, <code>- liste</code>,
-						<code>[lien](https://…)</code>. Le HTML est accepté (tableaux, encadrés, vidéos YouTube/Vimeo…) ; le code
-						exécutable (scripts…) est retiré à l'affichage.
+						<code>[lien](https://…)</code>.
 					</p>
 					<LinkPicker v-model="editForm.body" :field="bodyField" />
 				</div>
@@ -692,12 +726,24 @@ onMounted(async () => {
 					<input id="ed-credit" v-model="editForm.imageCredit" type="text" placeholder="Photo : Prénom Nom" :class="inputClass" />
 				</div>
 			</div>
+
+			<div v-if="DiffusionActualite" v-show="editTab === 'diffusion'" id="ed-panel-diffusion" role="tabpanel" aria-labelledby="ed-tab-diffusion">
+				<component
+					:is="DiffusionActualite"
+					:slug="editing.slug"
+					:titre="editing.title"
+					:resume="editing.excerpt"
+					:is-publish="editing.isPublish"
+					:publish-at="editing.publishAt"
+					:diffusion="editing.diffusion"
+					:modifie="editModifie"
+					@diffusee="(d: Diffusion) => editing && (editing.diffusion = d)"
+				/>
+			</div>
 		</div>
 
 		<p class="text-xs font-light text-gray-500">
-			« Enregistrer et publier » reconstruit le site (environ une minute) ; si la reconstruction échoue, la version
-			actuelle est conservée. « Enregistrer sans publier » : la modification attend les autres pour être publiée avec
-			elles, en une fois.
+			La modification est en ligne environ une minute après l'enregistrement.
 		</p>
 		<div class="flex flex-wrap items-center gap-3">
 			<PublishButtons :busy="busy" :disabled="!editForm.title || !editForm.publishAt || !editForm.excerpt || !editForm.body" />

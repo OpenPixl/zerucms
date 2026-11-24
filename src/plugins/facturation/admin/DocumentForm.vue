@@ -151,7 +151,7 @@ async function clientCree(id: number) {
 	<p v-if="notice" class="mb-4 alerte-succes" role="status">{{ notice }}</p>
 
 	<!-- Demande en ligne : message du client -->
-	<div v-if="devis?.message" class="mb-4 alerte-attention">
+	<div v-if="devis?.message" class="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
 		<p class="font-semibold">Message du client</p>
 		<p class="mt-1 whitespace-pre-line">{{ devis.message }}</p>
 	</div>
@@ -249,18 +249,17 @@ async function clientCree(id: number) {
 	</form>
 
 	<!-- Confirmations -->
-	<div v-if="confirmation === 'emettre'" class="mt-4 alerte-attention" role="alert">
+	<div v-if="confirmation === 'emettre'" class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700" role="alert">
 		<p class="font-semibold">Émettre la facture ?</p>
 		<p class="mt-1">
-			Elle reçoit le numéro suivant de l'année et la date du jour ; elle ne pourra plus être modifiée ni supprimée (une erreur se
-			corrige ensuite par une facture d'avoir). Total : <strong>{{ euros(form.lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire, 0)) }}</strong>.
+			Elle reçoit son numéro et la date du jour, puis ne pourra plus être modifiée ni supprimée. Total : <strong>{{ euros(form.lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire, 0)) }}</strong>.
 		</p>
 		<div class="mt-3 flex flex-wrap gap-3">
 			<button type="button" class="bouton bouton-primaire" :disabled="busy" @click="emettre">Émettre</button>
 			<button type="button" class="text-sm text-gray-700 hover:underline" @click="confirmation = ''">Annuler</button>
 		</div>
 	</div>
-	<div v-if="confirmation === 'supprimer'" class="mt-4 alerte-attention" role="alert">
+	<div v-if="confirmation === 'supprimer'" class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700" role="alert">
 		<p class="font-semibold">Supprimer {{ estDevis ? 'ce devis' : 'ce brouillon de facture' }} ?</p>
 		<div class="mt-3 flex flex-wrap gap-3">
 			<button type="button" class="bouton bouton-danger" :disabled="busy" @click="supprimer">Supprimer</button>

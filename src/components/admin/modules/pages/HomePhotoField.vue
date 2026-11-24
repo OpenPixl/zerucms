@@ -81,8 +81,7 @@ const fileButtonClass =
 		</div>
 		<p v-if="props.draft.error" class="text-xs text-red-700" role="alert">{{ props.draft.error }}</p>
 		<p class="text-xs font-light text-gray-500">
-			Paysage, au moins 1 600 px de large ; JPEG, PNG ou WebP, 10 Mo max. Le texte s'affiche par-dessus : réglez le « voile » ci-dessous
-			pour qu'il reste lisible.
+			Photo en paysage (JPEG, PNG ou WebP, 10 Mo max). Si le texte se lit mal, foncez le « voile » ci-dessous.
 		</p>
 	</div>
 </template>

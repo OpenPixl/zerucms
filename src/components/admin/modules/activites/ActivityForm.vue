@@ -308,7 +308,7 @@ async function submit(event: Event) {
 							<option v-for="c in props.categories" :key="c.slug" :value="c.slug">{{ c.label }}</option>
 						</select>
 						<p v-if="!editing || categoryChanged" class="champ-aide">
-							L'activité se place en dernière position{{ categoryLabel ? ` de « ${categoryLabel} »` : '' }} ; les flèches ↑/↓ de la liste changent l'ordre.
+							Elle se place en fin de liste{{ categoryLabel ? ` « ${categoryLabel} »` : '' }}.
 						</p>
 					</div>
 					<div>
@@ -328,9 +328,8 @@ async function submit(event: Event) {
 							/>
 						</div>
 						<p v-if="!editing" class="champ-aide">Déduite du titre ; ne change plus après la création.</p>
-						<p v-if="categoryChanged" class="mt-1 text-xs text-amber-800">
-							La catégorie change : l'adresse devient /activites/{{ form.category }}/{{ slug }}, les liens vers l'ancienne ne
-							fonctionneront plus.
+						<p v-if="categoryChanged" class="champ-aide">
+							Nouvelle adresse : /activites/{{ form.category }}/{{ slug }} (les liens vers l'ancienne ne marcheront plus).
 						</p>
 					</div>
 					<label class="flex items-center gap-2 text-sm text-gray-700">
@@ -357,17 +356,17 @@ async function submit(event: Event) {
 					<template v-else>
 						<div>
 							<label for="act-grist" class="champ-libelle">
-								Activité(s) Grist visée(s) <span class="font-light text-gray-500">(facultatif, une par ligne)</span>
+								Activité(s) concernée(s) <span class="font-light text-gray-500">(facultatif, une par ligne)</span>
 							</label>
 							<textarea id="act-grist" v-model="form.activiteGrist" rows="6" :placeholder="form.title" :class="inputClass"></textarea>
 							<p class="champ-aide">
-								Nom exact de la colonne « Nom » de la table Activite ; terminer par <code>*</code> pour viser tous les noms qui
-								commencent ainsi (ex. <code>Initiation*</code>). Vide : le titre de la fiche.
+								Nom de l'activité tel qu'il est écrit dans votre tableau Grist. Ajoutez * à la fin pour toutes celles qui
+								commencent ainsi (ex. Initiation*). Vide : le titre de la fiche.
 							</p>
 						</div>
 						<div>
 							<label for="act-type" class="champ-libelle">
-								Type Grist visé <span class="font-light text-gray-500">(facultatif)</span>
+								Type d'activité <span class="font-light text-gray-500">(facultatif)</span>
 							</label>
 							<select id="act-type" v-model="form.typeGrist" :class="inputClass">
 								<option value="">Aucun</option>
@@ -385,7 +384,7 @@ async function submit(event: Event) {
 					<textarea id="act-body" ref="bodyField" v-model="form.body" rows="6" required :class="[inputClass, 'font-mono text-sm leading-relaxed']"></textarea>
 					<p class="champ-aide">
 						<code>## Titre de section</code> (alimente le sommaire), <code>**gras**</code>, <code>*italique*</code>,
-						<code>- liste</code>, <code>[lien](/contact)</code>. Le HTML est accepté (tableaux, encadrés…).
+						<code>- liste</code>, <code>[lien](/contact)</code>.
 					</p>
 					<LinkPicker v-model="form.body" :field="bodyField" />
 				</div>
@@ -435,13 +434,12 @@ async function submit(event: Event) {
 						Actualité dédiée
 					</h3>
 					<p class="text-sm font-light text-gray-600">
-						Crée une actualité datée du jour qui reprend le titre, le résumé, la catégorie, le texte et la photo de la
-						fiche. Sur le site, elle se termine par un bouton « S'inscrire » et un lien vers la fiche. Vous pourrez la
-						retoucher ensuite dans le module « Actualités ».
+						Crée une actualité à partir de cette fiche, avec un bouton « S'inscrire ». Vous pourrez la retoucher dans
+						« Actualités ».
 					</p>
-					<p class="champ-aide">C'est la fiche <strong>enregistrée</strong> qui sert de modèle : enregistrez d'abord vos modifications en cours.</p>
-					<p v-if="!editing.isPublish" class="alerte-attention text-sm">
-						Cette activité est un brouillon : tant qu'elle n'est pas publiée, l'actualité n'affichera ni « S'inscrire » ni le lien vers la fiche.
+					<p class="champ-aide">
+						Pensez à enregistrer la fiche avant.<template v-if="!editing.isPublish"> Tant qu'elle est en brouillon, l'actualité n'aura
+						pas de bouton « S'inscrire ».</template>
 					</p>
 					<div class="flex flex-wrap items-center gap-3">
 						<button type="button" class="bouton bouton-primaire" :disabled="props.disabled || sharing || busy" @click="createNews(false)">

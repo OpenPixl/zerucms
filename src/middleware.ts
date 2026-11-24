@@ -32,9 +32,12 @@ const GUARDS: { prefix: string; groups: AuthGroup[]; message: string; noAdmin?: 
 	...EXTENSIONS.flatMap((e) => (e.gardes ?? []).map((g) => ({ prefix: g.prefixe, groups: g.groupes, message: g.message }))),
 	// Plugin facturation (routes ajoutées seulement s'il est actif).
 	{ prefix: '/api/admin/facturation', groups: ['admin'], message: 'La facturation est réservée aux administrateur·rice·s.' },
+	// Plugin diffusion (réseaux sociaux) : celles et ceux qui publient les actualités.
+	{ prefix: '/api/admin/diffusion', groups: ['redacteur'], message: 'La diffusion des actualités est réservée aux rédacteur·rice·s.' },
 	{ prefix: '/api/admin/comptes', groups: ['admin'], message: 'La gestion des comptes est réservée au bureau.' },
 	{ prefix: '/api/admin/version', groups: ['admin'], message: 'Réservé au bureau.' },
 	{ prefix: '/api/admin/maintenance', groups: ['admin'], message: 'Le mode maintenance est réservé au bureau.' },
+	{ prefix: '/api/admin/email', groups: ['admin'], message: 'Le compte e-mail du site est réservé au bureau.' },
 	{ prefix: '/api/admin/association', groups: ['admin'], message: "Les informations de l'association sont réservées au bureau." },
 	{ prefix: '/api/admin/charte', groups: ['admin'], message: 'La charte graphique est réservée au bureau.' },
 	{ prefix: '/api/admin/actualites', groups: ['redacteur'], message: 'La publication des actualités est réservée aux rédacteur·rice·s.' },

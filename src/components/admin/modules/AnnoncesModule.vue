@@ -156,7 +156,7 @@ const STATES: Record<AnnonceState, { label: string; className: string }> = {
 		@cancel-reload="cancelReload"
 		@publish-lot="publishLot"
 	/>
-	<p v-if="!availability.ok" class="mb-4 alerte-attention">{{ availability.reason }}</p>
+	<p v-if="!availability.ok" class="mb-4 text-sm text-gray-500"><i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>{{ availability.reason }}</p>
 	<p v-if="error" class="mb-4 alerte-erreur" role="alert">{{ error }}</p>
 
 	<template v-if="view.name === 'list'">
@@ -181,7 +181,7 @@ const STATES: Record<AnnonceState, { label: string; className: string }> = {
 			</form>
 
 			<p v-if="!annonces.length" class="text-sm font-light text-gray-500">
-				Aucune annonce. Une annonce s'affiche en bannière au-dessus du menu, sur toutes les pages, pendant sa période.
+				Aucune annonce pour l'instant.
 			</p>
 			<div v-else class="overflow-hidden rounded-xl border border-gray-200">
 				<p class="border-b border-gray-100 bg-gray-100 px-4 py-2 text-xs text-gray-500">Dans l'ordre de défilement de la bannière</p>

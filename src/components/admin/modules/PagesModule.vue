@@ -18,7 +18,6 @@ const { pages } = inject(ADMIN_CONTEXT)!;
 		</li>
 	</ul>
 	<p v-else class="text-sm font-light text-gray-500">
-		Aucune page réservée pour l'instant. Une page de contenu devient réservée avec <code>access:</code> dans son
-		frontmatter (voir le guide des éditeurs).
+		Aucune page réservée pour l'instant.
 	</p>
 </template>

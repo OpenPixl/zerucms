@@ -5,7 +5,8 @@
 #     master, puis la CI complète (ci.yml) ;
 #  2. image Docker publiée sur GitHub Container Registry :
 #     ghcr.io/<propriétaire>/<dépôt>:X.Y.Z (minuscules), ex. ghcr.io/openpixl/zerucms:X.Y.Z, :X.Y et :latest ;
-#  3. « Release » GitHub : notes = commits depuis la version précédente,
+#  3. « Release » GitHub : notes = nouveautés de .github/notes/<tag>.md (si présent)
+#     puis commits depuis la version précédente,
 #     archive des sources (installations Node seul) fournie par GitHub.
 
 name: Publication d'une version
@@ -108,6 +109,13 @@ jobs:
           precedent=$(git describe --tags --abbrev=0 --match 'v*.*.*' "${GITHUB_REF_NAME}^" 2>/dev/null || true)
           image="ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_REF_NAME#v}"
           {
+            # Nouveautés écrites à la main (texte simple, pour les structures) : .github/notes/<tag>.md
+            if [ -f ".github/notes/${GITHUB_REF_NAME}.md" ]; then
+              echo "## Nouveautés"
+              echo
+              cat ".github/notes/${GITHUB_REF_NAME}.md"
+              echo
+            fi
             echo "## Mettre à jour"
             echo
             echo "- **Docker** : \`./update.sh ${GITHUB_REF_NAME}\` (image \`$image\`)."

@@ -22,9 +22,10 @@ import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:
 import { join, resolve } from 'node:path';
 import { SITE_ROOT } from 'astro:env/server';
 import sharp from 'sharp';
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { isScalar, parse as parseYaml, parseDocument, stringify as stringifyYaml } from 'yaml';
 import { BLOC_PHOTO_ERREUR, BlocPhotoError, ecrireBlocPhotos, marqueursSansBloc, preparerBlocs, type PhotosEnvoyees } from './bloc-writer';
 import type { Bloc } from './blocs';
+import { lireDiffusion, type Diffusion, type Reseau, type TraceDiffusion } from './diffusion';
 import { checkBody } from './markdown-check';
 import { isSafeUrl } from './safe-url';
 
@@ -79,6 +80,8 @@ interface NewsFrontmatter {
 	activite?: string;
 	/** Blocs tels que lus (validés et leurs photos préparées par `preparerBlocs()` à l'écriture). */
 	blocs?: Record<string, unknown>;
+	/** Diffusions sur les réseaux sociaux : jamais lues d'un fichier déposé, gardées à la modification. */
+	diffusion?: Diffusion;
 }
 
 /** Nom de dossier d'une fiche d'activité (`activite:` d'une actualité). */
@@ -230,6 +233,8 @@ export interface NewsSource {
 	activite: string;
 	/** Blocs tels qu'ils sont dans les sources. */
 	blocs: Record<string, unknown>;
+	/** Diffusions sur les réseaux sociaux (plugin `diffusion`, cf. `diffusion.ts`). */
+	diffusion: Diffusion;
 	body: string;
 	/** Valeur `cover:` actuelle (`./cover.jpg`), ou `null` sans photo. */
 	cover: string | null;
@@ -269,6 +274,7 @@ export async function readNewsSource(slug: string): Promise<NewsSource | null> {
 		imageCredit: str(raw.imageCredit),
 		activite: str(raw.activite),
 		blocs: raw.blocs && typeof raw.blocs === 'object' && !Array.isArray(raw.blocs) ? (raw.blocs as Record<string, unknown>) : {},
+		diffusion: lireDiffusion(raw.diffusion),
 		body: match ? text.slice(match[0].length).trim() : text.trim(),
 		cover,
 	};
@@ -308,6 +314,8 @@ export async function updateNews(
 	if (prepares.errors.length || manquants) return { errors: [...prepares.errors, ...(manquants ? [manquants] : [])] };
 	// Le formulaire du module n'a pas de champ « activité » : le lien est gardé.
 	frontmatter.activite ??= current.activite || undefined;
+	// Trace des diffusions (réseaux sociaux) : écrite par le serveur seulement, gardée.
+	if (Object.keys(current.diffusion).length) frontmatter.diffusion = current.diffusion;
 
 	const dir = join(newsSourceDir(), slug);
 	const tmp = workDir(`edition-${slug}`);
@@ -376,4 +384,26 @@ export async function setAsideNews(
 		purge: () => rm(aside, { recursive: true, force: true }),
 		restore: () => rename(aside, source),
 	};
+}
+
+/**
+ * Note une diffusion réussie dans l'en-tête de l'actualité (`diffusion.<réseau>`),
+ * modifié en place (le reste du fichier est inchangé). Ne touche pas au site
+ * en ligne : le champ ne change rien à l'affichage.
+ */
+export async function enregistrerDiffusion(slug: string, reseau: Reseau, trace: TraceDiffusion): Promise<void> {
+	if (!NEWS_SLUG.test(slug)) throw new Error('Actualité introuvable.');
+	const fichier = join(newsSourceDir(), slug, 'index.md');
+	const texte = (await readFile(fichier, 'utf8')).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+	const match = texte.match(/^---\n([\s\S]*?)\n---(?:\n|$)/);
+	if (!match) throw new Error("En-tête de l'actualité introuvable.");
+	const doc = parseDocument(match[1]);
+	if (doc.errors.length) throw new Error(`En-tête de l'actualité illisible : ${doc.errors[0].message}`);
+	// Valeurs entre guillemets : un identifiant comme 123_456 serait lu comme un nombre (YAML 1.1 du build).
+	const noeud = doc.createNode({ ...trace });
+	for (const paire of noeud.items) if (isScalar(paire.value)) paire.value.type = 'QUOTE_DOUBLE';
+	doc.setIn(['diffusion', reseau], noeud);
+	const tmp = `${fichier}.diffusion.tmp`;
+	await writeFile(tmp, `---\n${doc.toString({ lineWidth: 0 })}---\n${texte.slice(match[0].length)}`, 'utf8');
+	await rename(tmp, fichier);
 }

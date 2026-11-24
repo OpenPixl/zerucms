@@ -78,8 +78,7 @@ async function submit(event: Event) {
 <template>
 	<form class="space-y-5" @submit.prevent="submit">
 		<p class="text-sm font-light text-gray-600">
-			Une catégorie regroupe des activités (comme « Ateliers ») : elle a sa carte sur l'accueil et sur la page Activités, et sa
-			propre page qui liste ses activités.
+			Une catégorie (comme « Ateliers ») regroupe des activités sur sa propre page.
 		</p>
 		<p v-if="error" class="alerte-erreur" role="alert">{{ error }}</p>
 
@@ -104,8 +103,7 @@ async function submit(event: Event) {
 				/>
 			</div>
 			<p v-if="!editing" class="champ-aide">
-				Déduite du nom ; ne change plus après la création. La catégorie se place en dernière position ; les flèches ↑/↓ de la
-				liste changent l'ordre.
+				Déduite du nom ; ne change plus ensuite.
 			</p>
 		</div>
 

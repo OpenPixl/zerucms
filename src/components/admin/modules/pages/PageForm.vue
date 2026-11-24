@@ -331,7 +331,7 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 			>
 				<i class="fa-solid fa-file-arrow-up text-2xl text-gray-400" aria-hidden="true"></i>
 				<span class="text-gray-600">Glissez votre fichier ici (avec ses photos, ou en .zip) ou <span class="text-primary underline">parcourez</span></span>
-				<span class="text-xs font-light text-gray-500">Le formulaire est pré-rempli : vous vérifiez, choisissez l'emplacement, puis publiez.</span>
+				<span class="text-xs font-light text-gray-500">Le formulaire se remplit : il ne reste qu'à vérifier et publier.</span>
 				<input type="file" :accept="DEPOT_ACCEPT" multiple class="sr-only" @change="pickMarkdown([...(($event.target as HTMLInputElement).files ?? [])])" />
 			</label>
 			<p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
@@ -354,8 +354,8 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 				<li v-for="w in imported.warnings" :key="w">{{ w }}</li>
 			</ul>
 		</div>
-		<p v-if="editing?.technique" class="alerte-attention">
-			Page technique (.mdx) : elle se modifie dans le code, pas ici.
+		<p v-if="editing?.technique" class="text-sm text-gray-500">
+			<i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>Cette page ne se modifie pas depuis l'Espace Admin.
 		</p>
 		<p v-if="error" class="alerte-erreur" role="alert">{{ error }}</p>
 
@@ -414,9 +414,8 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 								@input="onSlugInput"
 							/>
 						</div>
-						<p v-if="pathChanged" class="mt-1 text-xs text-amber-800">
-							L'adresse change (/{{ editing!.path }} → /{{ path }}) : les liens existants vers l'ancienne adresse ne
-							fonctionneront plus.
+						<p v-if="pathChanged" class="champ-aide">
+							Nouvelle adresse : /{{ path }} (les liens vers l'ancienne ne marcheront plus).
 						</p>
 					</div>
 
@@ -454,7 +453,7 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 					></textarea>
 					<p class="champ-aide">
 						<code>## Titre de section</code> (alimente le sommaire), <code>**gras**</code>, <code>*italique*</code>,
-						<code>- liste</code>, <code>[lien](/contact)</code>. Le HTML est accepté (tableaux, encadrés…).
+						<code>- liste</code>, <code>[lien](/contact)</code>.
 					</p>
 					<details class="mt-2 text-xs text-gray-600">
 						<summary class="cursor-pointer font-medium text-primary">Insérer une information de l'association</summary>

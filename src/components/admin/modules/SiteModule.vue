@@ -6,9 +6,20 @@
  * en maintenance avec un message libre, levée. Les membres connectés
  * continuent de voir le site. Serveur : route `/api/admin/maintenance`,
  * logique `scripts/maintenance.mjs` (aucune reconstruction du site).
+ * Deux onglets (`FormTabs`) : Maintenance et E-mails (**compte e-mail** du site (envoi d'e-mails : serveur SMTP,
+ * identifiants masqués, vérification, e-mail de test) : `ConnexionPlugin.vue`
+ * avec `emailApi`, route `/api/admin/email`, logique `src/lib/email.ts`).
  */
 import { computed, inject, onMounted, ref } from 'vue';
-import { ApiError, installationApi, maintenanceApi, type MaintenanceEtat } from '../client';
+import { ApiError, emailApi, installationApi, maintenanceApi, type MaintenanceEtat } from '../client';
+import ConnexionPlugin from './plugins/ConnexionPlugin.vue';
+import FormTabs from '../FormTabs.vue';
+
+const TABS = [
+	{ id: 'maintenance', label: 'Maintenance', icon: 'fa-screwdriver-wrench' },
+	{ id: 'email', label: 'E-mails', icon: 'fa-envelope' },
+] as const;
+const tab = ref<(typeof TABS)[number]['id']>('maintenance');
 import { ADMIN_CONTEXT, inputClass } from '../context';
 import { enMaintenance } from '../maintenance';
 
@@ -76,28 +87,43 @@ const lever = () => act(() => maintenanceApi.lever(restauration.value), 'Le site
 
 onMounted(charger);
 
+/** E-mail de test : destinataire (par défaut, l'adresse du compte connecté). */
+const testA = ref(user.value?.email ?? '');
+const testBusy = ref(false);
+const testErreur = ref('');
+const testSucces = ref('');
+async function envoyerTest() {
+	testErreur.value = testSucces.value = '';
+	testBusy.value = true;
+	try {
+		await emailApi.tester(testA.value.trim());
+		testSucces.value = `E-mail envoyé à ${testA.value.trim()} : vérifiez la boîte de réception (et les indésirables).`;
+	} catch (e) {
+		if (e instanceof ApiError && e.status === 401) return sessionExpired();
+		testErreur.value = (e as Error).message;
+	} finally {
+		testBusy.value = false;
+	}
+}
+
 const dateFr = (iso: string) =>
 	new Date(iso).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 </script>
 
 <template>
-	<p class="mb-4 text-sm font-light text-gray-600">Réglages techniques du site en ligne.</p>
-	<div v-if="installationRequise" class="mb-6 alerte-attention flex flex-wrap items-center gap-3" role="status">
+	<div v-if="installationRequise" class="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700" role="status">
 		<span class="flex-1">L'installation du site n'est pas terminée.</span>
 		<button type="button" class="bouton bouton-primaire" @click="reprendreInstallation">
 			<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>Assistant d'installation
 		</button>
 	</div>
 
-	<section aria-labelledby="site-maintenance">
-		<h3 id="site-maintenance" class="mb-2 flex items-center gap-2 font-heading text-base font-semibold text-gray-900">
-			<i class="fa-solid fa-screwdriver-wrench text-primary" aria-hidden="true"></i>Mode maintenance
-		</h3>
+	<FormTabs v-model="tab" :tabs="TABS" prefix="site" />
+
+	<section v-show="tab === 'maintenance'" id="site-panel-maintenance" role="tabpanel" aria-labelledby="site-tab-maintenance">
 		<p class="mb-4 text-sm font-light text-gray-600">
-			En maintenance, les visiteurs voient une page « Site en maintenance » avec votre message à la place du site. Les membres
-			connectés à l'Espace Admin continuent de voir le site normalement (connexion possible depuis la page de maintenance).
-			Utile pendant une réorganisation du contenu ou une intervention sur le serveur. Une restauration de sauvegarde y met
-			le site d'elle-même, avec une barre de progression.
+			Les visiteurs voient une page « Site en maintenance » avec votre message ; une fois connecté·e, vous voyez le site
+			normalement.
 		</p>
 
 		<p v-if="error" class="mb-4 alerte-erreur" role="alert">{{ error }}</p>
@@ -148,10 +174,9 @@ const dateFr = (iso: string) =>
 				<button v-if="!confirmerLevee" type="button" class="bouton bouton-danger-contour" :disabled="busy" @click="confirmerLevee = true">
 					Lever la maintenance quand même
 				</button>
-				<div v-else class="alerte-attention" role="alert">
+				<div v-else class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700" role="alert">
 					<p>
-						Les visiteurs verront de nouveau le site actuel pendant que la reconstruction continue ; le site restauré le
-						remplacera à la fin. À réserver à une restauration bloquée.
+						Les visiteurs reverront l'ancien site jusqu'à la fin de la restauration. À utiliser seulement si elle semble bloquée.
 					</p>
 					<div class="mt-3 flex flex-wrap gap-3">
 						<button type="button" class="bouton bouton-danger" :disabled="busy" @click="lever">Lever la maintenance</button>
@@ -190,5 +215,33 @@ const dateFr = (iso: string) =>
 				</div>
 			</form>
 		</template>
+	</section>
+
+	<section v-show="tab === 'email'" id="site-panel-email" role="tabpanel" aria-labelledby="site-tab-email">
+		<p class="mb-4 text-sm font-light text-gray-600">
+			Le compte e-mail avec lequel le site envoie ses messages. Ces informations sont fournies par votre messagerie
+			(hébergeur, Gmail, Outlook…).
+		</p>
+		<ConnexionPlugin plugin="email" titre="Compte e-mail" :api="emailApi" @session-expiree="sessionExpired" />
+
+		<form class="mt-4 rounded-xl border border-gray-200 p-4" @submit.prevent="envoyerTest">
+			<label for="site-email-test" class="champ-libelle">Envoyer un e-mail de test à</label>
+			<div class="mt-1 flex flex-wrap gap-2">
+				<input
+					id="site-email-test"
+					v-model="testA"
+					type="email"
+					required
+					autocomplete="email"
+					placeholder="vous@exemple.fr"
+					:class="[inputClass, 'min-w-0 flex-1']"
+				/>
+				<button type="submit" class="bouton bouton-contour" :disabled="testBusy">
+					<i class="fa-solid" :class="testBusy ? 'fa-spinner fa-spin' : 'fa-paper-plane'" aria-hidden="true"></i>Envoyer
+				</button>
+			</div>
+			<p v-if="testErreur" class="mt-3 alerte-erreur" role="alert">{{ testErreur }}</p>
+			<p v-if="testSucces" class="mt-3 alerte-succes" role="status">{{ testSucces }}</p>
+		</form>
 	</section>
 </template>

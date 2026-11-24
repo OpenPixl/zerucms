@@ -65,7 +65,7 @@ watch(
 					type="button"
 					class="rounded px-2 py-1 font-medium text-red-700 ring-1 ring-red-200 hover:bg-white disabled:opacity-50"
 					:disabled="props.disabled"
-					title="Supprimer sans reconstruire le site : la suppression rejoint les modifications en attente de publication."
+					title="Supprimer sans publier tout de suite (rejoint les modifications à publier)"
 					@click="emit('confirm', true)"
 				>
 					Sans publier

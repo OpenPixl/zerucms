@@ -41,6 +41,7 @@ import {
 import { FORMATS, normaliserChamp, type ChampPlugin } from '../plugins/champs';
 import { outilActif, pluginActif } from '../plugins';
 import type { Applied } from './content-transaction';
+import { lireConnexion, valeurConnexion } from './connexions';
 import { adresseOccupee } from './page-writer';
 import { extensionActive, type ExtensionInfo } from './extensions';
 import { adressesPluginsActifs, contentDir, extensionsSources, valeurA } from './plugin-adresses';
@@ -96,6 +97,8 @@ export interface PluginState {
 	/** Outils allumés ou éteints un à un (plugins seulement). */
 	outils: OutilState[];
 	champs: ChampState[];
+	/** Connexion à un service extérieur (`connexion` du catalogue), gérée à part : `/api/admin/plugins/connexion`. */
+	connexion: boolean;
 }
 
 const existe = (fichier: string) =>
@@ -135,6 +138,20 @@ async function etatVolet(info: PluginInfo | ExtensionInfo, ctx: Contexte): Promi
 			.filter((c) => c.obligatoire && !c.valeur && !c.repli)
 			.map((c) => ({ nom: c.label, aide: `à renseigner ici${c.env ? ` ou dans le .env (${c.env})` : ''} : ${ctx.genre === 'plugin' ? 'le plugin' : "l'extension"} ne peut pas fonctionner sans.` })),
 	];
+	// Connexion (fichier `<DATA_DIR>/connexions/<id>.yaml`) : champs obligatoires vides des outils allumés.
+	const connexion = 'connexion' in info ? info.connexion : undefined;
+	if (connexion) {
+		const data = await lireConnexion(ctx.id);
+		for (const c of connexion.champs) {
+			if (!c.obligatoire || valeurConnexion(data, c.cle)) continue;
+			const outil = c.outil ? ctx.outils.find((o) => o.id === c.outil) : undefined;
+			if (outil?.actif === false) continue;
+			avertissements.push({
+				nom: c.label,
+				aide: outil ? `à renseigner dans les réglages de « ${outil.label} » (roue crantée).` : 'à renseigner dans la rubrique « Connexion » ci-dessous.',
+			});
+		}
+	}
 	const ext = ctx.genre === 'extension' ? (info as ExtensionInfo) : null;
 	return {
 		...ctx,
@@ -148,6 +165,7 @@ async function etatVolet(info: PluginInfo | ExtensionInfo, ctx: Contexte): Promi
 		secrets,
 		fichierReglages: info.reglages ? `src/content/${info.reglages.fichier}` : null,
 		champs,
+		connexion: Boolean(connexion),
 	};
 }
 

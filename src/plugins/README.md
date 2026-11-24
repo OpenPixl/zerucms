@@ -17,6 +17,7 @@ qui l'utilise — voir [docs/extensions.md](../../docs/extensions.md).
 | `activites` | [`activites/`](activites/README.md) | Outils : planning Grist de `/activites`, inscription aux activités — **actif par défaut**, associations seulement |
 | `presence` | [`presence/`](presence/README.md) | « Je participe » (`/je-participe`) — **actif par défaut**, associations seulement |
 | `facturation` | [`facturation/`](facturation/README.md) | Devis et factures dans Grist, PDF, page « Demander un devis » — **auto-entrepreneur seulement** |
+| `diffusion` | [`diffusion/`](diffusion/README.md) | Outil `facebook` : onglet « Diffusion » des actualités, publication sur la Page Facebook — tous types de structure |
 
 ## Activer ou désactiver un plugin
 
@@ -155,7 +156,14 @@ plugin.
    `<DATA_DIR>/installation/secrets.env` ; `type` `url` / `identifiant` /
    `cle`, `obligatoire`, `genere` = créé au hasard sans être demandé) et
    `modele` (fichier de `src/content/` copié d'un modèle à l'activation
-   s'il manque, ex. `facturation.yaml`).
+   s'il manque, ex. `facturation.yaml`). Identifiants d'un **service
+   extérieur** (jeton, clé d'API propres au plugin) : `connexion.champs`
+   (`ChampConnexion` de `champs.ts`), saisis une fois dans la page de
+   configuration puis masqués, écrits seulement dans
+   `<DATA_DIR>/connexions/<id>.yaml` (`src/lib/connexions.ts`, jamais le
+   `.env`), lus à chaque usage ; état vérifié et rappels de renouvellement
+   (badge de la barre) : `statut()` / `verifier()` déclarés dans
+   `src/plugins/connexions.ts` (exemple : `diffusion/lib/connexion.ts`).
 2. Le dossier `src/plugins/<id>/` avec son `plugin.ts`, ajouté à
    `PLUGIN_MANIFESTS` (`manifests.ts`).
 3. Chaque branchement dans le reste du site passe par `pluginActif()` ou

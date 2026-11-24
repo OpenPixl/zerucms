@@ -1,12 +1,20 @@
 <script setup lang="ts">
 /**
  * Module « Plugins » (groupe `superadmin` seul) : volets activables du site
- * (catalogue `src/plugins/catalogue.ts`). Liste (icône, nom, état, bouton
- * « paramètres ») → page de configuration du plugin : description,
- * prérequis, case « plugin actif », interrupteurs de ses outils (`outils`
+ * (catalogue `src/plugins/catalogue.ts`). Liste (icône, nom, **interrupteur
+ * d'activation** — enregistré et publié aussitôt, confirmation si d'autres
+ * plugins en dépendent —, bouton « paramètres ») → page de configuration du
+ * plugin : description, prérequis, interrupteurs de ses outils (`outils`
  * du catalogue : `outils.<id>.<outil>` de `reglages.yaml`), réglages
  * (`reglages.champs` du catalogue, par rubrique), et une seule paire de
- * boutons d'enregistrement en bas.
+ * boutons d'enregistrement en bas. Outils (« Réseaux » pour la diffusion :
+ * `outilsTitre`) : interrupteur, icône + nom. Un outil qui a des champs de
+ * connexion (`outil` des champs) est un **connecteur** : absent de la liste
+ * tant que sa connexion n'est pas renseignée, ajouté par le bouton « + »
+ * (menu des connecteurs disponibles) qui ouvre une modale de saisie ; sa
+ * roue crantée rouvre cette modale. Connexion (`connexion` du catalogue,
+ * `ConnexionPlugin.vue`) : enregistrée à part, sans reconstruction ; champs
+ * communs au plugin dans la page.
  * Enregistrer écrit `plugins.<id>` de `reglages.yaml` et les réglages dans
  * le fichier du plugin, puis reconstruit le site (suivi par
  * `usePublication`), ou rejoint les modifications en attente. Un plugin dont
@@ -18,15 +26,19 @@
  * (installation ou mise à jour), la suppression et les dossiers invalides.
  */
 import { computed, inject, onMounted, ref } from 'vue';
+import AdminOverlay from '../AdminOverlay.vue';
+import Encadre from '../Encadre.vue';
 import FormHeader from '../FormHeader.vue';
 import Interrupteur from '../Interrupteur.vue';
 import PublishButtons from '../PublishButtons.vue';
 import PublishStatus from '../PublishStatus.vue';
-import { ApiError, extensionsApi, pluginsApi, type PluginChamp, type PluginItem } from '../client';
+import ConnexionPlugin from './plugins/ConnexionPlugin.vue';
+import { ApiError, extensionsApi, pluginsApi, type ConnexionEtat, type PluginChamp, type PluginItem } from '../client';
 import { ADMIN_CONTEXT, iconButtonClass, inputClass, rememberOpenModule, takeModuleToReopen } from '../context';
 import { isDeferredSubmit } from '../lot';
 import { usePublication } from '../usePublication';
 import { normaliserChamp } from '../../../plugins/champs';
+import { PLUGINS, type PluginInfo } from '../../../plugins/catalogue';
 
 const props = withDefaults(defineProps<{ genre?: 'plugin' | 'extension' }>(), { genre: 'plugin' });
 const ext = props.genre === 'extension';
@@ -51,15 +63,71 @@ const error = ref('');
 /** Plugin dont la page de configuration est ouverte (`null` = liste). */
 const ouvertId = ref<string | null>(null);
 const ouvert = computed(() => plugins.value.find((p) => p.id === ouvertId.value) ?? null);
+/** Connecteur dont la modale de connexion est ouverte (« + » ou roue crantée). */
+const outilOuvertId = ref<string | null>(null);
+/** Menu « + » des connecteurs à ajouter, déroulé. */
+const menuAjout = ref(false);
+/** État de la connexion du plugin ouvert (connecteurs renseignés ou non). */
+const connexionEtat = ref<ConnexionEtat | null>(null);
+/** Liste : plugin dont l'activation est en cours d'envoi, désactivation à confirmer. */
+const basculeId = ref<string | null>(null);
+const aConfirmer = ref<string | null>(null);
+const outilOuvert = computed(() => ouvert.value?.outils.find((o) => o.id === outilOuvertId.value) ?? null);
+
+/** Fiche du catalogue (plugins seulement). */
+const infoOuvert = computed(() => (ouvert.value && !ext ? (PLUGINS as Record<string, PluginInfo>)[ouvert.value.id] : undefined));
+/** Outils qui ont des réglages de connexion (`outil` des champs) : roue crantée. */
+const outilsReglables = computed(() => new Set((infoOuvert.value?.connexion?.champs ?? []).map((c) => c.outil).filter(Boolean)));
+/** Connecteur renseigné : au moins un de ses champs de connexion enregistré. */
+const configure = (outil: string) => !!connexionEtat.value?.champs.some((c) => c.outil === outil && c.renseigne);
+/** Outils affichés : tous, sauf les connecteurs pas encore configurés. */
+const outilsAffiches = computed(() => (ouvert.value?.outils ?? []).filter((o) => !outilsReglables.value.has(o.id) || configure(o.id)));
+/** Sous-titre de l'encadré des outils : connecteurs configurés, ou outils allumés. */
+const sousTitreOutils = computed(() => {
+	if (!ouvert.value) return '';
+	if (outilsReglables.value.size) {
+		const n = outilsAffiches.value.filter((o) => outilsReglables.value.has(o.id)).length;
+		return !connexionEtat.value ? 'chargement…' : n ? `${n} connecté${n > 1 ? 's' : ''}` : 'aucun connecté : bouton + pour en ajouter';
+	}
+	const allumes = ouvert.value.outils.filter((o) => outils.value[o.id]).length;
+	return `${allumes} sur ${ouvert.value.outils.length} allumé${allumes > 1 ? 's' : ''}`;
+});
+/** Connecteurs proposés par le bouton « + ». */
+const connecteursAAjouter = computed(() =>
+	connexionEtat.value ? (ouvert.value?.outils ?? []).filter((o) => outilsReglables.value.has(o.id) && !configure(o.id)) : [],
+);
+
+function ouvrirConnecteur(id: string) {
+	menuAjout.value = false;
+	outilOuvertId.value = id;
+}
+
+async function chargerConnexion(id: string) {
+	connexionEtat.value = null;
+	try {
+		const e = await pluginsApi.connexion(id);
+		if (ouvertId.value === id) connexionEtat.value = e;
+	} catch (e) {
+		fail(e);
+	}
+}
+
+/** Champs de connexion communs au plugin (sans outil) : rubrique « Connexion » dans la page. */
+const connexionCommune = computed(() => (infoOuvert.value?.connexion?.champs ?? []).some((c) => !c.outil));
+
+/** Icône Font Awesome : style plein, sauf une marque (`fa-brands fa-…`). */
+const icone = (icon: string) => (icon.includes('fa-brands') ? icon : `fa-solid ${icon}`);
 
 /** Saisie en cours de la page de configuration. */
-const actif = ref(false);
 const valeurs = ref<Record<string, string>>({});
 const outils = ref<Record<string, boolean>>({});
 
 function ouvrir(p: PluginItem) {
+	const autre = ouvertId.value !== p.id;
+	if (autre) outilOuvertId.value = null;
 	ouvertId.value = p.id;
-	actif.value = p.actif;
+	menuAjout.value = false;
+	if (autre && p.connexion && !ext) void chargerConnexion(p.id);
 	valeurs.value = Object.fromEntries(p.champs.map((c) => [c.cle, c.valeur]));
 	outils.value = Object.fromEntries(p.outils.map((o) => [o.id, o.actif]));
 	error.value = '';
@@ -68,8 +136,14 @@ function ouvrir(p: PluginItem) {
 
 function fermer() {
 	ouvertId.value = null;
+	outilOuvertId.value = null;
+	connexionEtat.value = null;
+	menuAjout.value = false;
 	error.value = '';
 }
+
+/** Aide de la rubrique « Connexion » (catalogue, lu dans le navigateur). */
+const connexionAide = computed(() => infoOuvert.value?.connexion?.aide);
 
 /** Réglages regroupés par rubrique, dans l'ordre du catalogue. */
 const groupes = computed(() => {
@@ -84,16 +158,18 @@ const groupes = computed(() => {
 const modifie = computed(
 	() =>
 		!!ouvert.value &&
-		(actif.value !== ouvert.value.actif ||
-			ouvert.value.outils.some((o) => outils.value[o.id] !== o.actif) ||
+		(ouvert.value.outils.some((o) => outils.value[o.id] !== o.actif) ||
 			ouvert.value.champs.some((c) => (valeurs.value[c.cle] ?? '').trim() !== c.valeur)),
 );
 
+/** Réglages obligatoires encore vides (cf. `avertissements`) : marqués d'un astérisque. */
+const aRenseigner = computed(() => new Set((ouvert.value?.avertissements ?? []).map((a) => a.nom)));
+
 /** Texte de repli affiché dans un champ vide. */
 function repli(c: PluginChamp): string {
-	if (c.source === 'env') return `${c.repli} (valeur du .env, ${c.env})`;
+	if (c.source === 'env') return `${c.repli} (réglé sur le serveur)`;
 	if (c.source === 'defaut') return `${c.repli} (par défaut)`;
-	return c.env ? `vide : à renseigner ici ou dans le .env (${c.env})` : '';
+	return aRenseigner.value.has(c.label) ? 'À renseigner' : '';
 }
 
 /** État affiché : celui des sources, ou le changement pas encore en ligne. */
@@ -150,14 +226,35 @@ async function submit(plugin: PluginItem, event: Event) {
 		rememberOpenModule(mot.module);
 		const options = { deferred: isDeferredSubmit(event) };
 		const result = ext
-			? await extensionsApi.update(plugin.id, actif.value, valeurs.value, options)
-			: await pluginsApi.update(plugin.id, actif.value, valeurs.value, options, outils.value);
+			? await extensionsApi.update(plugin.id, plugin.actif, valeurs.value, options)
+			: await pluginsApi.update(plugin.id, plugin.actif, valeurs.value, options, outils.value);
 		afterSave(`${mot.un} « ${plugin.label} »`, result);
 		if (result.deferred) await load();
 	} catch (e) {
 		fail(e);
 	} finally {
 		busy.value = false;
+	}
+}
+
+/** Activation impossible (fichier requis absent, plugin requis inactif). */
+const activationBloquee = (p: PluginItem) => !p.actif && (p.manquants.length > 0 || p.requisInactifs.length > 0);
+
+/** Interrupteur de la liste : activation / désactivation enregistrée et publiée aussitôt. */
+async function basculer(p: PluginItem, voulu: boolean) {
+	if (!voulu && p.dependants.length && aConfirmer.value !== p.id) return void (aConfirmer.value = p.id);
+	aConfirmer.value = null;
+	error.value = '';
+	basculeId.value = p.id;
+	try {
+		rememberOpenModule(mot.module);
+		const result = ext ? await extensionsApi.update(p.id, voulu, {}) : await pluginsApi.update(p.id, voulu, {});
+		afterSave(`${mot.un} « ${p.label} » ${voulu ? 'activé' : 'désactivé'}${ext ? 'e' : ''}`, result);
+		if (result.deferred) await load();
+	} catch (e) {
+		fail(e);
+	} finally {
+		basculeId.value = null;
 	}
 }
 
@@ -208,11 +305,14 @@ onMounted(load);
 		@cancel-reload="cancelReload"
 		@publish-lot="publishLot"
 	/>
-	<p v-if="!availability.ok" class="mb-4 alerte-attention">{{ availability.reason }}</p>
+	<p v-if="!availability.ok" class="mb-4 text-sm text-gray-500">
+		<i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>{{ availability.reason }}
+	</p>
 
 	<p v-if="loading" class="text-sm font-light text-gray-500">Chargement…</p>
 
 	<!-- Page de configuration d'un plugin : un seul formulaire -->
+
 	<form v-else-if="ouvert" @submit.prevent="submit(ouvert, $event)">
 		<FormHeader :back="mot.tous" :title="ouvert.label" :editing="true" @back="fermer">
 			<span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold" :class="etat(ouvert).classe">{{ etat(ouvert).texte }}</span>
@@ -220,82 +320,116 @@ onMounted(load);
 
 		<div class="space-y-4">
 			<p class="text-sm font-light text-gray-600">{{ ouvert.description }}</p>
-			<p class="text-xs text-gray-500">
-				<template v-if="ouvert.version">Version {{ ouvert.version }}<template v-if="ouvert.auteur"> · {{ ouvert.auteur }}</template> · </template>
-				Documentation : <code class="rounded bg-gray-100 px-1">{{ ouvert.doc }}</code> (identifiant
-				<code class="rounded bg-gray-100 px-1">{{ ouvert.id }}</code>)
+			<p v-if="ouvert.version" class="text-xs text-gray-500">
+				Version {{ ouvert.version }}<template v-if="ouvert.auteur"> · {{ ouvert.auteur }}</template>
 			</p>
 
 			<p v-if="ouvert.requisInactifs.length" class="alerte-erreur">
 				<i class="fa-solid fa-circle-xmark mr-1" aria-hidden="true"></i>
-				Requiert le plugin « {{ ouvert.requisInactifs.map((r) => r.label).join(' », « ') }} », inactif : activez-le d'abord.
+				À activer d'abord : « {{ ouvert.requisInactifs.map((r) => r.label).join(' », « ') }} ».
 			</p>
 			<ul v-if="ouvert.manquants.length" class="space-y-1 alerte-erreur">
 				<li v-for="m in ouvert.manquants" :key="m.fichier">
 					<i class="fa-solid fa-circle-xmark mr-1" aria-hidden="true"></i>
-					<code>{{ m.fichier }}</code> absent : {{ m.aide }}
-				</li>
-			</ul>
-			<ul v-if="ouvert.avertissements.length" class="space-y-1 alerte-attention">
-				<li v-for="a in ouvert.avertissements" :key="a.nom">
-					<i class="fa-solid fa-triangle-exclamation mr-1" aria-hidden="true"></i>
-					<code>{{ a.nom }}</code> : {{ a.aide }}
+					Fichier de réglages manquant : {{ m.aide }}
 				</li>
 			</ul>
 
-			<label class="flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-sm">
-				<input
-					v-model="actif"
-					type="checkbox"
-					class="mt-0.5 accent-primary"
-					:disabled="locked || (!ouvert.actif && (ouvert.manquants.length > 0 || ouvert.requisInactifs.length > 0))"
-				/>
-				<span>
-					<span class="block font-medium text-gray-900">{{ mot.actif }}</span>
-					<span class="block text-xs text-gray-500">
-						Inactif, le site n'a plus rien de {{ ext ? 'cette extension' : 'ce plugin' }} (page, encart, liens) ; ses réglages et son contenu sont gardés.
-					</span>
-					<span v-if="ouvert.dependants.length" class="block text-xs text-amber-800">
-						Le désactiver retire aussi : {{ ouvert.dependants.map((d) => d.label).join(', ') }}.
-					</span>
-				</span>
-			</label>
-
-			<fieldset v-if="ouvert.outils.length" class="rounded-xl border border-gray-200 p-4">
-				<legend class="px-1 font-heading text-sm font-semibold text-gray-900">Outils</legend>
-				<p class="mb-3 text-xs text-gray-500">
-					Éteint, un outil disparaît du site (pages, liens, boutons) ; ses données restent dans Grist.
-					<template v-if="!actif"> Le plugin inactif, tous ses outils sont éteints.</template>
-				</p>
-				<ul class="divide-y divide-gray-100">
-					<li v-for="o in ouvert.outils" :key="o.id" class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-						<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-							<i class="fa-solid" :class="o.icon" aria-hidden="true"></i>
-						</span>
-						<span class="min-w-0 flex-1 text-sm">
-							<span :id="`outil-${ouvert.id}-${o.id}`" class="block font-medium text-gray-900">
-								{{ o.label }}
-								<span
-									v-if="ouvert.actif && ouvert.enLigne && o.actif !== o.enLigne"
-									class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
-								>{{ o.actif ? 'Allumage en attente' : 'Extinction en attente' }}</span>
+			<Encadre
+				v-if="ouvert.outils.length"
+				:icone="outilsReglables.size ? 'fa-share-nodes' : 'fa-toolbox'"
+				:titre="infoOuvert?.outilsTitre ?? 'Outils'"
+				:sous-titre="sousTitreOutils"
+				:repliable="!outilsReglables.size"
+			>
+				<template v-if="connecteursAAjouter.length" #actions>
+					<div class="relative shrink-0">
+						<button
+							type="button"
+							:class="[iconButtonClass, 'text-primary']"
+							:aria-expanded="menuAjout"
+							aria-haspopup="menu"
+							:aria-label="`Ajouter : ${infoOuvert?.outilsTitre ?? 'outil'}`"
+							title="Ajouter"
+							@click="menuAjout = !menuAjout"
+						>
+							<i class="fa-solid fa-plus" aria-hidden="true"></i>
+						</button>
+						<ul
+							v-if="menuAjout"
+							role="menu"
+							class="absolute right-0 z-10 mt-1 min-w-48 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+						>
+							<li v-for="o in connecteursAAjouter" :key="o.id" role="none">
+								<button
+									type="button"
+									role="menuitem"
+									class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50"
+									@click="ouvrirConnecteur(o.id)"
+								>
+									<i class="w-4 text-center text-primary" :class="icone(o.icon)" aria-hidden="true"></i>{{ o.label }}
+								</button>
+							</li>
+						</ul>
+					</div>
+				</template>
+				<div class="space-y-3 p-4">
+					<p class="text-xs text-gray-500">
+						{{ infoOuvert?.outilsAide ?? 'Un outil éteint n’apparaît plus sur le site ; ses données sont gardées.' }}
+					</p>
+					<p v-if="!outilsAffiches.length" class="text-sm font-light text-gray-500">
+						<template v-if="!connexionEtat && outilsReglables.size">Chargement…</template>
+						<template v-else>Aucun pour l'instant : ajoutez-en un avec le bouton +.</template>
+					</p>
+					<ul v-else class="divide-y divide-gray-100">
+						<li v-for="o in outilsAffiches" :key="o.id" class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+							<Interrupteur
+								v-model="outils[o.id]"
+								:labelledby="`outil-${ouvert.id}-${o.id}`"
+								:disabled="locked || !ouvert.actif"
+							/>
+							<span class="min-w-0 flex-1 text-sm">
+								<span :id="`outil-${ouvert.id}-${o.id}`" class="flex flex-wrap items-center gap-x-2 font-medium text-gray-900">
+									<i class="text-primary" :class="icone(o.icon)" aria-hidden="true"></i>
+									{{ o.label }}
+									<span
+										v-if="ouvert.actif && ouvert.enLigne && o.actif !== o.enLigne"
+										class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
+									>{{ o.actif ? 'Allumage en attente' : 'Extinction en attente' }}</span>
+								</span>
+								<span class="block text-xs text-gray-500">{{ o.description }}</span>
 							</span>
-							<span class="block text-xs text-gray-500">{{ o.description }}</span>
-						</span>
-						<Interrupteur
-							v-model="outils[o.id]"
-							:labelledby="`outil-${ouvert.id}-${o.id}`"
-							:disabled="locked || !actif"
-						/>
-					</li>
-				</ul>
-			</fieldset>
+							<button
+								v-if="outilsReglables.has(o.id)"
+								type="button"
+								:class="[iconButtonClass, 'shrink-0 text-primary']"
+								:aria-label="`Connexion « ${o.label} »`"
+								title="Connexion"
+								@click="ouvrirConnecteur(o.id)"
+							>
+								<i class="fa-solid fa-gear" aria-hidden="true"></i>
+							</button>
+						</li>
+					</ul>
+				</div>
+			</Encadre>
+
+			<ConnexionPlugin
+				v-if="ouvert.connexion && connexionCommune"
+				:key="`connexion-${ouvert.id}`"
+				:plugin="ouvert.id"
+				:aide="connexionAide"
+				:outils="outils"
+				@session-expiree="sessionExpired"
+			/>
 
 			<fieldset v-for="[groupe, champs] in groupes" :key="groupe" class="rounded-xl border border-gray-200 p-4">
 				<legend class="px-1 font-heading text-sm font-semibold text-gray-900">{{ groupe }}</legend>
 				<div class="space-y-4">
 					<div v-for="c in champs" :key="c.cle">
-						<label :for="`plugin-${ouvert.id}-${c.cle}`" class="champ-libelle">{{ c.label }}</label>
+						<label :for="`plugin-${ouvert.id}-${c.cle}`" class="champ-libelle">
+							{{ c.label }}<span v-if="aRenseigner.has(c.label)" class="text-red-600"> *</span>
+						</label>
 						<input
 							:id="`plugin-${ouvert.id}-${c.cle}`"
 							v-model.trim="valeurs[c.cle]"
@@ -311,22 +445,11 @@ onMounted(load);
 					</div>
 				</div>
 			</fieldset>
-			<p v-if="ouvert.fichierReglages" class="text-xs text-gray-500">
-				Réglages enregistrés dans <code class="rounded bg-gray-100 px-1">{{ ouvert.fichierReglages }}</code> ; un champ
-				vide reprend la valeur indiquée en gris.
+			<p v-if="ouvert.secrets.length" class="text-xs text-gray-500">
+				<i class="fa-solid fa-key mr-1" aria-hidden="true"></i>
+				<template v-if="ouvert.secrets.every((s) => s.utilise)">Clé d'accès en place sur le serveur.</template>
+				<template v-else>Clé d'accès manquante : à ajouter par la personne qui gère le serveur.</template>
 			</p>
-			<ul v-if="ouvert.secrets.length" class="space-y-1 text-xs text-gray-500">
-				<li v-for="s in ouvert.secrets" :key="s.nom">
-					<i class="fa-solid fa-key mr-1" aria-hidden="true"></i>
-					Clé secrète (dans le .env, jamais ici) :
-					<template v-if="s.utilise === s.nom"><code class="rounded bg-gray-100 px-1">{{ s.nom }}</code>, {{ mot.propre }}.</template>
-					<template v-else-if="s.utilise">
-						<code class="rounded bg-gray-100 px-1">{{ s.utilise }}</code>, partagée ; ajouter
-						<code class="rounded bg-gray-100 px-1">{{ s.nom }}</code> pour une clé {{ mot.propre }}.
-					</template>
-					<template v-else>aucune.</template>
-				</li>
-			</ul>
 		</div>
 
 		<p v-if="error" class="mt-6 alerte-erreur" role="alert">{{ error }}</p>
@@ -343,20 +466,17 @@ onMounted(load);
 				<i class="fa-solid fa-trash" aria-hidden="true"></i>{{ suppression ? 'Confirmer la suppression' : "Supprimer l'extension" }}
 			</button>
 		</div>
-		<p v-if="ext && suppression" class="mt-2 text-xs text-gray-500">
-			Le code de l'extension est retiré et le site reconstruit ; ses réglages
-			<template v-if="ouvert.fichierReglages">(<code>{{ ouvert.fichierReglages }}</code>)</template> et ses données restent.
-		</p>
+		<p v-if="ext && suppression" class="mt-2 text-xs text-gray-500">L'extension est retirée du site ; ses réglages et ses données sont gardés.</p>
 	</form>
+
 
 	<!-- Catalogue -->
 	<template v-else>
 		<p v-if="error" class="mb-4 alerte-erreur" role="alert">{{ error }}</p>
 		<template v-if="ext">
 			<p class="mb-4 text-sm font-light text-gray-600">
-				Les extensions sont des développements propres à une structure, installés à part (dossier
-				<code class="rounded bg-gray-100 px-1">extensions/</code>, conservé par les mises à jour). Une archive déjà
-				installée est remplacée par la nouvelle version.
+				Fonctions faites sur mesure pour votre structure. Déposez l'archive .zip reçue pour installer une extension ou la
+				mettre à jour.
 			</p>
 			<div class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-gray-300 p-4">
 				<label class="bouton bouton-primaire" :class="{ 'pointer-events-none opacity-60': locked || busy }">
@@ -364,35 +484,84 @@ onMounted(load);
 					Installer une extension (.zip)
 					<input ref="fichier" type="file" accept=".zip,application/zip" class="sr-only" :disabled="locked || busy" @change="installer" />
 				</label>
-				<span class="text-xs text-gray-500">CMS {{ versionCms }} · le site est reconstruit après l'installation.</span>
+				<span class="text-xs text-gray-500">Le site est republié après l'installation.</span>
 			</div>
 			<ul v-if="invalides.length" class="mb-4 space-y-1 alerte-erreur">
 				<li v-for="i in invalides" :key="i.id">
 					<i class="fa-solid fa-circle-xmark mr-1" aria-hidden="true"></i>
-					<code>extensions/{{ i.id }}/</code> : {{ i.erreurs.join(' ') }}
+					« {{ i.id }} » ne peut pas être utilisée : {{ i.erreurs.join(' ') }}
 				</li>
 			</ul>
 			<p v-if="!plugins.length" class="text-sm font-light text-gray-500">Aucune extension installée.</p>
 		</template>
 		<ul v-if="plugins.length" class="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-			<li v-for="p in plugins" :key="p.id" class="flex items-center gap-3 px-4 py-3">
-				<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-					<i class="fa-solid" :class="p.icon" aria-hidden="true"></i>
-				</span>
-				<span class="min-w-0 flex-1 font-heading text-sm text-gray-900">
-					{{ p.label }}<span v-if="p.version" class="ml-1.5 text-xs font-light text-gray-500">{{ p.version }}</span>
-				</span>
-				<span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold" :class="etat(p).classe">{{ etat(p).texte }}</span>
-				<button
-					type="button"
-					:class="[iconButtonClass, 'text-primary']"
-					:aria-label="`Configurer « ${p.label} »`"
-					title="Configurer"
-					@click="ouvrir(p)"
-				>
-					<i class="fa-solid fa-gear" aria-hidden="true"></i>
-				</button>
+			<li v-for="p in plugins" :key="p.id" class="px-4 py-3">
+				<div class="flex items-center gap-3">
+					<Interrupteur
+						:model-value="p.actif"
+						:labelledby="`volet-${p.id}`"
+						:disabled="locked || busy || basculeId !== null || activationBloquee(p)"
+						@update:model-value="basculer(p, $event)"
+					/>
+					<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+						<i :class="icone(p.icon)" aria-hidden="true"></i>
+					</span>
+					<span :id="`volet-${p.id}`" class="min-w-0 flex-1 font-heading text-sm text-gray-900">
+						{{ p.label }}<span v-if="p.version" class="ml-1.5 text-xs font-light text-gray-500">{{ p.version }}</span>
+					</span>
+					<i v-if="basculeId === p.id" class="fa-solid fa-spinner fa-spin text-gray-400" aria-hidden="true"></i>
+					<span
+						v-else-if="p.actif !== p.enLigne"
+						class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+						:class="etat(p).classe"
+					>{{ etat(p).texte }}</span>
+					<button
+						type="button"
+						:class="[iconButtonClass, 'text-primary']"
+						:aria-label="`Configurer « ${p.label} »`"
+						title="Configurer"
+						@click="ouvrir(p)"
+					>
+						<i class="fa-solid fa-gear" aria-hidden="true"></i>
+					</button>
+				</div>
+				<p v-if="activationBloquee(p)" class="mt-1 pl-10 text-xs text-gray-500">
+					<i class="fa-solid fa-lock mr-1" aria-hidden="true"></i>
+					<template v-if="p.requisInactifs.length">Activez d'abord « {{ p.requisInactifs.map((r) => r.label).join(' », « ') }} ».</template>
+					<template v-else>À configurer avant de l'activer.</template>
+				</p>
+				<div v-if="aConfirmer === p.id" class="mt-2 flex flex-wrap items-center gap-2 pl-10 text-xs text-gray-600">
+					<span class="flex-1">Cela désactive aussi : {{ p.dependants.map((d) => d.label).join(', ') }}.</span>
+					<button type="button" class="bouton bouton-mini bouton-danger" :disabled="locked || busy" @click="basculer(p, false)">Désactiver</button>
+					<button type="button" class="bouton bouton-mini bouton-neutre" @click="aConfirmer = null">Annuler</button>
+				</div>
 			</li>
 		</ul>
 	</template>
+
+	<!-- Connexion d'un connecteur (réseau…) : modale ouverte par « + » ou la roue crantée -->
+	<AdminOverlay
+		v-if="ouvert && outilOuvert"
+		:title="`Connexion — ${outilOuvert.label}`"
+		variant="modal"
+		wide
+		@close="outilOuvertId = null"
+	>
+		<div class="space-y-4">
+			<p class="flex items-start gap-2 text-sm font-light text-gray-600">
+				<i class="mt-0.5 text-lg text-primary" :class="icone(outilOuvert.icon)" aria-hidden="true"></i>
+				<span>{{ outilOuvert.description }}</span>
+			</p>
+			<ConnexionPlugin
+				:key="`connexion-${ouvert.id}-${outilOuvert.id}`"
+				:plugin="ouvert.id"
+				:outil="outilOuvert.id"
+				:aide="connexionAide"
+				:outils="outils"
+				@change="connexionEtat = $event"
+				@session-expiree="sessionExpired"
+			/>
+			<button type="button" class="bouton bouton-neutre w-full" @click="outilOuvertId = null">Fermer</button>
+		</div>
+	</AdminOverlay>
 </template>
