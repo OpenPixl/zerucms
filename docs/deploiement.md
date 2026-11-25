@@ -9,7 +9,9 @@ Deux méthodes sont possibles ; choisissez-en **une seule** :
 - **[Avec Node.js](#partie-b--installer-avec-nodejs)** : le plus simple,
   `git clone`, `npm install`, `npm start`, et c'est tout ;
 - **[Avec Docker](#partie-a--installer-avec-docker)** : si vous utilisez
-  déjà Docker (retour automatique en arrière si une mise à jour échoue).
+  déjà Docker (retour automatique en arrière si une mise à jour échoue) ;
+- **[Sur un hébergement mutualisé cPanel](#partie-e--hébergement-mutualisé-avec-nodejs-o2switch-cpanel)**
+  (O2Switch…) : sans VPS, l'hébergeur gère le domaine et le HTTPS.
 
 Les étapes communes (nom de domaine, HTTPS, première connexion) sont
 décrites une seule fois, [à la fin](#partie-c--nom-de-domaine-et-https).
@@ -408,6 +410,166 @@ Si le pare-feu `ufw` est actif sur le serveur, ouvrez le web et gardez SSH :
 ufw allow OpenSSH
 ufw allow 'Nginx Full'
 ```
+
+---
+
+## Partie E — Hébergement mutualisé avec Node.js (O2Switch, cPanel)
+
+Certains hébergements mutualisés font tourner des applications Node.js
+depuis cPanel (menu **« Setup Node.js App »**) : c'est le cas d'**O2Switch**.
+Pas de VPS, pas de nginx ni de Docker : l'hébergeur s'occupe du domaine, du
+HTTPS et du lancement du site (avec un outil appelé **Passenger**). Cette
+partie **remplace les parties A, B et C** ; la [partie D](#partie-d--paramétrer-le-site-dans-le-navigateur)
+(premier compte, assistant) reste la même.
+
+> ⚠️ **Trois pièges à éviter**, source de la plupart des blocages :
+>
+> 1. **Jamais dans `public_html`.** Le dossier du site contient le `.env`
+>    et `data/` (comptes, clé de session) : placé dans `public_html`, il
+>    peut être **téléchargeable par n'importe qui**. Installez-le à côté,
+>    par exemple dans `~/zerucms`.
+> 2. **Jamais dans un sous-dossier d'adresse** (`https://mon-asso.fr/site`
+>    ou `http://xxxx.odns.fr/zerucms`) : le site doit être à la **racine**
+>    d'un domaine ou d'un sous-domaine (`https://www.mon-asso.fr`,
+>    `https://site.mon-asso.fr`). Sinon les styles, les liens et l'Espace
+>    Admin ne fonctionnent pas (« Création du compte impossible »).
+> 3. **`SITE_URL` = l'adresse exacte** ouverte dans le navigateur (même
+>    `https`, même `www`) : l'Espace Admin refuse les requêtes venant d'une
+>    autre adresse.
+
+### E1. Faire pointer le domaine vers l'hébergement
+
+Si le domaine est géré ailleurs (OVH, Gandi…), dans sa **zone DNS**, créez
+deux enregistrements **A** vers l'adresse IP de votre hébergement (indiquée
+dans cPanel, colonne de droite « Adresse IP partagée » chez O2Switch) :
+voir le tableau de l'[étape C1](#c1-faire-pointer-le-domaine-vers-le-serveur).
+
+> N'utilisez **pas** le service « Redirection » (web) du registraire : il
+> renvoie vers une adresse ou affiche le site dans un cadre, ce n'est pas
+> la même chose qu'un enregistrement A.
+
+### E2. Déclarer le domaine dans cPanel
+
+cPanel → **Domaines** → **Créer un domaine** : `www.mon-asso.fr` (ou
+`mon-asso.fr`). Donnez-lui son **propre dossier racine** (par exemple
+`~/mon-asso.fr`), décochez « Partager la racine du document » avec le
+domaine principal.
+
+> Tant que le domaine n'est pas déclaré, l'hébergement affiche une liste de
+> dossiers (`cgi-bin`…) au lieu du site : c'est le signe de cette étape
+> manquante.
+
+Une fois le DNS pris en compte, activez le HTTPS : cPanel → **SSL/TLS
+Status** → **Run AutoSSL** (ou l'outil Let's Encrypt de l'hébergeur), pour
+`mon-asso.fr` et `www.mon-asso.fr`.
+
+### E3. Créer l'application Node.js
+
+cPanel → **Setup Node.js App** → **Create Application** :
+
+| Champ | Valeur |
+| :--- | :--- |
+| Node.js version | **22** (22.12 ou plus récent) |
+| Application mode | Production |
+| Application root | `zerucms` (le dossier, hors `public_html`) |
+| Application URL | `www.mon-asso.fr`, chemin **vide** |
+| Application startup file | `app.cjs` |
+
+Enregistrez. En haut de la page de l'application, cPanel affiche une
+commande du type
+`source /home/<compte>/nodevenv/zerucms/22/bin/activate && cd /home/<compte>/zerucms` :
+copiez-la, elle sert à chaque connexion SSH (elle choisit la bonne version
+de Node).
+
+### E4. Copier le site et installer
+
+Connectez-vous en SSH (cPanel → **Terminal**, ou depuis votre ordinateur),
+puis :
+
+```bash
+# dans votre dossier personnel, pas dans public_html
+cd ~
+git clone https://github.com/OpenPixl/zerucms.git zerucms
+# la commande copiée à l'étape E3 :
+source ~/nodevenv/zerucms/22/bin/activate && cd ~/zerucms
+npm install
+```
+
+✅ **Vérifier :** `node --version` affiche `v22.12.0` ou plus récent, et
+`npm install` se termine sans `ERR!` (les lignes « vulnerabilities » ne
+sont qu'un avertissement).
+
+> Si cPanel a créé le dossier `zerucms` à l'étape E3, videz-le avant le
+> `git clone` (ou clonez ailleurs puis déplacez le contenu).
+
+### E5. Le fichier de réglages et le fichier de démarrage
+
+Le fichier `.env`, avec l'adresse exacte du site :
+
+```bash
+echo "SITE_URL=https://www.mon-asso.fr" > .env
+```
+
+Le fichier de démarrage `app.cjs`, que Passenger lance à la place de
+`npm start` :
+
+```bash
+cat > app.cjs <<'EOF'
+// Point d'entrée Passenger (cPanel « Setup Node.js App », O2Switch…)
+process.chdir(__dirname);
+try { process.loadEnvFile('.env'); } catch {}
+// Après une publication, le serveur s'arrête : Passenger le relance
+// à la visite suivante, sur la nouvelle version.
+process.env.ZERUCMS_SUPERVISE = '1';
+import('./scripts/serveur.mjs');
+EOF
+```
+
+`app.cjs` et `.env` ne font pas partie du dépôt : une mise à jour ne les
+touche pas.
+
+### E6. Construire le site, puis le démarrer
+
+La première construction prend quelques minutes, plus que Passenger n'en
+accorde à un démarrage : faites-la **à la main**, en SSH (environnement
+activé, dans `~/zerucms`) :
+
+```bash
+PORT=3999 node --env-file-if-exists=.env scripts/serveur.mjs
+```
+
+Attendez la ligne `[démarrage] serveur à l'écoute sur …`, puis **Ctrl+C**.
+(Si le port `3999` est déjà pris, choisissez-en un autre, par exemple `4777`.)
+
+Puis cPanel → **Setup Node.js App** → **Restart** sur l'application.
+
+✅ **Vérifier :** `https://www.mon-asso.fr` affiche l'écran « Bienvenue » :
+passez à la [partie D](#partie-d--paramétrer-le-site-dans-le-navigateur).
+
+> **À refaire** (construction en SSH, puis Restart) après tout changement de
+> `SITE_URL` ou une mise à jour. Les publications depuis l'Espace Admin,
+> elles, reconstruisent seules.
+
+### E7. Mettre à jour
+
+```bash
+source ~/nodevenv/zerucms/22/bin/activate && cd ~/zerucms
+./sauvegarde.sh        # facultatif : une sauvegarde du contenu avant
+git pull
+npm install
+PORT=3999 node --env-file-if-exists=.env scripts/serveur.mjs   # Ctrl+C à « à l'écoute »
+```
+
+puis **Restart** dans cPanel.
+
+### En cas de problème (cPanel)
+
+| Ce que je vois | Cause probable | Que faire |
+| :--- | :--- | :--- |
+| Une liste de dossiers (`cgi-bin`…) | Domaine non déclaré dans cPanel, ou application pas rattachée à ce domaine | Étapes E2 et E3 |
+| « Création du compte impossible » | Site dans un sous-dossier d'adresse, ou ouvert sous une autre adresse que `SITE_URL` | Pièges 2 et 3 en tête de cette partie |
+| Erreur Passenger « Web application could not be started » | Site pas encore construit, ou erreur au démarrage | Étape E6, puis lire `stderr.log` dans `~/zerucms` |
+| `Killed` ou `heap out of memory` pendant la construction | Limite de mémoire de l'hébergement mutualisé | Relancer la construction ; si ça persiste, demander à l'hébergeur ou passer sur un VPS |
 
 ---
 
