@@ -455,6 +455,12 @@ cPanel → **Domaines** → **Créer un domaine** : `www.mon-asso.fr` (ou
 `~/mon-asso.fr`), décochez « Partager la racine du document » avec le
 domaine principal.
 
+> ⚠️ Ce dossier racine reste **vide** (cPanel y crée `cgi-bin`,
+> `.well-known` et, à l'étape E3, un `.htaccess`) : il doit être
+> **différent du dossier de l'application** (`~/zerucms`) et **hors de
+> `public_html`**. Si la racine du domaine est le dossier de l'application,
+> le site affiche la liste de ses fichiers, `.env` et `data/` compris.
+
 > Tant que le domaine n'est pas déclaré, l'hébergement affiche une liste de
 > dossiers (`cgi-bin`…) au lieu du site : c'est le signe de cette étape
 > manquante.
@@ -480,6 +486,28 @@ commande du type
 `source /home/<compte>/nodevenv/zerucms/22/bin/activate && cd /home/<compte>/zerucms` :
 copiez-la, elle sert à chaque connexion SSH (elle choisit la bonne version
 de Node).
+
+✅ **Vérifier :** en enregistrant, cPanel écrit le lien vers l'application
+dans le `.htaccess` de la racine du domaine (étape E2) :
+
+```bash
+cat ~/mon-asso.fr/.htaccess
+```
+
+doit montrer, entre les lignes `CLOUDLINUX PASSENGER CONFIGURATION` :
+
+```
+PassengerAppRoot "/home/<compte>/zerucms"
+PassengerBaseURI "/"
+```
+
+- `PassengerBaseURI` autre que `"/"` (par exemple `"/zerucms"`) : le site
+  est dans un sous-dossier d'adresse (piège 2) ; corrigez l'*Application
+  URL* (chemin vide), puis **Save**.
+- Fichier absent, ou bloc trouvé ailleurs (le chercher :
+  `grep -rl --include=.htaccess PassengerAppRoot ~`) : l'application est
+  rattachée à un autre domaine ; choisissez le bon dans *Application URL*,
+  puis **Save**. Supprimez l'ancien `.htaccess` s'il reste.
 
 ### E4. Copier le site et installer
 
@@ -566,7 +594,8 @@ puis **Restart** dans cPanel.
 
 | Ce que je vois | Cause probable | Que faire |
 | :--- | :--- | :--- |
-| Une liste de dossiers (`cgi-bin`…) | Domaine non déclaré dans cPanel, ou application pas rattachée à ce domaine | Étapes E2 et E3 |
+| Une liste de dossiers (`cgi-bin`…) | Domaine non déclaré dans cPanel, ou application pas rattachée à ce domaine | Étapes E2 et E3 (vérification du `.htaccess`) |
+| La liste des **fichiers du site** (`src`, `scripts`, `.env`…) | La racine du domaine est le dossier de l'application : **`.env` et `data/` lisibles par tous** | Tout de suite `echo "Require all denied" > ~/zerucms/.htaccess`, puis donner au domaine un dossier vide (E2), refaire **Save** (E3) et, par prudence, retirer `AUTH_SECRET` de `data/installation/secrets.env` (une nouvelle clé est créée au redémarrage) |
 | « Création du compte impossible » | Site dans un sous-dossier d'adresse, ou ouvert sous une autre adresse que `SITE_URL` | Pièges 2 et 3 en tête de cette partie |
 | Erreur Passenger « Web application could not be started » | Site pas encore construit, ou erreur au démarrage | Étape E6, puis lire `stderr.log` dans `~/zerucms` |
 | `Killed` ou `heap out of memory` pendant la construction | Limite de mémoire de l'hébergement mutualisé | Relancer la construction ; si ça persiste, demander à l'hébergeur ou passer sur un VPS |
