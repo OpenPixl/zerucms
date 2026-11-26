@@ -81,6 +81,7 @@ Une section = un bloc complet de page (souvent une balise `<section>` pleine lar
 | Section | Rôle | Où elle est utilisée |
 | :--- | :--- | :--- |
 | `Hero.astro` | Grand titre + accroche + 2 boutons | Accueil |
+| `PresentationSection.astro` | Module « Présentation » : surtitre, grand titre (`h1` en tête de page, sinon `h2`), accroche, 2 boutons, illustration à droite (logo, illustration propre `images/presentation.*` ou photo d'accueil) sur un fond au choix parmi les teintes de la charte (prop `background` : `gris` = `bg-gray-100` par défaut, `fond`, `surface`, `primaire` / `secondaire` / `accent` = couleur à 10 %) | Accueil |
 | `ActivitesSection.astro` | Grille des catégories d'activités (`CategoryCard`, depuis `src/lib/categories.ts` — pas les activités individuelles). Prop `showHeading` (défaut `true`) : sur l'accueil, affiche le titre "Activités" + bouton "Accéder à la page" ; sur `activites.astro`, passé à `false` car la page a déjà son `PageHeader` | Accueil, page Activités |
 | `ActualitesSection.astro` | Les 3 actualités les plus récentes + lien "Voir toutes les actualités" | Accueil |
 | `CtaSection.astro` | Bandeau d'appel à l'action (dégradé primary→secondary) | Accueil |

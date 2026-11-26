@@ -3,13 +3,14 @@
  * groupes `redacteur` / `admin` :
  *  - PUT : `{ label, show, active, textes, modules?, photo? }` (modules, photo : accueil) →
  *          `src/content/pages/_pages-site.md` (cf. `saveSitePage()`) ; `photo` = `{ type, data (base64) }`
- *          ou `'remove'` → `images/accueil.*` (`home-photo.ts`) ; puis reconstruction du site.
+ *          ou `'remove'` → `images/accueil.*` (`home-photo.ts`) ; `illustration` (même forme,
+ *          SVG accepté) → `images/presentation.*` (module « Présentation ») ; puis reconstruction du site.
  */
 import type { APIRoute } from 'astro';
 import { jsonError, readJson, withErrors } from '../../../../lib/auth/api';
 import { publishBlocked, publishChange } from '../../../../lib/admin-publish';
 import { readCover } from '../../../../lib/admin-cover';
-import { applyHomePhoto, bothApplied, prepareHomePhoto, type HomePhotoChange } from '../../../../lib/home-photo';
+import { applyHomeImages, bothApplied, prepareHomePhoto, prepareIllustration, type HomePhotoChange, type IllustrationChange } from '../../../../lib/home-photo';
 import { saveSitePage } from '../../../../lib/page-writer';
 
 export const prerender = false;
@@ -34,13 +35,21 @@ export const PUT: APIRoute = withErrors(async ({ params, request, locals }) => {
 		if ('error' in prepared) return jsonError(prepared.error, 422);
 		photo = { action: 'replace', data: prepared.data };
 	}
+	// Illustration du module « Présentation » (accueil seulement) : de même.
+	let illustration: IllustrationChange = { action: 'keep' };
+	if (id === 'accueil' && body.illustration === 'remove') illustration = { action: 'remove' };
+	else if (id === 'accueil' && body.illustration) {
+		const prepared = await prepareIllustration(body.illustration);
+		if ('error' in prepared) return jsonError(prepared.error, 422);
+		illustration = { action: 'replace', ...prepared };
+	}
 
 	const result = await saveSitePage(id, { label: String(body.label ?? ''), show: body.show !== false, active, textes, modules });
 	if (!result.applied) return jsonError(result.errors.join(' '), 422);
 	let applied = result.applied;
-	if (photo.action !== 'keep') {
+	if (photo.action !== 'keep' || illustration.action !== 'keep') {
 		try {
-			applied = bothApplied(result.applied, await applyHomePhoto(photo));
+			applied = bothApplied(result.applied, (await applyHomeImages(photo, illustration))!);
 		} catch (err) {
 			await result.applied.restore();
 			throw err;
@@ -51,6 +60,8 @@ export const PUT: APIRoute = withErrors(async ({ params, request, locals }) => {
 	else if (body.show === false) notes.push('masquée du menu');
 	if (photo.action === 'replace') notes.push("nouvelle photo d'accueil");
 	if (photo.action === 'remove') notes.push("photo d'accueil retirée");
+	if (illustration.action === 'replace') notes.push('nouvelle illustration de la présentation');
+	if (illustration.action === 'remove') notes.push('illustration de la présentation retirée');
 	return publishChange({
 		request,
 		user: locals.user!,

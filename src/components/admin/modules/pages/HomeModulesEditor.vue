@@ -12,12 +12,18 @@ import { DEFAULT_HOME, HOME_MODULES, homeModuleDef, newHomeModule, type HomeModu
 import { iconButtonClass, inputClass, sortableProps } from '../../context';
 import BlocFields from './BlocFields.vue';
 import HomePhotoField from './HomePhotoField.vue';
+
+/** Formats de l'illustration du module « Présentation » (SVG accepté, cf. `src/lib/home-photo.ts`). */
+const ILLUSTRATION_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
 import type { HomePhotoDraft } from './home-photo-draft';
 import DragHandle from './DragHandle.vue';
 import OrderArrows from './OrderArrows.vue';
 
-/** `photo` : brouillon de la photo du bandeau (champ du module « Bandeau »). */
-const props = defineProps<{ modules: HomeModule[]; photo?: HomePhotoDraft }>();
+/**
+ * `photo` : brouillon de la photo d'accueil (fond du module « Bandeau ») ;
+ * `illustration` : celui de l'illustration propre au module « Présentation ».
+ */
+const props = defineProps<{ modules: HomeModule[]; photo?: HomePhotoDraft; illustration?: HomePhotoDraft }>();
 
 /**
  * Module déplié, par objet (l'index change quand on déplace) : un seul à la
@@ -123,6 +129,22 @@ const summary = (m: HomeModule) => m.titre || '';
 				<div v-if="open === m" class="border-t border-gray-100 px-4 py-4">
 					<p class="mb-3 text-xs font-light text-gray-500">{{ homeModuleDef(m.type).description }}</p>
 					<HomePhotoField v-if="m.type === 'bandeau' && props.photo" :draft="props.photo" :id-prefix="`hm-${i}`" />
+					<HomePhotoField
+						v-if="m.type === 'presentation' && m.illustration === 'image' && props.illustration"
+						:draft="props.illustration"
+						:id-prefix="`hm-${i}`"
+						libelle="Illustration"
+						aide="JPEG, PNG, WebP ou SVG, 10 Mo max ; fond transparent conservé (PNG, WebP, SVG). Affichée entière, sans recadrage."
+						:types="ILLUSTRATION_TYPES"
+						entiere
+					/>
+					<HomePhotoField
+						v-if="m.type === 'presentation' && m.illustration === 'photo' && props.photo"
+						:draft="props.photo"
+						:id-prefix="`hm-${i}`"
+						libelle="Photo d'accueil"
+						aide="Même photo que le fond du module « Bandeau » (JPEG, PNG ou WebP, 10 Mo max)."
+					/>
 					<BlocFields :fields="homeModuleDef(m.type).fields" :values="m" :id-prefix="`hm-${i}`" />
 				</div>
 			</li>
@@ -133,7 +155,7 @@ const summary = (m: HomeModule) => m.titre || '';
 
 		<div class="flex flex-wrap items-center gap-2">
 			<label for="hm-new" class="sr-only">Module à ajouter</label>
-			<select id="hm-new" v-model="newType" :class="[inputClass, 'mt-0 w-auto flex-1']">
+			<select id="hm-new" v-model="newType" :class="[inputClass, 'mt-0 w-auto min-w-0 flex-1']">
 				<option value="" disabled>Ajouter un module…</option>
 				<option v-for="[type, def] in available" :key="type" :value="type">{{ def.label }} — {{ def.description }}</option>
 			</select>

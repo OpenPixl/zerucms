@@ -50,6 +50,8 @@ const dropdowns = ref<DropdownView[]>([]);
 const pages = ref<PageSourceView[]>([]);
 /** Aperçu de la photo du bandeau d'accueil (formulaire de l'Accueil). */
 const homePhoto = ref<string | null>(null);
+/** Aperçu de l'illustration du module « Présentation » (formulaire de l'Accueil). */
+const homeIllustration = ref<string | null>(null);
 const availability = ref<{ ok: boolean; reason?: string }>({ ok: true });
 const loading = ref(true);
 const busy = ref(false);
@@ -71,6 +73,7 @@ async function load() {
 		dropdowns.value = res.dropdowns;
 		pages.value = res.pages;
 		homePhoto.value = res.homePhoto;
+		homeIllustration.value = res.homeIllustration;
 		orderDraft.value = {};
 		availability.value = res.availability;
 		receive(res.status);
@@ -649,6 +652,7 @@ onMounted(() => {
 		:key="view.page.id"
 		:page="view.page"
 		:home-photo="homePhoto"
+		:home-illustration="homeIllustration"
 		:disabled="locked"
 		@published="onPublished"
 		@cancel="go({ name: 'list' })"

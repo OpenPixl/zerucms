@@ -10,6 +10,7 @@ import type { Association } from '../../lib/association';
 import type { AuthGroup } from '../../lib/auth/groups';
 import type { LinkToggle, ThemeColors } from '../../config/site';
 import type { ReglageSombre } from '../../lib/mode-sombre';
+import type { PiedResolu, ReglagePied } from '../../lib/pied';
 import type { Diffusion } from '../../lib/diffusion';
 import type { Bloc } from '../../lib/blocs';
 import type { HomeModule } from '../../lib/home-modules';
@@ -191,6 +192,8 @@ export interface SitePageInput {
 	modules?: HomeModule[];
 	/** Accueil : nouvelle photo du bandeau, `'remove'` pour la retirer (absent = inchangée). */
 	photo?: { type: string; data: string } | 'remove';
+	/** Accueil : nouvelle illustration du module « Présentation », `'remove'` pour la retirer (absent = inchangée). */
+	illustration?: { type: string; data: string } | 'remove';
 }
 
 /** Menu déroulant de la barre de navigation (`_group.md`). */
@@ -313,6 +316,8 @@ export const pagesApi = {
 			pages: PageSourceView[];
 			/** Aperçu de la photo du bandeau d'accueil, `null` sans photo. */
 			homePhoto: string | null;
+			/** Aperçu de l'illustration du module « Présentation », `null` sans illustration. */
+			homeIllustration: string | null;
 			status: PublishStatus;
 			availability: { ok: boolean; reason?: string };
 		}>('GET', '/api/admin/pages'),
@@ -525,6 +530,10 @@ export interface BrandSource {
 	defaults: ThemeColors;
 	/** Mode sombre : couleurs de marque présentes seulement si réglées (absentes = automatiques). */
 	sombre: ReglageSombre;
+	/** Pied de page : couleurs effectives (src/lib/pied.ts). */
+	pied: PiedResolu;
+	/** Couleurs du mode sombre du pied réglées à part (sinon : palette sombre). */
+	piedSombreRegle: { fond: boolean; texte: boolean };
 	/** Bouton d'action de l'en-tête, son réglage d'origine, pages de plugin inactives (bouton masqué si son lien y mène). */
 	cta: LinkToggle;
 	ctaDefaults: LinkToggle;
@@ -552,6 +561,7 @@ export const brandApi = {
 		input: {
 			colors: ThemeColors;
 			sombre: ReglageSombre;
+			pied: ReglagePied;
 			cta: LinkToggle;
 			fonts: BrandFontsInput;
 			logo?: { type: string; data: string };

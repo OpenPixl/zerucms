@@ -6,12 +6,13 @@
  */
 import Layout from '../layouts/Layout.astro';
 import Hero from '../components/sections/Hero.astro';
+import PresentationSection from '../components/sections/PresentationSection.astro';
 import ActivitesSection from '../components/sections/ActivitesSection.astro';
 import ActualitesSection from '../components/sections/ActualitesSection.astro';
 import CtaSection from '../components/sections/CtaSection.astro';
 import PartenairesSection from '../components/sections/PartenairesSection.astro';
 import TexteSection from '../components/sections/TexteSection.astro';
-import { accueilImage } from '../lib/site-images';
+import { accueilImage, logo, presentationImage } from '../lib/site-images';
 import { applyPageVariablesText } from '../lib/page-variables';
 import { getSitePage, inactiveSiteHrefs } from '../lib/site-pages-content';
 import { homeModuleDef } from '../lib/home-modules';
@@ -29,10 +30,11 @@ const link = (href: string) => (off.has(href.replace(/\/$/, '') || '/') ? '' : h
 /** Texte d'un champ, variables {{association.…}} remplacées. */
 const txt = (value: string | undefined) => applyPageVariablesText(value ?? '');
 type Overlay = 'white' | 'black' | 'none';
+type Fond = 'gris' | 'fond' | 'surface' | 'primaire' | 'secondaire' | 'accent';
 ---
 
 <Layout title={t.titre} description={t.description}>
-	{modules.map((m) => (
+	{modules.map((m, i) => (
 		<>
 			{m.type === 'bandeau' && (
 				<Hero
@@ -45,6 +47,21 @@ type Overlay = 'white' | 'black' | 'none';
 					secondaryHref={link(m['bouton2-lien'])}
 					backgroundImage={accueilImage}
 					overlay={m.voile as Overlay}
+				/>
+			)}
+			{m.type === 'presentation' && (
+				<PresentationSection
+					eyebrow={txt(m.surtitre)}
+					title={txt(m.titre)}
+					description={txt(m.accroche)}
+					primaryLabel={txt(m['bouton1-texte'])}
+					primaryHref={link(m['bouton1-lien'])}
+					secondaryLabel={txt(m['bouton2-texte'])}
+					secondaryHref={link(m['bouton2-lien'])}
+					image={{ logo, image: presentationImage, photo: accueilImage }[m.illustration]}
+					photo={m.illustration === 'photo'}
+					background={m.fond as Fond}
+					headingLevel={i === 0 ? 1 : 2}
 				/>
 			)}
 			{m.type === 'actualites' && (

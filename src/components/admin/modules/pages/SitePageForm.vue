@@ -18,8 +18,8 @@ import type { HomePhotoDraft } from './home-photo-draft';
 import HomeModulesEditor from './HomeModulesEditor.vue';
 import SeoLength from '../../SeoLength.vue';
 
-/** `homePhoto` : aperçu de la photo du bandeau (accueil). */
-const props = defineProps<{ page: SitePageView; disabled: boolean; homePhoto?: string | null }>();
+/** `homePhoto` / `homeIllustration` : aperçus de la photo du bandeau et de l'illustration de la présentation (accueil). */
+const props = defineProps<{ page: SitePageView; disabled: boolean; homePhoto?: string | null; homeIllustration?: string | null }>();
 const emit = defineEmits<{ published: [label: string, result: SaveResult]; cancel: [] }>();
 const { sessionExpired } = inject(ADMIN_CONTEXT)!;
 
@@ -34,8 +34,11 @@ const error = ref('');
 const busy = ref(false);
 /** Photo du bandeau (accueil) : modifiée depuis le module « Bandeau », envoyée avec la page. */
 const photo = reactive<HomePhotoDraft>({ current: props.homePhoto ?? null, change: { action: 'keep' }, error: '' });
+/** Illustration du module « Présentation » : de même. */
+const illustration = reactive<HomePhotoDraft>({ current: props.homeIllustration ?? null, change: { action: 'keep' }, error: '' });
 onBeforeUnmount(() => {
 	if (photo.change.action === 'replace') URL.revokeObjectURL(photo.change.url);
+	if (illustration.change.action === 'replace') URL.revokeObjectURL(illustration.change.url);
 });
 
 const defaults = Object.fromEntries(def.sections.flatMap((s) => s.texts.map((t) => [t.name, t.default])));
@@ -68,6 +71,10 @@ async function submit(event: Event) {
 			...(photo.change.action === 'remove' ? { photo: 'remove' as const } : {}),
 			...(photo.change.action === 'replace'
 				? { photo: { type: photo.change.file.type, data: await fileToBase64(photo.change.file) } }
+				: {}),
+			...(illustration.change.action === 'remove' ? { illustration: 'remove' as const } : {}),
+			...(illustration.change.action === 'replace'
+				? { illustration: { type: illustration.change.file.type, data: await fileToBase64(illustration.change.file) } }
 				: {}),
 			},
 			{ deferred: isDeferredSubmit(event) },
@@ -108,7 +115,7 @@ const variables = Object.entries(PAGE_VARIABLES).map(([name, v]) => ({ token: `{
 		</fieldset>
 
 		<!-- Page à modules (accueil) -->
-		<HomeModulesEditor v-if="def.modules" :modules="form.modules" :photo="photo" />
+		<HomeModulesEditor v-if="def.modules" :modules="form.modules" :photo="photo" :illustration="illustration" />
 
 		<!-- Textes, par section -->
 		<fieldset v-for="section in def.sections" :key="section.title" class="space-y-3">
