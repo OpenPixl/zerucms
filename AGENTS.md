@@ -486,7 +486,11 @@ lien en dur) = l'ajouter aussi dans `src/modeles/association/`.
   `association/BrandForm.vue` en onglets Couleurs / En-tête (logo, bouton
   `cta:` texte + lien + affiché, `DEFAULT_CTA`, lien vers un plugin inactif
   signalé via `pagesIndisponibles()` de `liens-plugins.ts`, bande) /
-  Polices / Mode sombre / Icône, aperçu au-dessus (version sombre en tête de l'onglet Mode sombre), sections en encadrés repliables `src/components/admin/Encadre.vue` (slot `actions` = interrupteur de l'en-tête), une seule
+  Pied de page (`pied:` de `reglages.yaml`, `src/lib/pied.ts` : fond et
+  texte propres, indépendants de la couleur secondaire — absent = elle,
+  écrit au premier enregistrement —, mode sombre à part, défaut = surfaces
+  et texte de la palette ; `bg-pied` / `text-pied-texte`) /
+  Polices / Mode sombre / Icône, aperçu au-dessus (version sombre en tête de l'onglet Mode sombre), sections en encadrés repliables `src/components/admin/Encadre.vue` (repliés par défaut, rouverts sur un champ refusé ; slot `actions` = interrupteur de l'en-tête), une seule
   publication ; `src/lib/brand-writer.ts`, route `/api/admin/charte` :
   `{ source, status, availability }`) : `colors:` de `reglages.yaml` (en place,
   revalidé par `parseReglages()`), `logo.*` et `favicon.*` d'`images/`

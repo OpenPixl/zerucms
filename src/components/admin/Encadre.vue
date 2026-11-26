@@ -3,24 +3,37 @@
  * Encadré repliable d'un formulaire de l'admin (ex. sections de la charte
  * graphique) : en-tête cliquable (icône, titre, sous-titre, chevron) qui
  * ouvre ou referme le contenu ; slot `actions` à droite de l'en-tête (ex.
- * interrupteur), hors du bouton : il ne replie pas l'encadré. Contenu
- * gardé monté quand il est replié (`v-show`) : une saisie n'est pas perdue.
+ * interrupteur), hors du bouton : il ne replie pas l'encadré. **Replié par
+ * défaut** (`ouvert` pour l'ouvrir d'emblée) ; un champ refusé à l'envoi
+ * (`invalid`) le rouvre, pour que le navigateur puisse montrer l'erreur.
+ * Contenu gardé monté quand il est replié (`v-show`) : une saisie n'est pas perdue.
  * `repliable: false` = toujours ouvert, en-tête fixe sans chevron (le slot
  * `actions` prend sa place, ex. bouton « + » des connecteurs d'un plugin).
  * Style distinct des aperçus (en-tête blanc, pastille d'icône).
  */
-import { ref, useId } from 'vue';
+import { nextTick, ref, useId } from 'vue';
 
 const props = withDefaults(
 	defineProps<{ titre: string; icone: string; sousTitre?: string; ouvert?: boolean; repliable?: boolean }>(),
-	{ ouvert: true, repliable: true },
+	{ ouvert: false, repliable: true },
 );
 const open = ref(props.ouvert);
+
+/** Champ refusé dans l'encadré replié : l'ouvrir, puis montrer l'erreur (un seul champ à la fois). */
+function onInvalid(event: Event) {
+	if (open.value || !props.repliable) return;
+	const field = event.target as HTMLInputElement;
+	open.value = true;
+	nextTick(() => {
+		field.focus();
+		field.reportValidity?.();
+	});
+}
 const id = useId();
 </script>
 
 <template>
-	<section class="rounded-xl border border-gray-200 bg-white shadow-sm">
+	<section class="rounded-xl border border-gray-200 bg-white shadow-sm" @invalid.capture="onInvalid">
 		<div class="flex items-center gap-2 py-1.5 pr-4 pl-2">
 			<component
 				:is="props.repliable ? 'button' : 'div'"

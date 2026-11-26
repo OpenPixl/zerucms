@@ -7,6 +7,8 @@
  *   en mode sombre (`src/lib/mode-sombre.ts`), absent = logo normal ;
  * - `accueil.(jpg|jpeg|png|webp)` — facultatif : fond du bandeau d'accueil
  *   (réglé depuis le module « Bandeau » de l'accueil, `home-photo.ts`) ;
+ * - `presentation.(jpg|jpeg|png|webp|svg)` — facultatif : illustration du
+ *   module « Présentation » de l'accueil (réglée depuis ce module, `home-photo.ts`) ;
  * - `favicon.(svg|png|ico)` — facultatif, un ou plusieurs formats : icône
  *   de l'onglet (une balise `<link rel="icon">` par fichier trouvé).
  *
@@ -22,6 +24,7 @@ type ImageModules = Record<string, { default: ImageMetadata }>;
 const logos: ImageModules = import.meta.glob('../content/images/logo.{png,jpg,jpeg,webp,svg}', { eager: true });
 const logosSombres: ImageModules = import.meta.glob('../content/images/logo-sombre.{png,jpg,jpeg,webp,svg}', { eager: true });
 const accueils: ImageModules = import.meta.glob('../content/images/accueil.{jpg,jpeg,png,webp}', { eager: true });
+const presentations: ImageModules = import.meta.glob('../content/images/presentation.{png,jpg,jpeg,webp,svg}', { eager: true });
 const faviconFiles: Record<string, string> = import.meta.glob('../content/images/favicon.{svg,png,ico}', {
 	eager: true,
 	query: '?url',
@@ -56,6 +59,9 @@ export function logoWidth(height: number, image: ImageMetadata = logo): number {
 
 /** Photo de fond du bandeau d'accueil ; absente = bandeau sans photo. */
 export const accueilImage = single(accueils, 'accueil', false);
+
+/** Illustration du module « Présentation » de l'accueil ; absente = module sans illustration propre. */
+export const presentationImage = single(presentations, 'presentation', false);
 
 // ICO sans `type` : le navigateur reconnaît le contenu lui-même.
 const FAVICON_TYPES: Record<string, string | undefined> = { svg: 'image/svg+xml', png: 'image/png', ico: undefined };

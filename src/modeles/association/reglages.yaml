@@ -16,7 +16,7 @@
 
 # Couleurs du site, au format '#2f7fc1' (entre apostrophes).
 #   primary    couleur principale : liens, boutons, titres mis en avant
-#   secondary  couleur secondaire : pied de page, survols
+#   secondary  couleur secondaire : survols, dégradé des bandeaux
 #   accent     couleur d'accent : bouton « Adhérer », touches de couleur
 #   stripe     bande de couleurs sous l'en-tête (autant de couleurs que voulu)
 #   stripeEnabled  false = pas de bande (une ombre souligne alors l'en-tête)
@@ -29,6 +29,15 @@ colors:
   accent: '#2e2e2e'
   stripe: ['#2e2e2e']
   stripeEnabled: false
+
+# Pied de page : couleurs propres, indépendantes des couleurs ci-dessus.
+#   fond / texte   arrière-plan et texte (liens, icônes) du pied de page
+#   sombre         en mode sombre (facultatif ; absent = surfaces et texte
+#                  de la palette sombre)
+# Modifiable depuis l’Espace Admin : Charte graphique, onglet Pied de page.
+pied:
+  fond: '#2e2e2e'
+  texte: '#ffffff'
 
 # Bouton mis en avant à droite de la barre de navigation.
 # enabled: false pour le masquer. Modifiable depuis l’Espace Admin :

@@ -42,6 +42,13 @@
 }
 
 @layer base {
+	/* Un <fieldset> prend par défaut la largeur minimale de son contenu
+	   (`min-inline-size: min-content`) : une liste aux options longues le
+	   faisait déborder du panneau. Il suit la largeur disponible. */
+	fieldset {
+		min-inline-size: 0;
+	}
+
 	#espace-benevoles form,
 	.theme-admin form {
 		font-size: var(--text-sm);

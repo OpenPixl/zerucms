@@ -93,6 +93,36 @@ sombre:
 - **Logo du mode sombre** : `images/logo-sombre.*` facultatif (voir
   « Logo ») ; absent = logo normal.
 
+## Pied de page
+
+Couleurs **propres au pied de page** (`Footer.astro`), indépendantes des
+couleurs de marque : module « Charte graphique », onglet « Pied de page »
+(fond et texte, contraste vérifié l'un sur l'autre, aperçu ; en mode sombre,
+fond et texte à part). Réglage `pied:` de `src/content/reglages.yaml`
+(`src/lib/pied.ts`) :
+
+```yaml
+pied:
+  fond: '#1f2937'
+  texte: '#ffffff'
+  sombre:              # facultatif
+    fond: '#161b22'    # absent = surfaces de la palette sombre
+    texte: '#e6edf3'   # absent = texte de la palette sombre
+```
+
+- `fond` absent (sites d'avant ce réglage) = couleur secondaire, comme
+  avant ; l'admin l'écrit au premier enregistrement de la charte (aussi
+  quand on change la couleur secondaire) : le pied ne la suit plus ensuite.
+  `texte` absent = blanc.
+- En mode sombre, le pied prend par défaut les **surfaces et le texte de la
+  palette sombre** (cohérent avec l'en-tête) ; une valeur égale à la
+  palette n'est pas écrite, elle la suit.
+- CSS : `--color-pied` / `--color-pied-texte` (`@theme` de `global.css`,
+  remplacées par `themeCss` via `piedCss()`), classes `bg-pied`,
+  `text-pied-texte`, `text-pied-texte/80`, `border-pied-texte/10`. Les
+  bandeaux en dégradé (`PageHeader`, `CtaSection`) gardent
+  `from-primary to-secondary`.
+
 ## Polices
 
 Deux rôles : **titres** (`h1`…`h6`, classe `font-heading`) et **texte**
@@ -142,6 +172,7 @@ par `src/lib/site-images.ts` quelle que soit leur extension :
 | `logo.(png\|jpg\|webp\|svg)` | **Obligatoire.** En-tête et pied de page, via `<Image>` (`astro:assets` : redimensionné, converti en WebP au build). Largeur calculée d'après ses proportions (`logoWidth()`) : carré, large ou haut, il n'est ni rogné ni déformé. Affiché sur 64 px de haut au plus et, dans l'en-tête, 16 rem de large au plus (60 % de l'écran sur mobile ; pied de page : 18 rem) : un logo très large est réduit plutôt que de pousser le menu. Fond transparent conseillé. |
 | `logo-sombre.(png\|jpg\|webp\|svg)` | Facultatif. Logo de l'en-tête en **mode sombre** (version claire du logo), mêmes règles que `logo.*` ; absent = logo normal. Déposé depuis la charte graphique, section « Mode sombre ». |
 | `accueil.(jpg\|png\|webp)` | Facultatif. Photo de fond du bandeau d'accueil ; absente = bandeau sans photo. Réglable depuis l'Espace Admin : module « Pages » → Accueil → module « Bandeau ». |
+| `presentation.(jpg\|png\|webp\|svg)` | Facultatif. Illustration du module « Présentation » de l'accueil (option « Illustration propre au module »), affichée entière ; transparence gardée. Réglable depuis l'Espace Admin : module « Pages » → Accueil → module « Présentation ». |
 | `favicon.(svg\|png\|ico)` | Facultatif, un ou plusieurs formats. Icône de l'onglet (une balise `<link rel="icon">` par fichier) ; `favicon.ico` (ou `.png`) est aussi servi à l'adresse `/favicon.ico` (`src/pages/favicon.ico.ts`). |
 
 Pour changer de logo : remplacer `src/content/images/logo.png` (une autre

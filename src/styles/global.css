@@ -22,6 +22,11 @@
 	--color-fond: #fff;
 	--color-surface: #fff;
 
+	/* Pied de page : `bg-pied`, `text-pied-texte` (src/lib/pied.ts),
+	   remplacés par themeCss d'après `pied:` de reglages.yaml. */
+	--color-pied: #2e2e2e;
+	--color-pied-texte: #fff;
+
 	/* Polices : remplacées au rendu par celles de reglages.yaml (polices:,
 	   fontsCss de src/lib/fonts.ts, injecté par les layouts). */
 	--font-heading: system-ui, sans-serif;

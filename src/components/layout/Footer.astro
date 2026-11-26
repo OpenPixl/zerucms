@@ -25,30 +25,31 @@ const socialLinks = Object.entries(association.social)
 	});
 ---
 
-<footer class="bg-secondary text-white">
+<!-- Couleurs propres au pied de page (charte graphique, src/lib/pied.ts). -->
+<footer class="bg-pied text-pied-texte">
 	<div class="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-3">
 		<div>
 			<p class="font-heading text-lg">
 				<Image src={logo} alt={association.name} width={logoWidth(192)} height={192} class="h-auto max-h-16 w-auto max-w-[min(100%,18rem)]" />
 			</p>
-			<p class="mt-2 text-sm text-white/80">
+			<p class="mt-2 text-sm text-pied-texte/80">
 				{association.description}
 			</p>
 		</div>
 
 		<div>
-			<p class="font-heading text-sm uppercase tracking-wide text-white">Contact</p>
-			<ul class="mt-2 space-y-2 text-sm text-white">
+			<p class="font-heading text-sm uppercase tracking-wide text-pied-texte">Contact</p>
+			<ul class="mt-2 space-y-2 text-sm text-pied-texte">
 				<li class="flex items-center gap-2">
-					<i class="fa-solid fa-envelope w-4 text-white" aria-hidden="true"></i>
-					<a href={`mailto:${association.email}`} class="hover:text-white">{association.email}</a>
+					<i class="fa-solid fa-envelope w-4 text-pied-texte" aria-hidden="true"></i>
+					<a href={`mailto:${association.email}`} class="hover:text-pied-texte">{association.email}</a>
 				</li>
 				<li class="flex items-center gap-2">
-					<i class="fa-solid fa-phone w-4 text-white" aria-hidden="true"></i>
-					<a href={`tel:${association.phone.replace(/\s/g, '')}`} class="hover:text-white">{association.phone}</a>
+					<i class="fa-solid fa-phone w-4 text-pied-texte" aria-hidden="true"></i>
+					<a href={`tel:${association.phone.replace(/\s/g, '')}`} class="hover:text-pied-texte">{association.phone}</a>
 				</li>
 				<li class="flex items-start gap-2">
-					<i class="fa-solid fa-location-dot mt-1 w-4 text-white" aria-hidden="true"></i>
+					<i class="fa-solid fa-location-dot mt-1 w-4 text-pied-texte" aria-hidden="true"></i>
 					<span class="whitespace-pre-line">{getAddressLines().join('\n')}</span>
 				</li>
 			</ul>
@@ -57,10 +58,10 @@ const socialLinks = Object.entries(association.social)
 		{
 			socialLinks.length > 0 && (
 				<div>
-					<p class="font-heading text-sm uppercase tracking-wide text-white">Suivez-nous</p>
+					<p class="font-heading text-sm uppercase tracking-wide text-pied-texte">Suivez-nous</p>
 					<div class="mt-2 flex gap-4">
 						{socialLinks.map(({ url, icon, label }) => (
-							<a href={url} aria-label={label} class="text-lg text-white hover:text-white">
+							<a href={url} aria-label={label} class="text-lg text-pied-texte hover:text-pied-texte">
 								<i class={icon} aria-hidden="true" />
 							</a>
 						))}
@@ -70,13 +71,13 @@ const socialLinks = Object.entries(association.social)
 		}
 	</div>
 
-	<div class="border-t border-white/10 px-4 py-4 text-center text-xs text-white/70">
+	<div class="border-t border-pied-texte/10 px-4 py-4 text-center text-xs text-pied-texte/70">
 		<p>&copy; {year} {association.name}. Tous droits réservés. | Propulsé par Astro et développé par OpenPixl</p>
 		<p class="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
 			{
 				legalLinks.map((l) => (
 					<>
-						<a href={l.href} class="hover:text-white">
+						<a href={l.href} class="hover:text-pied-texte">
 							{l.label}
 						</a>
 						<span aria-hidden="true">·</span>
@@ -84,7 +85,7 @@ const socialLinks = Object.entries(association.social)
 				))
 			}
 			<!-- Ouvre la modale de connexion (src/components/admin/AdminLoader.astro). -->
-			<a href="#connexion" data-auth-open class="hover:text-white">
+			<a href="#connexion" data-auth-open class="hover:text-pied-texte">
 				<i class="fa-solid fa-lock text-[10px]" aria-hidden="true"></i>
 				Espace Admin
 			</a>

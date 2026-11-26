@@ -656,7 +656,10 @@ page est fournie par le site, l'association règle le reste.
   `{{association.nom}}`… sont acceptées. Un texte vidé reprend sa valeur
   d'origine ; « rétablir les textes d'origine » les remet tous.
 - **L'accueil** est composé de **modules**, dans l'ordre d'affichage :
-  bandeau, dernières actualités, activités, prise de rendez-vous (extension `rdv`), appel à
+  bandeau, présentation (texte à gauche, illustration à droite — logo,
+  image propre au module ou photo d'accueil —, sur un fond au choix :
+  gris clair par défaut, fond du site, blanc ou teinte claire d'une couleur
+  de la charte), dernières actualités, activités, prise de rendez-vous (extension `rdv`), appel à
   l'action, partenaires, texte libre. Le crayon de l'Accueil permet d'en
   **ajouter** (liste « Ajouter un module… » ; l'appel à l'action et le texte
   libre peuvent figurer plusieurs fois), d'en **retirer** (corbeille), de
@@ -666,7 +669,11 @@ page est fournie par le site, l'association règle le reste.
   **photo de fond** se règle dans le module **Bandeau** : remplacer
   (JPEG, PNG ou WebP, paysage d'au moins 1 600 px, 10 Mo max ; réduite à
   2 400 px de large) ou retirer (fond uni) ; elle part avec le reste à
-  l'enregistrement. Dans l'**accroche** du bandeau (et celle des pages
+  l'enregistrement ; la même photo sert d'illustration au module
+  **Présentation** s'il est réglé sur « Photo d'accueil ». Réglé sur
+  « Illustration propre au module », il reçoit sa propre image (JPEG, PNG,
+  WebP ou SVG, 10 Mo max, affichée entière, fond transparent gardé ; SVG
+  contenant du script refusé), indépendante de la photo du bandeau. Dans l'**accroche** du bandeau (et celle des pages
   Activités, Actualités, Contact), `**mot**` met en gras et `*mot*` en italique. « Revenir
   à l'accueil d'origine » remet les modules de départ. Rien n'est publié
   avant **Enregistrer et publier**.
@@ -871,7 +878,7 @@ sont conservés, il reste modifiable à la main.
 
 Menu **Paramètres** → **🎨 Charte graphique**, réservé au bureau. L'aperçu
 reste en haut du panneau ; les réglages sont rangés en onglets :
-**Couleurs**, **En-tête** (logo, bouton « Adhérer », bande de couleurs), **Polices**, **Mode
+**Couleurs**, **En-tête** (logo, bouton « Adhérer », bande de couleurs), **Pied de page**, **Polices**, **Mode
 sombre** et **Icône** (favicon) ; sur un panneau étroit, les onglets restent sur une ligne
 et les chevrons ‹ › font défiler les suivants (comme dans tous les formulaires en onglets). Chaque encadré se replie ou se déplie d'un clic sur son titre
 (l'interrupteur à droite du titre, lui, ne replie rien). Une pastille orange signale un onglet
@@ -881,8 +888,8 @@ modifié mais pas encore publié ; tous les onglets partent ensemble avec
 - **Aperçu** : en-tête, bande de couleurs, lien, bouton et pied de page
   avec les couleurs et le logo en cours de saisie, avant publication (le
   mode sombre a son propre aperçu, dans son onglet).
-- **Couleurs** : principale (liens, boutons, titres), secondaire (pied de
-  page, survols), d'accent (bouton « Adhérer »). Nuancier ou code
+- **Couleurs** : principale (liens, boutons, titres), secondaire (survols,
+  dégradé des bandeaux de titre), d'accent (bouton « Adhérer »). Nuancier ou code
   `#2f7fc1`. Le site écrit en blanc sur ces couleurs : une étiquette
   indique si c'est **lisible**, lisible en **gros caractères seulement**,
   ou **peu lisible**. « couleur d'origine » remet celle du modèle.
@@ -893,6 +900,12 @@ modifié mais pas encore publié ; tous les onglets partent ensemble avec
   du site en gardant texte et lien ; « bouton d'origine » rétablit celui du
   modèle. Un lien vers la page d'un plugin inactif est signalé : le site
   masque alors le bouton.
+- **Pied de page** : couleurs du **fond** et du **texte** (liens, icônes),
+  propres au pied de page — changer la couleur secondaire ne les modifie
+  pas. L'étiquette de lisibilité compare le texte au fond. Si le mode sombre
+  est proposé, le pied a ses propres couleurs sombres : par défaut celles
+  des surfaces et du texte de la palette sombre (« palette sombre » les
+  rétablit), avec un aperçu.
 - **Bande de couleurs** (sous l'en-tête) : 1 à 12 couleurs, à réordonner
   (glisser-déposer ou flèches), ajouter, retirer ; « bande d'origine ».
   L'interrupteur **Affichée / Masquée** de la section la retire du site (et

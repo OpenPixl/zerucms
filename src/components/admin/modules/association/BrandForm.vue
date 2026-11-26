@@ -2,7 +2,7 @@
 /**
  * Formulaire du module « Charte graphique » (`CharteModule.vue`), en onglets :
  * Couleurs (`colors:` de `reglages.yaml`), En-tête (logo, bande de
- * couleurs, bouton d'action `cta:`), Polices (`polices:`, `FontsField.vue`), Mode sombre (`sombre:`,
+ * couleurs, bouton d'action `cta:`), Pied de page (`pied:`, src/lib/pied.ts), Polices (`polices:`, `FontsField.vue`), Mode sombre (`sombre:`,
  * palettes de `src/lib/mode-sombre.ts`, logo `logo-sombre.*`) et Icône
  * d'onglet (`src/content/images/`), écrits par `brand-writer.ts`. Aperçu en
  * direct au-dessus des onglets ; tous les onglets restent montés et tout
@@ -41,6 +41,7 @@ const STRIPE_MAX = 12;
 const TABS = [
 	{ id: 'couleurs', label: 'Couleurs', icon: 'fa-palette' },
 	{ id: 'en-tete', label: 'En-tête', icon: 'fa-window-maximize' },
+	{ id: 'pied', label: 'Pied de page', icon: 'fa-shoe-prints' },
 	{ id: 'polices', label: 'Polices', icon: 'fa-font' },
 	{ id: 'sombre', label: 'Mode sombre', icon: 'fa-moon' },
 	{ id: 'icone', label: 'Icône', icon: 'fa-star' },
@@ -126,6 +127,35 @@ function choisirPalette(id: string) {
 	const p = PALETTES_SOMBRES.find((x) => x.id === id)!;
 	sombre.value = { ...sombre.value, fond: p.fond, surface: p.surface, texte: p.texte };
 }
+/**
+ * Pied de page en cours de saisie : couleurs propres (indépendantes de la
+ * couleur secondaire). En mode sombre, `null` = automatique : surfaces et
+ * texte de la palette sombre.
+ */
+const pied = ref({ fond: '', texte: '' });
+type PiedCle = 'fond' | 'texte';
+const piedSombre = ref<Record<PiedCle, string | null>>({ fond: null, texte: null });
+function setPied(s: BrandSource) {
+	pied.value = { fond: s.pied.fond, texte: s.pied.texte };
+	piedSombre.value = { fond: s.piedSombreRegle.fond ? s.pied.sombreFond : null, texte: s.piedSombreRegle.texte ? s.pied.sombreTexte : null };
+}
+const autoPiedSombre = (k: PiedCle) => (k === 'fond' ? sombreShown('surface') : sombreShown('texte')).toLowerCase();
+const valeurPiedSombre = (k: PiedCle) => piedSombre.value[k] ?? autoPiedSombre(k);
+function setPiedSombre(k: PiedCle, v: string) {
+	piedSombre.value = { ...piedSombre.value, [k]: COLOR_PATTERN.test(v) && fullHex(v).toLowerCase() === autoPiedSombre(k) ? null : v };
+}
+const piedSnapshot = (fond: string, texte: string, s: Record<PiedCle, string | null>) => JSON.stringify([fond.toLowerCase(), texte.toLowerCase(), s.fond, s.texte]);
+const piedChanged = computed(() => {
+	const src = source.value;
+	if (!src) return false;
+	const enregistre = { fond: src.piedSombreRegle.fond ? src.pied.sombreFond : null, texte: src.piedSombreRegle.texte ? src.pied.sombreTexte : null };
+	return piedSnapshot(pied.value.fond, pied.value.texte, piedSombre.value) !== piedSnapshot(src.pied.fond, src.pied.texte, enregistre);
+});
+const PIED_FIELDS = [
+	{ key: 'fond', label: 'Fond', help: 'arrière-plan du pied de page' },
+	{ key: 'texte', label: 'Texte', help: 'texte, liens et icônes' },
+] as const;
+
 /** Logo du mode sombre à retirer (le logo normal sert alors partout). */
 const retirerLogoSombre = ref(false);
 const SOMBRE_FIELDS = [
@@ -181,6 +211,7 @@ const stripeChanged = computed(
 const marks = computed<Record<TabId, boolean>>(() => ({
 	couleurs: themeChanged.value,
 	'en-tete': stripeChanged.value || ctaChanged.value || !!logo.value,
+	pied: piedChanged.value,
 	polices: fontsChanged.value,
 	sombre: sombreChanged.value || !!logoSombre.value || retirerLogoSombre.value,
 	icone: !!favicon.value,
@@ -199,6 +230,10 @@ const allValid = computed(
 			sombre.value.surface,
 			sombre.value.texte,
 			...MARQUE.map(valeurMarque),
+			pied.value.fond,
+			pied.value.texte,
+			valeurPiedSombre('fond'),
+			valeurPiedSombre('texte'),
 		].every((c) => COLOR_PATTERN.test(c)) && stripe.value.length > 0,
 );
 /** Couleur affichable dans l'aperçu (une saisie en cours, incomplète, garde la précédente valeur valide). */
@@ -222,6 +257,7 @@ function reset() {
 	if (source.value) {
 		setColors(source.value.colors);
 		setSombre(source.value.sombre);
+		setPied(source.value);
 		setFonts(source.value);
 		cta.value = { ...source.value.cta };
 	}
@@ -270,6 +306,11 @@ async function submit(event: Event) {
 					secondary: sombreMarque.value.secondary ?? undefined,
 					accent: sombreMarque.value.accent ?? undefined,
 				},
+				pied: {
+					fond: pied.value.fond,
+					texte: pied.value.texte,
+					sombre: { fond: piedSombre.value.fond ?? undefined, texte: piedSombre.value.texte ?? undefined },
+				},
 				cta: { label: cta.value.label.trim(), href: cta.value.href.trim(), enabled: cta.value.enabled },
 				fonts: {
 					titres: fonts.value.titres,
@@ -303,7 +344,7 @@ async function submit(event: Event) {
 
 const COLOR_FIELDS = [
 	{ key: 'primary', label: 'Couleur principale', help: 'liens, boutons, titres mis en avant' },
-	{ key: 'secondary', label: 'Couleur secondaire', help: 'pied de page, survols' },
+	{ key: 'secondary', label: 'Couleur secondaire', help: 'survols, dégradé des bandeaux' },
 	{ key: 'accent', label: "Couleur d'accent", help: 'bouton « Adhérer », touches de couleur' },
 ] as const;
 
@@ -381,7 +422,7 @@ onBeforeUnmount(() => {
 						>Découvrir nos activités</span
 					>
 				</div>
-				<div class="px-4 py-3 text-xs text-white" :style="{ backgroundColor: shown(colors.secondary, source.colors.secondary) }">
+				<div class="px-4 py-3 text-xs" :style="{ backgroundColor: shown(pied.fond, source.pied.fond), color: shown(pied.texte, source.pied.texte) }">
 					{{ association.name }} — pied de page
 				</div>
 			</div>
@@ -536,6 +577,54 @@ onBeforeUnmount(() => {
 				</div>
 			</Encadre>
 		</div>
+		<div v-show="tab === 'pied'" id="charte-panel-pied" role="tabpanel" aria-labelledby="charte-tab-pied" class="space-y-6">
+			<!-- Pied de page -->
+			<Encadre icone="fa-shoe-prints" titre="Couleurs du pied de page" sous-titre="indépendantes des couleurs du site">
+				<div class="divide-y divide-gray-100">
+					<ColorField
+						v-for="f in PIED_FIELDS"
+						:id="`pied-${f.key}`"
+						:key="f.key"
+						v-model="pied[f.key]"
+						:label="f.label"
+						:help="f.help"
+						:default-value="source.pied[f.key]"
+						default-label="valeur enregistrée"
+						:checks="[f.key === 'fond' ? { against: pied.texte, label: 'Avec le texte' } : { against: pied.fond, label: 'Sur le fond' }]"
+					/>
+				</div>
+			</Encadre>
+			<Encadre icone="fa-moon" titre="Pied de page en mode sombre" sous-titre="par défaut : surfaces et texte de la palette sombre">
+				<p v-if="!sombre.enabled" class="px-4 py-3 text-sm font-light text-gray-500">
+					Le mode sombre n'est pas proposé (onglet « Mode sombre ») : seules les couleurs ci-dessus servent.
+				</p>
+				<template v-else>
+					<div class="px-4 py-3">
+						<div class="rounded-lg px-4 py-3 text-xs" :style="{ backgroundColor: valeurPiedSombre('fond'), color: valeurPiedSombre('texte') }">
+							{{ association.name }} — pied de page en mode sombre
+						</div>
+					</div>
+					<div class="divide-y divide-gray-100 border-t border-gray-100">
+						<ColorField
+							v-for="f in PIED_FIELDS"
+							:id="`pied-sombre-${f.key}`"
+							:key="f.key"
+							:model-value="valeurPiedSombre(f.key)"
+							:label="f.label"
+							:help="piedSombre[f.key] ? f.help : `${f.help} — palette sombre`"
+							:default-value="autoPiedSombre(f.key)"
+							default-label="palette sombre"
+							:checks="[
+								f.key === 'fond'
+									? { against: valeurPiedSombre('texte'), label: 'Avec le texte' }
+									: { against: valeurPiedSombre('fond'), label: 'Sur le fond' },
+							]"
+							@update:model-value="setPiedSombre(f.key, $event)"
+						/>
+					</div>
+				</template>
+			</Encadre>
+		</div>
 		<div v-show="tab === 'polices'" id="charte-panel-polices" role="tabpanel" aria-labelledby="charte-tab-polices" class="space-y-6">
 			<!-- Polices -->
 			<FontsField v-model="fonts" :source="source" />
@@ -574,7 +663,7 @@ onBeforeUnmount(() => {
 							>Découvrir nos activités</span
 						>
 					</div>
-					<div class="px-4 py-3 text-xs text-white" :style="{ backgroundColor: valeurMarque('secondary') }">
+					<div class="px-4 py-3 text-xs" :style="{ backgroundColor: valeurPiedSombre('fond'), color: valeurPiedSombre('texte') }">
 						{{ association.name }} — pied de page
 					</div>
 				</div>

@@ -14,6 +14,9 @@
  *   qui s'écartent du défaut sont écrites (couleur de marque égale à sa
  *   variante automatique = clé retirée, elle suivra la couleur claire) ;
  *   logo du mode sombre facultatif (`logo-sombre.*`, mêmes règles que le logo).
+ * - Pied de page (`pied:`, `src/lib/pied.ts`) : fond et texte toujours
+ *   écrits (le pied ne suit plus la couleur secondaire) ; couleurs du mode
+ *   sombre écrites seulement si elles s'écartent de la palette sombre.
  * - Bouton d'action de l'en-tête (`cta:` : texte, lien, affiché) : valeurs
  *   écrites en place.
  * - Icône d'onglet : remplace tous les `favicon.*`. PNG recadré en carré
@@ -62,6 +65,7 @@ import {
 import { CATALOGUE_FILES } from './fonts';
 import { contentTransaction, type Applied } from './content-transaction';
 import { couleurSombreAuto, DEFAULT_SOMBRE, MARQUE, type ReglageSombre } from './mode-sombre';
+import { piedResolu, type PiedResolu, type ReglagePied } from './pied';
 import { siteRoot } from './news-writer';
 
 export const LOGO_MAX_WIDTH = 1600;
@@ -108,6 +112,10 @@ export interface BrandSource {
 	defaults: ThemeColors;
 	/** Mode sombre : couleurs de marque présentes seulement si réglées (absentes = automatiques). */
 	sombre: ReglageSombre;
+	/** Pied de page : couleurs effectives (`sombreFond` / `sombreTexte` absents du réglage = palette sombre). */
+	pied: PiedResolu;
+	/** Couleurs du mode sombre du pied réglées à part (sinon : palette sombre). */
+	piedSombreRegle: { fond: boolean; texte: boolean };
 	/** Bouton d'action de l'en-tête, son réglage d'origine et les pages de plugin inactives (bouton masqué si son lien y mène). */
 	cta: LinkToggle;
 	ctaDefaults: LinkToggle;
@@ -164,13 +172,15 @@ async function brandFonts(polices: SiteFonts): Promise<BrandFonts> {
 }
 
 export async function readBrandSource(): Promise<BrandSource> {
-	const { colors, polices, sombre, cta } = parseReglages(await readFile(reglagesFile(), 'utf8').catch(() => ''));
+	const { colors, polices, sombre, pied, cta } = parseReglages(await readFile(reglagesFile(), 'utf8').catch(() => ''));
 	const [logo] = await imageFiles('logo');
 	const [logoSombre] = await imageFiles('logo-sombre');
 	return {
 		colors,
 		defaults: DEFAULT_COLORS,
 		sombre,
+		pied: piedResolu(pied, colors.secondary, sombre),
+		piedSombreRegle: { fond: !!pied.sombre?.fond, texte: !!pied.sombre?.texte },
 		cta,
 		ctaDefaults: DEFAULT_CTA,
 		pagesIndisponibles: pagesIndisponibles(),
@@ -206,6 +216,8 @@ export interface BrandInput {
 	colors: ThemeColors;
 	/** `null` = mode sombre inchangé. */
 	sombre: ReglageSombre | null;
+	/** `null` = pied de page inchangé ; couleurs sombres absentes = palette sombre. */
+	pied: ReglagePied | null;
 	/** `null` = bouton d'action inchangé. */
 	cta: LinkToggle | null;
 	logo: BrandUpload | null;
@@ -220,7 +232,7 @@ export interface BrandInput {
 /** Contenus actifs interdits dans un SVG servi tel quel par le site. */
 const SVG_DANGER = /<script|<foreignObject|<iframe|<embed|<object|\bon[a-z]+\s*=|javascript:|<!ENTITY|xlink:href\s*=\s*["']?\s*(?!#)|\bhref\s*=\s*["']?\s*(?!#|data:image\/)/i;
 
-function svgProblem(data: Buffer, what: string): string | null {
+export function svgProblem(data: Buffer, what: string): string | null {
 	const text = data.toString('utf8');
 	if (!/<svg[\s>]/i.test(text)) return `${what} : fichier SVG illisible.`;
 	if (SVG_DANGER.test(text)) return `${what} : ce SVG contient du script ou des liens externes, refusé par sécurité. Exportez-le en « SVG simple » ou en PNG.`;
@@ -244,6 +256,52 @@ function validateSombre(sombre: ReglageSombre): string[] {
 	return (['fond', 'surface', 'texte', ...MARQUE] as const)
 		.filter((k) => sombre[k] !== undefined && !COLOR_PATTERN.test(sombre[k]!))
 		.map((k) => `Mode sombre : couleur ${names[k]} invalide (format #2f7fc1).`);
+}
+
+function validatePied(pied: ReglagePied): string[] {
+	const valeurs: [string | undefined, string][] = [
+		[pied.fond, 'fond'],
+		[pied.texte, 'texte'],
+		[pied.sombre?.fond, 'fond en mode sombre'],
+		[pied.sombre?.texte, 'texte en mode sombre'],
+	];
+	const errors = valeurs.filter(([v]) => !!v && !COLOR_PATTERN.test(v)).map(([, n]) => `Pied de page : couleur du ${n} invalide (format #2f7fc1).`);
+	if (!pied.fond || !pied.texte) errors.push('Pied de page : couleurs du fond et du texte obligatoires.');
+	return errors;
+}
+
+/**
+ * Réglage `pied:` réduit à ce qui doit être écrit : fond et texte toujours,
+ * couleurs du mode sombre seulement si elles diffèrent de la palette sombre.
+ */
+function piedEcrit(pied: ReglagePied, sombre: ReglageSombre): ReglagePied {
+	const out: ReglagePied = { fond: pied.fond?.toLowerCase(), texte: pied.texte?.toLowerCase() };
+	const s: NonNullable<ReglagePied['sombre']> = {};
+	if (pied.sombre?.fond && pied.sombre.fond.toLowerCase() !== sombre.surface.toLowerCase()) s.fond = pied.sombre.fond.toLowerCase();
+	if (pied.sombre?.texte && pied.sombre.texte.toLowerCase() !== sombre.texte.toLowerCase()) s.texte = pied.sombre.texte.toLowerCase();
+	if (s.fond || s.texte) out.sombre = s;
+	return out;
+}
+
+/** `pied:` écrit dans le document (valeurs en place). */
+function setPied(doc: Document, pied: ReglagePied): void {
+	const map = ensureMap(doc, ['pied']);
+	for (const key of ['fond', 'texte'] as const) {
+		const node = map.get(key, true);
+		if (isScalar(node)) node.value = pied[key];
+		else map.set(key, quoted(pied[key]!));
+	}
+	if (!pied.sombre) return void map.delete('sombre');
+	const sombre = ensureMap(doc, ['pied', 'sombre']);
+	for (const key of ['fond', 'texte'] as const) {
+		const v = pied.sombre[key];
+		if (v === undefined) sombre.delete(key);
+		else {
+			const node = sombre.get(key, true);
+			if (isScalar(node)) node.value = v;
+			else sombre.set(key, quoted(v));
+		}
+	}
 }
 
 function validateCta(cta: LinkToggle): string[] {
@@ -496,7 +554,12 @@ function setFonts(doc: Document, polices: SiteFonts): void {
 export type BrandResult = { applied?: Applied; changes: string[]; errors: string[] };
 
 export async function saveBrand(input: BrandInput): Promise<BrandResult> {
-	const errors = [...validateColors(input.colors), ...(input.sombre ? validateSombre(input.sombre) : []), ...(input.cta ? validateCta(input.cta) : [])];
+	const errors = [
+		...validateColors(input.colors),
+		...(input.sombre ? validateSombre(input.sombre) : []),
+		...(input.pied ? validatePied(input.pied) : []),
+		...(input.cta ? validateCta(input.cta) : []),
+	];
 	const logo = input.logo ? await processLogo(input.logo) : null;
 	const logoSombre = input.logoSombre ? await processLogo(input.logoSombre, 'Logo du mode sombre') : null;
 	if (logoSombre && 'error' in logoSombre) errors.push(logoSombre.error);
@@ -512,6 +575,16 @@ export async function saveBrand(input: BrandInput): Promise<BrandResult> {
 	const sombreAvant = sombreEcrit(current.sombre, current.colors);
 	const sombreApres = input.sombre ? sombreEcrit(input.sombre, input.colors) : null;
 	const sombreChanged = sombreApres !== null && JSON.stringify(sombreApres) !== JSON.stringify(sombreAvant);
+	// Pied : comparé sous sa forme écrite. Encore absent du fichier (pied qui suivait la couleur
+	// secondaire) et couleurs changées : écrit, pour qu'il ne suive plus la couleur secondaire.
+	const sombreFinal = input.sombre ?? current.sombre;
+	const piedAvant = piedEcrit(
+		{ ...piedResolu(current.pied, current.colors.secondary, current.sombre), sombre: current.pied.sombre },
+		current.sombre,
+	);
+	const piedApres = input.pied ? piedEcrit(input.pied, sombreFinal) : null;
+	const piedChanged =
+		piedApres !== null && (JSON.stringify(piedApres) !== JSON.stringify(piedAvant) || (!current.pied.fond && colorsChanged));
 	const ctaChanged = input.cta !== null && JSON.stringify(input.cta) !== JSON.stringify({ label: current.cta.label, href: current.cta.href, enabled: current.cta.enabled });
 	const logoSombreRetire = input.retirerLogoSombre && !logoSombre && (await imageFiles('logo-sombre')).length > 0;
 	const fontsPlan = input.fonts ? planFonts(current.polices, input.fonts, await readdir(fontsDir()).catch(() => [])) : null;
@@ -520,6 +593,7 @@ export async function saveBrand(input: BrandInput): Promise<BrandResult> {
 	const changes = [
 		colorsChanged && 'couleurs',
 		sombreChanged && 'mode sombre',
+		piedChanged && 'pied de page',
 		fontsChanged && 'polices',
 		ctaChanged && 'bouton de l’en-tête',
 		logo && 'logo',
@@ -529,12 +603,13 @@ export async function saveBrand(input: BrandInput): Promise<BrandResult> {
 	if (!changes.length) return { changes, errors: ["Rien n'a changé."] };
 
 	let reglagesText: string | null = null;
-	if (colorsChanged || fontsChanged || sombreChanged || ctaChanged) {
+	if (colorsChanged || fontsChanged || sombreChanged || piedChanged || ctaChanged) {
 		const doc = parseDocument(originalReglages ?? '');
 		if (doc.errors.length) return { changes, errors: [`reglages.yaml illisible : ${doc.errors[0].message}`] };
 		if (doc.contents === null) doc.contents = new YAMLMap() as never;
 		if (colorsChanged) setColors(doc, input.colors);
 		if (sombreChanged) setSombre(doc, sombreApres!);
+		if (piedChanged) setPied(doc, piedApres!);
 		if (fontsChanged) setFonts(doc, fontsPlan!.polices);
 		if (ctaChanged) setCta(doc, input.cta!);
 		reglagesText = doc.toString({ lineWidth: 0, flowCollectionPadding: false });
@@ -620,6 +695,7 @@ export function readBrandInput(raw: unknown): BrandInput | { error: string } {
 			stripeEnabled: c.stripeEnabled !== false,
 		},
 		sombre: readSombreInput(r.sombre, color),
+		pied: readPiedInput(r.pied, color),
 		cta: readCtaInput(r.cta),
 		logo,
 		logoSombre,
@@ -634,6 +710,14 @@ function readCtaInput(raw: unknown): LinkToggle | null {
 	const o = raw as Record<string, unknown>;
 	const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 	return { label: text(o.label), href: text(o.href), enabled: o.enabled !== false };
+}
+
+/** Partie `pied` du corps JSON ; `null` = absente (pied de page inchangé). */
+function readPiedInput(raw: unknown, color: (v: unknown) => string): ReglagePied | null {
+	if (!raw || typeof raw !== 'object') return null;
+	const o = raw as Record<string, unknown>;
+	const s = (o.sombre && typeof o.sombre === 'object' ? o.sombre : {}) as Record<string, unknown>;
+	return { fond: color(o.fond), texte: color(o.texte), sombre: { fond: color(s.fond) || undefined, texte: color(s.texte) || undefined } };
 }
 
 /** Partie `sombre` du corps JSON ; `null` = absente (mode sombre inchangé). */

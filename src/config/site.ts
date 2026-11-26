@@ -30,6 +30,7 @@ import {
 } from '../plugins/catalogue';
 import { STRUCTURES } from '../lib/structure';
 import { DEFAULT_SOMBRE, sombreCss, type ReglageSombre } from '../lib/mode-sombre';
+import { piedCss, piedResolu, type ReglagePied } from '../lib/pied';
 
 export interface FormToggle {
 	/** `false` masque le formulaire et affiche `closedTitle` + `closedMessage` à la place. */
@@ -227,6 +228,10 @@ const overridesSchema = z
 		sombre: z
 			.strictObject({ enabled: bool, fond: color, surface: color, texte: color, primary: color, secondary: color, accent: color })
 			.partial(),
+		/** Pied de page (src/lib/pied.ts) : couleurs propres, indépendantes des couleurs de marque. */
+		pied: z
+			.strictObject({ fond: color, texte: color, sombre: z.strictObject({ fond: color, texte: color }).partial() })
+			.partial(),
 		cta: linkSchema,
 		presence: linkSchema,
 		share: z.strictObject(Object.fromEntries(Object.keys(DEFAULTS.share).map((k) => [k, bool])) as Record<ShareKey, z.ZodBoolean>).partial(),
@@ -280,6 +285,8 @@ export function parseReglages(text: string) {
 		colors: { ...DEFAULTS.colors, ...o.colors },
 		polices: { ...DEFAULTS.polices, ...o.polices } as SiteFonts,
 		sombre: { ...DEFAULTS.sombre, ...o.sombre } as ReglageSombre,
+		/** Tel qu'écrit (absent = couleur secondaire, cf. `piedResolu`). */
+		pied: (o.pied ?? {}) as ReglagePied,
 		cta: { ...DEFAULTS.cta, ...o.cta },
 		presence: { ...DEFAULTS.presence, ...o.presence },
 		share: { ...DEFAULTS.share, ...o.share },
@@ -298,4 +305,5 @@ export const site = parseReglages(raw);
 /** Variables CSS des couleurs du thème (et du mode sombre s'il est proposé), injectées dans `<head>` par les layouts. */
 export const themeCss =
 	`:root{--color-primary:${site.colors.primary};--color-secondary:${site.colors.secondary};--color-accent:${site.colors.accent}}` +
-	sombreCss(site.colors, site.sombre);
+	sombreCss(site.colors, site.sombre) +
+	piedCss(piedResolu(site.pied, site.colors.secondary, site.sombre), site.sombre.enabled);

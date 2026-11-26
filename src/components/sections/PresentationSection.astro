@@ -1,0 +1,106 @@
+---
+/**
+ * Module « Présentation » de l'accueil (src/lib/home-modules.ts) : texte à
+ * gauche (surtitre, grand titre, accroche, deux boutons), illustration à
+ * droite (logo, illustration propre `images/presentation.*` ou photo
+ * d'accueil, décorative : le nom figure déjà dans l'en-tête), sur un fond
+ * choisi parmi les teintes de la charte (`background`, défaut gris clair). Empilé sur mobile, illustration masquée sous `md`.
+ */
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+import Button from '../ui/Button.astro';
+import { inlineMarkdownHtml } from '../../lib/inline-markdown';
+import { lienPluginIndisponible } from '../../lib/liens-plugins';
+
+interface Props {
+	eyebrow?: string;
+	title: string;
+	description?: string;
+	primaryLabel?: string;
+	primaryHref?: string;
+	secondaryLabel?: string;
+	secondaryHref?: string;
+	/** Illustration à droite ; absente = texte seul. */
+	image?: ImageMetadata;
+	/** Photo d'accueil (coins arrondis, recadrée) ; sinon logo ou illustration, entiers. */
+	photo?: boolean;
+	/** Couleur du fond : teinte de la charte (suit le mode sombre). */
+	background?: 'gris' | 'fond' | 'surface' | 'primaire' | 'secondaire' | 'accent';
+	/** 1 en tête de page (titre principal), 2 sinon. */
+	headingLevel?: 1 | 2;
+}
+
+const {
+	eyebrow = '',
+	title,
+	description = '',
+	primaryLabel = '',
+	primaryHref = '',
+	secondaryLabel = '',
+	secondaryHref = '',
+	image,
+	photo = false,
+	headingLevel = 1,
+	background = 'gris',
+} = Astro.props;
+
+// Classes écrites en entier (lues par Tailwind) ; valeur inconnue = gris clair.
+const FONDS = {
+	gris: 'bg-gray-100',
+	fond: 'bg-fond',
+	surface: 'bg-surface',
+	primaire: 'bg-primary/10',
+	secondaire: 'bg-secondary/10',
+	accent: 'bg-accent/10',
+};
+const fondClass = FONDS[background] ?? FONDS.gris;
+
+const Heading = headingLevel === 1 ? 'h1' : 'h2';
+const showPrimary = primaryHref && primaryLabel && !lienPluginIndisponible(primaryHref);
+const showSecondary = secondaryHref && secondaryLabel && !lienPluginIndisponible(secondaryHref);
+---
+
+<section class:list={[fondClass, 'px-4 py-16 sm:px-6 md:py-24']}>
+	<div class:list={['mx-auto grid max-w-6xl items-center gap-12', image && 'md:grid-cols-[3fr_2fr]']}>
+		<div>
+			{eyebrow && <p class="font-heading text-xs font-semibold uppercase tracking-widest text-primary sm:text-sm">{eyebrow}</p>}
+			<Heading class="mt-4 text-4xl text-gray-900 sm:text-5xl">{title}</Heading>
+			{description && (
+				<p
+					class="mt-6 max-w-2xl text-lg font-light text-gray-700 [&_strong]:font-semibold [&_strong]:text-gray-900"
+					set:html={inlineMarkdownHtml(description)}
+				/>
+			)}
+			{(showPrimary || showSecondary) && (
+				<div class="mt-8 flex flex-wrap items-center gap-4">
+					{showPrimary && <Button href={primaryHref} variant="primary">{primaryLabel}</Button>}
+					{showSecondary && <Button href={secondaryHref} variant="outline">{secondaryLabel}</Button>}
+				</div>
+			)}
+		</div>
+		{image && (
+			<div class="hidden justify-center md:flex md:justify-end">
+				{photo ? (
+					<Image
+						src={image}
+						alt=""
+						width={800}
+						height={600}
+						widths={[400, 800]}
+						sizes="(min-width: 768px) 40vw, 100vw"
+						loading={headingLevel === 1 ? 'eager' : 'lazy'}
+						class="aspect-4/3 w-full rounded-2xl object-cover shadow-lg"
+					/>
+				) : (
+					<Image
+						src={image}
+						alt=""
+						width={Math.min(image.width, 720)}
+						loading={headingLevel === 1 ? 'eager' : 'lazy'}
+						class="h-auto max-h-96 w-full max-w-md object-contain"
+					/>
+				)}
+			</div>
+		)}
+	</div>
+</section>

@@ -11,7 +11,7 @@ import type { APIRoute } from 'astro';
 import { json, jsonError, readJson, withErrors } from '../../../../lib/auth/api';
 import { publishBlocked, publishChange } from '../../../../lib/admin-publish';
 import { readCover } from '../../../../lib/admin-cover';
-import { readHomePhotoPreview } from '../../../../lib/home-photo';
+import { readHomePhotoPreview, readIllustrationPreview } from '../../../../lib/home-photo';
 import { listPagesSource, readPageInput, savePage } from '../../../../lib/page-writer';
 import { canPublish, readStatus } from '../../../../lib/site-build';
 
@@ -27,6 +27,7 @@ export const GET: APIRoute = withErrors(async () => {
 	return json({
 		...(await listPagesSource()),
 		homePhoto: await readHomePhotoPreview(),
+		homeIllustration: await readIllustrationPreview(),
 		status: recent ? status : { state: 'idle' },
 		availability: await canPublish(),
 	});
