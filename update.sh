@@ -14,6 +14,9 @@
 # docs/sauvegarde.md) ; si la sauvegarde échoue, rien n'est mis à jour.
 #
 # Le contenu de l'association (src/content/, data/, .env) n'est jamais touché.
+# Node installé par git : fichiers du modèle modifiés sur le serveur mis de
+# côté (git stash), puis passage à la version (scripts/update.mjs). Même
+# logique que le bouton « Mettre à jour » de l'Espace Admin.
 # Principe : la nouvelle version est construite À CÔTÉ pendant que l'ancienne
 # tourne ; en cas d'échec, rien ne change. Puis bascule (quelques secondes),
 # vérification que le site répond, et retour à la version précédente sinon.
@@ -74,13 +77,12 @@ site_docker() {
   [ -n "$(docker compose ps -q --status running 2>/dev/null)" ]
 }
 if [ -z "$mode" ]; then
-  if site_docker; then mode=docker
-  elif [ -d .git ]; then
-    echec "site installé avec git (Node) : mettez-le à jour par « git pull » puis « npm install », puis relancez « npm start » (docs/deploiement.md). Site sous Docker : ./update.sh --docker."
-  else mode=node; fi
+  # Node : installation par git ou par archive, reconnue par scripts/update.mjs.
+  if site_docker; then mode=docker; else mode=node; fi
 fi
 
-# ── Node seul : délégué à scripts/update.mjs ────────────────────────────────
+# ── Node seul (git ou archive) : délégué à scripts/update.mjs ────────────────
+# `exec` : bash ne lit plus ce fichier, que la mise à jour par git remplace.
 if [ "$mode" = node ]; then
   exec node scripts/update.mjs "$version" ${archive:+--archive "$archive"} $([ "$sauvegarde" = 0 ] && echo --sans-sauvegarde)
 fi

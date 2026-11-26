@@ -65,7 +65,7 @@ jour.
 | **À installer sur le serveur** | Node.js 22 et git | Docker seulement |
 | **Installer** | `git clone` puis `npm install` | Quelques fichiers à télécharger |
 | **Démarrer** | `npm start` | `docker compose up -d` |
-| **Mettre à jour** | `git pull`, `npm install`, puis relancer `npm start` | `./update.sh`, avec **retour automatique** à la version précédente si le site ne répond plus |
+| **Mettre à jour** | Bouton **« Mettre à jour »** de l'Espace Admin, ou `./update.sh` | `./update.sh`, avec **retour automatique** à la version précédente si le site ne répond plus |
 | **Quand la choisir** | Dans la plupart des cas : rien d'autre à apprendre | Si vous utilisez déjà Docker |
 
 ---
@@ -298,15 +298,24 @@ La commande affiche le nom du service (celui du dossier : `/srv/monsite` →
 
 ### B6. Mettre à jour (Node.js)
 
+Le plus simple : connecté·e en **super admin**, cliquez sur le badge
+**« Mise à jour X.Y.Z »** de la barre, puis **Mettre à jour**. Le site
+sauvegarde le contenu, passe en maintenance quelques minutes, puis revient
+seul dans sa nouvelle version (ou reste tel quel si quelque chose échoue).
+
+En SSH, la même chose :
+
 ```bash
 cd /srv/monsite
-./sauvegarde.sh        # facultatif : une sauvegarde du contenu avant
-git pull
-npm install
+./update.sh            # dernière version (./update.sh v0.5.30 : une version précise)
 ```
 
-puis redémarrez le site (Ctrl+C et `npm start`, ou
-`sudo systemctl restart monsite`) : il se reconstruit sur la nouvelle version.
+puis redémarrez le site si le script vous le demande (Ctrl+C et `npm start`,
+ou `sudo systemctl restart monsite`, ou `UPDATE_RESTART` dans le `.env`).
+Fichiers du modèle modifiés sur le serveur : mis de côté (`git stash list`),
+jamais bloquant.
+
+À la main, toujours possible : `git pull`, `npm install`, puis redémarrer.
 La branche `master` ne contient que les versions publiées. En cas de
 souci, `git checkout v0.5.11` (une version précise) revient en arrière,
 suivi de `npm install` et d'un redémarrage ; `git checkout master` puis
@@ -580,15 +589,22 @@ passez à la [partie D](#partie-d--paramétrer-le-site-dans-le-navigateur).
 
 ### E7. Mettre à jour
 
+Depuis l'Espace Admin (super admin) : badge **« Mise à jour X.Y.Z »** →
+**Mettre à jour**. Passenger relance l'application tout seul à la fin.
+
+Ou en SSH :
+
 ```bash
 source ~/nodevenv/zerucms/22/bin/activate && cd ~/zerucms
-./sauvegarde.sh        # facultatif : une sauvegarde du contenu avant
-git pull
-npm install
-PORT=3999 node --env-file-if-exists=.env scripts/serveur.mjs   # Ctrl+C à « à l'écoute »
+./update.sh
 ```
 
-puis **Restart** dans cPanel.
+puis **Restart** dans cPanel. Un `package.json` réécrit par cPanel (bouton
+« Run NPM Install ») est mis de côté automatiquement (`git stash list`).
+
+> Site en 0.5.30 ou avant : la première fois, une mise à jour à la main
+> (`git checkout -- package.json`, `git pull`, `npm install`, **Restart**)
+> pour obtenir le bouton.
 
 ### En cas de problème (cPanel)
 
@@ -649,7 +665,8 @@ l'Espace Admin au quotidien : [guide-espace-benevoles.md](guide-espace-benevoles
 Quand une nouvelle version est publiée, un badge **« Mise à jour X.Y.Z »**
 apparaît dans la barre de l'Espace Admin.
 
-**Avec Node.js** : `git pull`, `npm install`, puis redémarrer le site
+**Avec Node.js** : connecté·e en super admin, cliquez sur le badge puis
+**Mettre à jour** — ou `./update.sh` dans le dossier du site
 ([B6](#b6-mettre-à-jour-nodejs)).
 
 **Avec Docker**, depuis le dossier du site :

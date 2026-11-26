@@ -148,6 +148,14 @@ export const ADMIN_MODULES: AdminModule[] = [
 		component: defineAsyncComponent(() => import('./modules/SiteModule.vue')),
 	},
 	{
+		id: 'mise-a-jour',
+		label: 'Mise à jour',
+		icon: 'fa-circle-arrow-up',
+		groups: ['superadmin'],
+		exclusive: true,
+		component: defineAsyncComponent(() => import('./modules/MiseAJourModule.vue')),
+	},
+	{
 		id: 'journal',
 		label: 'Journal',
 		icon: 'fa-clock-rotate-left',

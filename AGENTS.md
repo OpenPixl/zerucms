@@ -63,8 +63,16 @@ autres que la version en ligne et la version visée (+ `image prune`), sauf
 `ghcr.io/numerik-co/numerik2026` à la nouvelle image (copie
 `docker-compose.yml.avant-<version>`, image en ligne ré-étiquetée).
 Production sans Docker = **`git clone` + `npm install` + `npm start`**
-(souhait explicite : rien d'exotique, pas de PM2 ; mise à jour `git pull` +
-`npm install` + redémarrage, `update.mjs` refuse un dossier `.git` ; en
+(souhait explicite : rien d'exotique, pas de PM2 ; mise à jour = bouton
+**« Mettre à jour »** (module « Mise à jour », super admin, badge de la
+barre : `MiseAJourModule.vue`, route `/api/admin/mise-a-jour`,
+`src/lib/mise-a-jour.ts` → `scripts/update.mjs --suivi` en maintenance
+nature `mise-a-jour`, progression `@@<n>|<étape>`, relance `restartServer`,
+`lancerTacheExclusive` de `site-build.ts` ; Docker : pas de bouton) ou
+`./update.sh` (même script) : installation git reconnue, fichiers du modèle
+modifiés sur le serveur mis de côté (`git stash`), avance rapide sinon
+`checkout --detach`, `npm install`, construction à côté, retour exact en cas
+d'échec ; `git pull` + `npm install` reste possible ; en
 continu : `sudo npm run service` = `scripts/service.mjs`, unité systemd
 `<dossier>.service` au nom du compte propriétaire du dossier, `-- retirer` ;
 docs/deploiement.md partie B).

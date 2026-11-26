@@ -35,7 +35,7 @@ import { aucunCompte, pageBienvenue } from './bienvenue.mjs';
 
 /**
  * @typedef {{ etat: 'en-cours' | 'redemarrage', motif: string, etape: string, progression: number, debut: string,
- *   nature?: 'restauration' | 'installation', manuel?: boolean, message?: string, par?: string }} Maintenance
+ *   nature?: 'restauration' | 'installation' | 'mise-a-jour', manuel?: boolean, message?: string, par?: string }} Maintenance
  */
 
 export const ROUTE_ETAT = '/__maintenance';
@@ -121,7 +121,7 @@ export function pageMaintenance({ nom = '', etat, apercu = false } = {}) {
 	const pct = manuel ? 0 : (etat?.progression ?? 0);
 	const texte = manuel
 		? echapper(etat?.message || MESSAGE_PAR_DEFAUT).replace(/\n/g, '<br>')
-		: `${nom ? `Le site de ${echapper(nom)}` : 'Le site'} est en cours ${echapper(etat?.nature === 'installation' ? "d'installation" : 'de restauration')}. Il revient dans quelques minutes : cette page se met à jour toute seule.`;
+		: `${nom ? `Le site de ${echapper(nom)}` : 'Le site'} est en cours ${echapper(etat?.nature === 'installation' ? "d'installation" : etat?.nature === 'mise-a-jour' ? 'de mise à jour' : 'de restauration')}. Il revient dans quelques minutes : cette page se met à jour toute seule.`;
 	const progression = manuel
 		? ''
 		: `<div class="barre" role="progressbar" aria-label="Avancement" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div class="plein" id="plein"></div></div>

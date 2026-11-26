@@ -66,8 +66,9 @@ aux mises à jour** (`./update.sh`) et n'est jamais envoyé sur git.
 ### 3. Déployer
 
 Premier démarrage : voir [deploiement.md](deploiement.md)
-(Docker ou Node.js). Ensuite, les nouvelles versions passent par
-`./update.sh` ([mise-a-jour.md](mise-a-jour.md)) — jamais de `git pull`.
+(Docker ou Node.js). Ensuite, les nouvelles versions passent par le
+bouton **Mettre à jour** de l'Espace Admin (Node.js, super admin) ou par
+`./update.sh` ([mise-a-jour.md](mise-a-jour.md)).
 
 > Si seul le `.env` a changé, il suffit de recréer le conteneur pour que le
 > nouveau secret soit lu :
@@ -260,10 +261,17 @@ On reste connecté·e **14 jours** sur cet appareil (prolongé à chaque visite)
   chaque publication reconstruit le site — ou **Développement** (ambre) —
   serveur de test, modifications visibles aussitôt, sans reconstruction.
 - **Bureau seulement** : quand une version plus récente du modèle est
-  publiée, un badge bleu **Mise à jour X.Y.Z** apparaît avant ce badge. Un
-  clic ouvre les nouveautés (Release GitHub) ; la mise à jour se fait sur le
-  serveur avec `./update.sh` ([mise-a-jour.md](mise-a-jour.md)). Simple
-  information : le site fonctionne normalement en attendant. Le
+  publiée, un badge bleu **Mise à jour X.Y.Z** apparaît avant ce badge.
+  Pour le **super admin**, un clic ouvre le module **« Mise à jour »** :
+  nouveautés, puis **Mettre à jour vers X.Y.Z** (confirmé en deux clics).
+  Le contenu est sauvegardé, le site passe en maintenance quelques minutes
+  (page avec barre de progression) puis revient seul dans sa nouvelle
+  version ; en cas d'échec, il reste tel qu'il était et le module dit
+  pourquoi. Des fichiers du modèle modifiés sur le serveur sont mis de côté
+  (liste affichée, rien n'est perdu). Site sous Docker : `./update.sh` sur
+  le serveur. Pour le reste du bureau, un clic ouvre les nouveautés
+  (Release GitHub) ([mise-a-jour.md](mise-a-jour.md)). Le site fonctionne
+  normalement en attendant. Le
   badge **Production** (ou **Développement**) affiche la version en place
   (ex. « Production v0.2.0 »), visible du bureau seulement.
 - Chaque bouton ouvre un **module** dans un **panneau à droite**, par-dessus
