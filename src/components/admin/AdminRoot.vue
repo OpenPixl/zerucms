@@ -496,13 +496,23 @@ onBeforeUnmount(() => {
 			>
 				<i class="fa-solid fa-key mr-1" aria-hidden="true"></i><span class="hidden sm:inline">{{ rappelUrgent ? 'Connexion à renouveler' : 'Jeton à renouveler' }}</span>
 			</button>
+			<!-- Super admin : ouvre le module « Mise à jour » ; bureau : notes de la version. -->
+			<button
+				v-if="version?.updateAvailable && modules.some((m) => m.id === 'mise-a-jour')"
+				type="button"
+				class="ml-1 shrink-0 rounded-full bg-sky-400 px-2 py-0.5 text-xs font-semibold text-sky-950 hover:bg-sky-300"
+				:title="`Version ${version.latest} disponible (site en version ${version.current}) : cliquer pour mettre à jour.`"
+				@click="activeId = 'mise-a-jour'"
+			>
+				<i class="fa-solid fa-circle-arrow-up mr-1" aria-hidden="true"></i><span class="hidden sm:inline">Mise à jour {{ version.latest }}</span><span class="sm:hidden">{{ version.latest }}</span>
+			</button>
 			<a
-				v-if="version?.updateAvailable"
+				v-else-if="version?.updateAvailable"
 				:href="version.url ?? undefined"
 				target="_blank"
 				rel="noopener"
 				class="ml-1 shrink-0 rounded-full bg-sky-400 px-2 py-0.5 text-xs font-semibold text-sky-950 hover:bg-sky-300"
-				:title="`Version ${version.latest} disponible (site en version ${version.current}). Sur le serveur : ./update.sh — cliquer pour voir les nouveautés.`"
+				:title="`Version ${version.latest} disponible (site en version ${version.current}). La mise à jour se fait par le super admin — cliquer pour voir les nouveautés.`"
 			>
 				<i class="fa-solid fa-circle-arrow-up mr-1" aria-hidden="true"></i><span class="hidden sm:inline">Mise à jour {{ version.latest }}</span><span class="sm:hidden">{{ version.latest }}</span>
 			</a>

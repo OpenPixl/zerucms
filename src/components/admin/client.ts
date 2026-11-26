@@ -15,6 +15,7 @@ import type { Diffusion } from '../../lib/diffusion';
 import type { Bloc } from '../../lib/blocs';
 import type { HomeModule } from '../../lib/home-modules';
 import type { ModelVersionInfo } from '../../lib/model-version';
+import type { EtatMiseAJour } from '../../lib/mise-a-jour';
 import type { SitePageState } from '../../lib/site-pages';
 import type { SiteLinkGroup } from '../../lib/site-links';
 
@@ -749,6 +750,12 @@ export const lotApi = {
 
 export const versionApi = {
 	get: () => request<ModelVersionInfo>('GET', '/api/admin/version'),
+};
+
+/** Mise à jour du modèle (super admin, `src/lib/mise-a-jour.ts`). */
+export const miseAJourApi = {
+	get: () => request<EtatMiseAJour>('GET', '/api/admin/mise-a-jour'),
+	lancer: (version: string) => request<{ ok: true }>('POST', '/api/admin/mise-a-jour', { version, confirm: version }),
 };
 
 export const journalApi = {

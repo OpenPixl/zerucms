@@ -55,7 +55,7 @@ export interface BuildStatus {
 /** Publication en cours dans ce process, ou `null`. */
 let current: Promise<void> | null = null;
 
-function root(): string {
+export function root(): string {
 	return resolve(SITE_ROOT || process.cwd());
 }
 
@@ -133,6 +133,19 @@ export function isPublishing(): boolean {
 	return current !== null;
 }
 
+/**
+ * Tâche longue qui exclut toute publication pendant qu'elle tourne (mise à
+ * jour du modèle, `src/lib/mise-a-jour.ts`). `false` si une publication (ou
+ * une autre tâche) est déjà en cours.
+ */
+export function lancerTacheExclusive(tache: () => Promise<void>): boolean {
+	if (current) return false;
+	current = tache().finally(() => {
+		current = null;
+	});
+	return true;
+}
+
 function run(command: string, args: string[], env: NodeJS.ProcessEnv, log: NodeJS.WritableStream, onLine?: (line: string) => void): Promise<void> {
 	return new Promise((resolvePromise, reject) => {
 		log.write(`\n$ ${command} ${args.join(' ')}\n`);
@@ -167,7 +180,7 @@ function shellQuote(arg: string): string {
  * fin de ce process (libération du port) puis relance la même commande Node,
  * mêmes options, même dossier, même environnement.
  */
-function restartServer(log: NodeJS.WritableStream): void {
+export function restartServer(log: NodeJS.WritableStream): void {
 	if (process.env.ZERUCMS_SUPERVISE) {
 		setTimeout(() => process.exit(CODE_RELANCE), 500);
 		return;
@@ -227,12 +240,12 @@ function pagesDesSources(): number {
  * d'Astro, pages prérendues (comparées à celles du site en ligne), images
  * optimisées (« (n/N) »). De 15 % à 90 % ; le reste = bascule et redémarrage.
  */
-function suiviDuBuild(avancer: (etape: string, progression: number) => void): (ligne: string) => void {
+export function suiviDuBuild(avancer: (etape: string, progression: number) => void): (ligne: string) => void {
 	// Pages de contenu + pages du site, catégories, listes… (≈ 15 de plus).
 	const attendues = Math.max(1, pagesEnLigne(), pagesDesSources() + 15);
 	let pages = 0;
 	return (ligne) => {
-		if (ligne.includes('Syncing content')) avancer('Lecture du contenu restauré…', 15);
+		if (ligne.includes('Syncing content')) avancer('Lecture du contenu…', 15);
 		else if (ligne.includes('Building server entrypoints')) avancer('Construction du site…', 22);
 		else if (ligne.includes('prerendering static routes')) avancer('Création des pages…', 35);
 		else if (/[├└]─ \/.*\.html/.test(ligne)) {

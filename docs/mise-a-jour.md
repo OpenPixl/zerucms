@@ -99,6 +99,15 @@ Le bureau est prévenu dans l'Espace Admin : badge **Mise à jour X.Y.Z**
 dans la barre dès qu'une version plus récente est publiée
 (`src/lib/model-version.ts`, vérifié au plus toutes les 6 h).
 
+**Sans commande (installation Node.js)** : le super admin clique sur ce
+badge (ou ouvre le module **« Mise à jour »**) puis **Mettre à jour** ; le
+site passe en maintenance (page avec barre de progression), se met à jour
+et revient tout seul dans sa nouvelle version, ou reste tel qu'il était en
+cas d'échec (message dans le module). Même procédure que `./update.sh`
+ci-dessous (`src/lib/mise-a-jour.ts` lance `scripts/update.mjs --suivi`),
+journal `modele.mise-a-jour`. Docker : pas de bouton, `./update.sh` sur le
+serveur.
+
 Dans le dossier du site, sur le serveur :
 
 ```bash
@@ -118,8 +127,8 @@ Le mode est détecté : Docker seulement si le site tourne déjà sous Docker
 (`NUMERIK_VERSION` dans le `.env`, ou conteneur de ce `docker-compose.yml`
 en marche, sauf site construit sur place : `dist` → `.releases/`) — la présence de `docker-compose.yml` et de la commande `docker`
 ne suffit plus (une installation Node basculait sous Docker). Sinon Node
-seul ; installation par `git clone` = message « git pull + npm install +
-npm start », rien n'est changé. `--docker` / `--node` pour l'imposer.
+seul, par git ou par archive (reconnu par `scripts/update.mjs`).
+`--docker` / `--node` pour l'imposer.
 `SITE_URL` doit être dans le `.env`.
 
 ⚠️ **Plugins** (volets activables, [src/plugins/README.md](../src/plugins/README.md)) :
@@ -222,6 +231,28 @@ Testé par la CI à chaque envoi (tâche « Mise à jour Docker ») : 0.0.1 →
 0.0.2 en sondant le site (0.0.1 lancée sous l'ancienne adresse de l'image,
 migration vérifiée), puis une 0.0.3 cassée qui doit être refusée.
 
+### Node seul, installé par `git clone`
+
+`./update.sh` (ou le bouton de l'Espace Admin) lance `scripts/update.mjs`,
+qui voit le dossier `.git` :
+
+1. `git fetch` des versions publiées, sauvegarde du contenu ;
+2. **fichiers du modèle modifiés sur le serveur** (ex. `package.json`
+   réécrit par npm ou par cPanel) **mis de côté** : `git stash` nommé
+   « zerucms : modifications locales avant la mise à jour vers … », liste
+   affichée (et dans le module). La mise à jour n'est jamais bloquée, rien
+   n'est perdu : `git stash list`, `git stash show -p`, `git stash pop` ;
+3. passage à la version : avance rapide de la branche (`git pull` reste
+   possible ensuite) ; si la branche porte des commits propres au serveur
+   (ou pour revenir à une version plus ancienne), l'étiquette `vX.Y.Z` est
+   extraite seule et la branche gardée telle quelle ;
+4. `npm install` (garde un `node_modules` lien symbolique, cas de cPanel),
+   `package.json` / `package-lock.json` remis tels que publiés, puis
+   construction à côté ;
+5. échec en 3-4 : commit, branche, dépendances et modifications locales
+   remis exactement ; le site, jamais arrêté, reste tel quel ;
+6. redémarrage comme ci-dessous (bouton : le serveur se relance seul).
+
 ### Node seul (sans Docker ni git)
 
 `./update.sh` lance `scripts/update.mjs` (`node`, `npm` et `tar` suffisent) :
@@ -236,10 +267,6 @@ migration vérifiée), puis une 0.0.3 cassée qui doit être refusée.
    remis (`npm ci` compris) et le site, jamais arrêté, reste tel quel ;
 5. redémarrage par la commande `UPDATE_RESTART` du `.env` (ex.
    `systemctl restart monsite`), sinon consigne affichée.
-
-Installation par `git clone` (cas courant sans Docker) : `update.sh` refuse
-et renvoie à `git pull` + `npm install` + redémarrage, `npm start`
-reconstruisant le site sur la nouvelle version.
 
 Pendant l'étape 4, `node_modules` change sous le serveur en marche : choisir
 un moment calme (aucune publication en cours).
