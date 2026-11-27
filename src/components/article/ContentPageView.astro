@@ -6,14 +6,16 @@
  * Contenu `.md` : HTML nettoyé, variables `{{…}}` et blocs (`pageParts()`).
  * Page enrichie (`page.sections`) : suite de sections pleine largeur
  * (`Sections.astro`), le texte et ses blocs dans la section « Contenu de la
- * page » ; en-tête de page (titre, fil d'Ariane) sauf si la première section
- * en tient lieu (Bandeau, Présentation).
+ * page », avec la même colonne de droite qu'une page simple (partage,
+ * sommaire) ; en-tête de page (titre, fil d'Ariane) sauf si la première
+ * section en tient lieu (Bandeau, Présentation).
  * `denied` : `login` = personne connectée requise (encart « Se connecter »),
  * `forbidden` = groupe insuffisant ; le contenu n'est alors pas rendu.
  */
 import ArticleLayout from '../../layouts/ArticleLayout.astro';
 import Layout from '../../layouts/Layout.astro';
 import Sections from '../sections/Sections.astro';
+import Article from './Article.astro';
 import PageHeader from '../sections/PageHeader.astro';
 import TableOfContents from './TableOfContents.astro';
 import FigureImage from './FigureImage.astro';
@@ -59,12 +61,20 @@ const sectionTitre = Boolean(sections?.length && ['bandeau', 'presentation'].inc
 	>
 		{!sectionTitre && <PageHeader slot="page-header" title={page.title} description={page.description} />}
 		<Sections modules={sections} dossier={`pages/${page.slug}`} titrePrincipal={sectionTitre}>
-			<section slot="contenu" class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-				{page.image && <FigureImage image={page.image} alt={page.title} caption={page.imageCredit} loading="eager" class="mb-8" />}
-				<div class="markdown-content font-light text-gray-700">
-					{md ? <ContenuBlocs parts={md.parts} dossier={`pages/${page.slug}`} /> : Content && <Content />}
-				</div>
-				{!restricted && <ShareTools title={page.title} class="mt-12" />}
+			{/* Même mise en page qu'une page simple : texte + colonne de droite (partage, sommaire). */}
+			<section slot="contenu" class="pt-12">
+				<Article>
+					<Fragment slot="sidebar">
+						{!restricted && <ShareTools title={page.title} class="mb-6" />}
+						{headings.length > 1 && <TableOfContents headings={headings} />}
+					</Fragment>
+					{page.image && <FigureImage image={page.image} alt={page.title} caption={page.imageCredit} loading="eager" class="mb-8" />}
+					<div class="markdown-content font-light text-gray-700">
+						{md ? <ContenuBlocs parts={md.parts} dossier={`pages/${page.slug}`} /> : Content && <Content />}
+					</div>
+					{/* La colonne de droite est masquée sous `lg` : on y replace le partage. */}
+					{!restricted && <ShareTools title={page.title} class="mt-12 lg:hidden" />}
+				</Article>
 			</section>
 		</Sections>
 	</Layout>

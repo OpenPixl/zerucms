@@ -91,7 +91,9 @@ Deux mécanismes coexistent :
   + blocs) et **enrichie** (`type: enrichie` + `sections:` = liste des
   sections dans l'ordre d'affichage). Section **« Contenu de la page »**
   (`contenu`, pages enrichies seulement : `contexte: 'page'`) = le texte
-  et ses blocs, placé où l'on veut ou retiré (texte alors facultatif).
+  et ses blocs, placé où l'on veut ou retiré (texte alors facultatif),
+  avec la même colonne de droite qu'une page simple (partage, sommaire :
+  `Article.astro`).
   En-tête de page (titre, fil d'Ariane) sauf si la première section en
   tient lieu (Bandeau, Présentation : `h1`). Ancienne page `type: enrichie`
   **sans** `sections:` (blocs seulement, avant 0.5.32) = page simple, à la
