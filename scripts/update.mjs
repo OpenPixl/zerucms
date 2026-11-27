@@ -58,10 +58,14 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { RELEASES_DIR, releaseStamp } from './releases.mjs';
 
 const root = resolve(process.env.SITE_ROOT || process.cwd());
+// Le Node qui exécute ce script d'abord dans le PATH : `npm` (et le `node`
+// des scripts npm) sont ceux de la même installation, même quand le serveur
+// est lancé par un gestionnaire au PATH réduit (Passenger, systemd, PM2, nvm…).
+process.env.PATH = [dirname(process.execPath), process.env.PATH].filter(Boolean).join(delimiter);
 const REPO = process.env.UPDATE_REPO || 'OpenPixl/zerucms';
 /**
  * Dossiers appartenant au modèle, remplacés en entier (absents de la
@@ -161,6 +165,15 @@ function terminer(cible) {
 // ── Installation par git ─────────────────────────────────────────────────────
 async function miseAJourGit() {
 	if (!lire('git', ['--version']).ok) echec('site installé avec git, mais la commande git est introuvable sur ce serveur.');
+	const depot = lire('git', ['rev-parse', '--git-dir']);
+	if (!depot.ok) {
+		echec(
+			/dubious ownership|safe\.directory/.test(depot.erreur)
+				? `le dossier du site appartient à un autre compte que celui qui lance la mise à jour (git refuse d’y travailler) : lancez-la avec le compte propriétaire du dossier, ou « git config --global --add safe.directory ${root} ».`
+				: `dépôt git illisible : ${depot.erreur || 'erreur inconnue'}`,
+		);
+	}
+	if (!lire('npm', ['--version']).ok) echec('la commande npm est introuvable sur ce serveur : rien n’a été changé.');
 
 	etape('Recherche des versions publiées (git fetch)', 3);
 	if (!run('git', ['fetch', '--quiet', '--tags', '--force', 'origin'])) echec('impossible de joindre le dépôt du modèle (réseau ?) : rien n’a été changé.');
@@ -226,6 +239,7 @@ async function miseAJourGit() {
 
 // ── Installation par archive (ni Docker ni git) ──────────────────────────────
 async function miseAJourArchive() {
+	if (!lire('npm', ['--version']).ok) echec('la commande npm est introuvable sur ce serveur : rien n’a été changé.');
 	// 1. Archive de la version visée, extraite dans un dossier temporaire.
 	const work = await mkdtemp(join(tmpdir(), 'numerik-update-'));
 	const nouvelle = join(work, 'code');
