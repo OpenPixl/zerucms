@@ -17,8 +17,8 @@ import { jsonError, withErrors } from '../../../lib/auth/api';
 export const prerender = false;
 
 const DOSSIER = /^(?:pages|news|activites)\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*)*$/;
-const FICHIER = /^(?:photo_\d{1,4}|cover)\.(jpg|jpeg|png|webp|avif)$/;
-const TYPES: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', avif: 'image/avif' };
+const FICHIER = /^(?:photo_\d{1,4}|cover)\.(jpg|jpeg|png|webp|avif|svg)$/;
+const TYPES: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', avif: 'image/avif', svg: 'image/svg+xml' };
 
 export const GET: APIRoute = withErrors(async ({ url }) => {
 	const dossier = url.searchParams.get('dossier') ?? '';

@@ -29,9 +29,9 @@
 
 import { PUBLISH_HOOK, PUBLISH_RESTART, SITE_ROOT } from 'astro:env/server';
 import { spawn } from 'node:child_process';
-import { createWriteStream, readdirSync } from 'node:fs';
+import { createWriteStream, readFileSync, readdirSync } from 'node:fs';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { avancerMaintenance, fermerMaintenance } from '../../scripts/maintenance.mjs';
 import { RELEASES_DIR, pruneReleases, releaseStamp, swapDist } from '../../scripts/releases.mjs';
 import { dataDir } from './data-dir';
@@ -149,7 +149,7 @@ export function lancerTacheExclusive(tache: () => Promise<void>): boolean {
 function run(command: string, args: string[], env: NodeJS.ProcessEnv, log: NodeJS.WritableStream, onLine?: (line: string) => void): Promise<void> {
 	return new Promise((resolvePromise, reject) => {
 		log.write(`\n$ ${command} ${args.join(' ')}\n`);
-		const child = spawn(command, args, { cwd: root(), env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+		const child = spawn(command, args, { cwd: root(), env: { ...envAvecNode(), ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
 		child.stdout.pipe(log, { end: false });
 		if (onLine) {
 			let reste = '';
@@ -174,6 +174,41 @@ function shellQuote(arg: string): string {
 }
 
 /**
+ * Environnement des commandes lancées (npm, build) : le Node qui fait
+ * tourner le serveur d'abord dans le PATH, pour que `npm` et le `node` des
+ * scripts soient ceux de la même installation, même sous un gestionnaire au
+ * PATH réduit (Passenger, systemd, PM2, nvm…).
+ */
+export function envAvecNode(): NodeJS.ProcessEnv {
+	return { ...process.env, PATH: [dirname(process.execPath), process.env.PATH].filter(Boolean).join(delimiter) };
+}
+
+/**
+ * Serveur lancé par un gestionnaire qui le relance quand il s'arrête :
+ * superviseur `npm start` (`ZERUCMS_SUPERVISE`), Passenger (cPanel, Plesk…),
+ * PM2, service systemd. Une relance autonome y serait tuée (systemd) ou
+ * ferait tourner deux serveurs (PM2).
+ */
+function gestionnaireDeRelance(): string | null {
+	if (process.env.ZERUCMS_SUPERVISE) return 'superviseur';
+	if ('PhusionPassenger' in globalThis || process.env.PASSENGER_APP_ENV || process.env.PASSENGER_BASE_URI) return 'Passenger';
+	if (process.env.pm_id !== undefined) return 'PM2';
+	// `INVOCATION_ID` seul ne suffit pas : un terminal de bureau l'hérite de
+	// la session. Service systemd = process lancé directement par systemd.
+	if (process.env.INVOCATION_ID && parentEstSystemd()) return 'systemd';
+	return null;
+}
+
+/** Le process parent est-il `systemd` (PID 1 ou gestionnaire de l'utilisateur) ? Linux seulement. */
+function parentEstSystemd(): boolean {
+	try {
+		return readFileSync(`/proc/${process.ppid}/comm`, 'utf8').trim() === 'systemd';
+	} catch {
+		return false;
+	}
+}
+
+/**
  * Redémarre le serveur sur la nouvelle version. Lancé par `npm start`
  * (`ZERUCMS_SUPERVISE`) : on sort avec `CODE_RELANCE`, le superviseur
  * relance. Sinon (serveur lancé autrement), un petit shell détaché attend la
@@ -181,7 +216,9 @@ function shellQuote(arg: string): string {
  * mêmes options, même dossier, même environnement.
  */
 export function restartServer(log: NodeJS.WritableStream): void {
-	if (process.env.ZERUCMS_SUPERVISE) {
+	const gestionnaire = gestionnaireDeRelance();
+	if (gestionnaire) {
+		if (gestionnaire !== 'superviseur') log.write(`\nServeur relancé par ${gestionnaire}.\n`);
 		setTimeout(() => process.exit(CODE_RELANCE), 500);
 		return;
 	}

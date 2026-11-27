@@ -136,9 +136,9 @@ Voir le détail des [tarifs 2026-2027](/adherer).
 
 Les titres `##` alimentent le sommaire de la colonne de droite.
 
-### Blocs (pages enrichies)
+### Blocs (dans le texte de toute page, actualité ou activité)
 
-La page déclare `type: enrichie` et ses blocs ; chaque bloc s'affiche à
+La page déclare ses blocs ; chaque bloc s'affiche à
 l'endroit de son marqueur, seul sur sa ligne. Catalogue et champs :
 `src/lib/blocs.ts` ; exemple complet :
 `src/content/pages/association/adhesion-associations/index.md`. Le module
@@ -147,7 +147,6 @@ l'endroit de son marqueur, seul sur sa ligne. Catalogue et champs :
 ```md
 ---
 title: "Titre"
-type: enrichie
 blocs:
   apports:
     type: cartes
@@ -202,6 +201,54 @@ blocs:
 [[bloc:cotisation]]
 
 [[bloc:contact]]
+```
+
+### Sections (pages enrichies)
+
+Page `type: enrichie` composée de sections pleine largeur (mêmes sections
+que l'accueil, catalogue `src/lib/home-modules.ts`) ; `contenu` = le texte
+de la page et ses blocs. Photos des éléments : fichiers du dossier de la
+page (logo transparent → `photo_<n>.webp`).
+
+```yaml
+type: enrichie
+sections:
+  - type: presentation       # ou bandeau : remplace alors l'en-tête de la page
+    titre: "Titre"
+    accroche: "Accroche **en gras**."
+  - type: contenu            # texte de la page + blocs (pages enrichies seulement)
+  - type: tarifs
+    titre: "Nos formules"
+    note: "Tarifs TTC."      # facultatif, sous la grille
+    items:                   # 1 à 6 formules
+      - titre: "Adhésion"
+        prix: "25 €"
+        periode: "/ an"      # facultatif
+        description: "La plus complète"
+        details: |           # liste cochée, une ligne « - » par point
+          - Ateliers illimités
+          - Prêt de matériel
+        bouton: "J'adhère"   # bouton seulement avec un lien
+        lien: "/adherer"
+        avant: oui           # formule mise en avant
+        mention: "La plus choisie"
+  - type: equipe
+    titre: "L'équipe"
+    colonnes: "3"            # "2" | "3" | "4"
+    items:
+      - { photo: ./photo_3.jpg, nom: "Camille Martin", role: "Présidente", texte: "Quelques mots.", lien: "mailto:…" }
+      - { nom: "Jean Durand", role: "Animateur" }   # sans photo : initiales
+  - type: defilement
+    titre: "Ils nous soutiennent"
+    vitesse: normale         # lente | normale | rapide
+    gris: non                # oui = gris, couleur au survol
+    items:                   # 2 logos au moins
+      - { photo: ./photo_4.webp, nom: "Mairie", lien: "https://…" }
+      - { photo: ./photo_5.webp, nom: "Région" }
+  - type: appel
+    titre: "Envie de nous rejoindre ?"
+    bouton-texte: "Adhérer"
+    bouton-lien: "/adherer"
 ```
 
 ### Valeur tirée de la configuration

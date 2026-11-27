@@ -1,7 +1,8 @@
 /**
  * Page du site (bibliothèque `src/lib/site-pages.ts` : Accueil, Activités…),
  * groupes `redacteur` / `admin` :
- *  - PUT : `{ label, show, active, textes, modules?, photo? }` (modules, photo : accueil) →
+ *  - PUT : `{ label, show, active, textes, modules?, photos?, photo? }` (modules et photos de
+ *          leurs éléments, photo : accueil) →
  *          `src/content/pages/_pages-site.md` (cf. `saveSitePage()`) ; `photo` = `{ type, data (base64) }`
  *          ou `'remove'` → `images/accueil.*` (`home-photo.ts`) ; `illustration` (même forme,
  *          SVG accepté) → `images/presentation.*` (module « Présentation ») ; puis reconstruction du site.
@@ -44,7 +45,9 @@ export const PUT: APIRoute = withErrors(async ({ params, request, locals }) => {
 		illustration = { action: 'replace', ...prepared };
 	}
 
-	const result = await saveSitePage(id, { label: String(body.label ?? ''), show: body.show !== false, active, textes, modules });
+	// Photos des sections (accueil) : `nouvelle:<clé>` → `{ type, data }`, cf. `preparerBlocs()`.
+	const photos = body.photos && typeof body.photos === 'object' && !Array.isArray(body.photos) ? (body.photos as Record<string, unknown>) : {};
+	const result = await saveSitePage(id, { label: String(body.label ?? ''), show: body.show !== false, active, textes, modules, photos });
 	if (!result.applied) return jsonError(result.errors.join(' '), 422);
 	let applied = result.applied;
 	if (photo.action !== 'keep' || illustration.action !== 'keep') {

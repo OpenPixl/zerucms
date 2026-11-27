@@ -23,12 +23,12 @@ export interface Depot {
 
 const MD = /\.(md|markdown)$/i;
 const ZIP = /\.zip$/i;
-const IMAGES: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+const IMAGES: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', svg: 'image/svg+xml' };
 const ZIP_MAX = 60 * 1024 * 1024;
 const DECOMPRESSE_MAX = 150 * 1024 * 1024;
 
 /** Accept des champs de fichier d'un dépôt. */
-export const DEPOT_ACCEPT = '.md,.markdown,text/markdown,.zip,application/zip,image/jpeg,image/png,image/webp';
+export const DEPOT_ACCEPT = '.md,.markdown,text/markdown,.zip,application/zip,image/jpeg,image/png,image/webp,image/svg+xml';
 
 const nomDe = (chemin: string) => chemin.split('/').pop() ?? chemin;
 const extension = (nom: string) => nom.split('.').pop()?.toLowerCase() ?? '';

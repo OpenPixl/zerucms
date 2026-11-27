@@ -30,7 +30,7 @@ function avertirTypesInconnus(quoi: string, types: string[]) {
 }
 
 /**
- * Blocs d'un contenu (pages enrichies, actualités, activités), par
+ * Blocs d'un contenu (pages, actualités, activités), par
  * identifiant, placés dans le texte par `[[bloc:<id>]]` (cf. `src/lib/blocs.ts`).
  * Type inconnu (extension absente) : ignoré avec un avertissement.
  */
@@ -115,12 +115,36 @@ const pages = defineCollection({
 					label: z.string().optional(),
 				})
 				.optional(),
+			/** Lien dans le bas du pied de page (mentions légales, CGV…), cf. `src/lib/pied-pages.ts`. */
+			pied: z
+				.object({
+					show: z.boolean().default(false),
+					order: z.number().default(99),
+				})
+				.optional(),
 			cover: image().optional(),
 			imageCredit: z.string().optional(),
-			/** `enrichie` = la page peut recevoir des blocs (`blocs:` + marqueurs `[[bloc:<id>]]`). */
+			/**
+			 * `classique` = page simple (texte + blocs) ; `enrichie` = page
+			 * composée de **sections** (`sections:`, catalogue
+			 * `src/lib/home-modules.ts`, dont « Contenu de la page »). Ancienne
+			 * page `enrichie` sans `sections:` (blocs seulement) : page simple.
+			 */
 			type: z.enum(['classique', 'enrichie']).default('classique'),
-			/** Blocs d'une page enrichie, par identifiant (cf. `src/lib/blocs.ts`). */
+			/** Blocs du texte, par identifiant (cf. `src/lib/blocs.ts`) : toute page. */
 			blocs: blocsSchema(),
+			/** Sections d'une page enrichie, dans l'ordre d'affichage. */
+			sections: z
+				.array(z.unknown())
+				.optional()
+				.transform((value, ctx) => {
+					if (value === undefined) return undefined;
+					const typesInconnus: string[] = [];
+					const { modules, errors } = validateHomeModules(value, { contexte: 'page', typesInconnus });
+					avertirTypesInconnus('section', typesInconnus);
+					for (const message of errors) ctx.addIssue({ code: 'custom', message });
+					return modules;
+				}),
 			/**
 			 * Restriction d'accès (pages de `espace-benevoles/` uniquement) :
 			 * `true` (toute personne connectée), un groupe ou une liste. Un

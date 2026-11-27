@@ -131,7 +131,10 @@ h6 {
 	font-weight: 600;
 }
 
-/* Rendu du contenu Markdown (actualités, activités...) importé via <Content /> */
+/* Rendu du contenu Markdown (actualités, activités...) importé via <Content />.
+   Les blocs (`.bloc`, `BlocView.astro`) ont leur propre mise en forme : les
+   règles des liens et des listes du texte ne les touchent pas (sinon un
+   bouton plein prend la couleur des liens et son texte disparaît). */
 .markdown-content p {
 	margin-top: 1rem;
 }
@@ -157,12 +160,12 @@ h6 {
 	color: var(--color-gray-900, #111827);
 }
 
-.markdown-content a {
+.markdown-content a:not(.bloc *) {
 	color: var(--color-primary);
 	text-decoration: underline;
 }
 
-.markdown-content a:hover {
+.markdown-content a:not(.bloc *):hover {
 	color: var(--color-secondary);
 }
 
@@ -174,7 +177,7 @@ h6 {
 	padding: 1rem 1.25rem;
 }
 
-.markdown-content ul {
+.markdown-content ul:not(.bloc *) {
 	margin-top: 1rem;
 	padding-left: 1.5rem;
 	list-style: disc;

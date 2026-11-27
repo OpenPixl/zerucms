@@ -27,14 +27,15 @@ import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/p
 import { join } from 'node:path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { isAuthGroup, type AuthGroup } from './auth/groups';
-import { blocMarkersIn, type Bloc } from './blocs';
+import { type Bloc } from './blocs';
 import { BLOC_PHOTO_ERREUR, BlocPhotoError, ecrireBlocPhotos, marqueursSansBloc, preparerBlocs, type PhotoAEcrire } from './bloc-writer';
 import { RESERVED_FOLDER } from './content-pages';
 import { adressesPluginsActifs } from './plugin-adresses';
 import { contentTransaction, type Applied } from './content-transaction';
 import { checkBody, COVER_ERROR, siteRoot, slugify, writeCover, type CoverChange } from './news-writer';
 import { unknownPageVariables } from './page-variables';
-import { DEFAULT_HOME, homeModuleDef, validateHomeModules, type HomeModule } from './home-modules';
+import { DEFAULT_HOME, champ, homeModuleDef, sectionPhotos, validateHomeModules, type HomeModule } from './home-modules';
+import { PIED_HISTORIQUES, piedDeLaPage } from './pied-pages';
 import { SITE_PAGES, sitePagesState, type SitePageSettings, type SitePageState } from './site-pages';
 
 export { type CoverChange };
@@ -52,9 +53,17 @@ export interface PageInput {
 	slug: string;
 	title: string;
 	description: string;
+	/** `classique` = page simple (texte + blocs) ; `enrichie` = page composée de sections. */
 	type: 'classique' | 'enrichie';
+	/** Sections d'une page enrichie (catalogue `src/lib/home-modules.ts`), dans l'ordre d'affichage. */
+	sections: unknown[];
 	/** Présence dans le menu de navigation (lien direct ou entrée d'un menu déroulant ; ignoré pour une page réservée). */
 	menu: { show: boolean; order: number; label: string };
+	/**
+	 * Lien du bas du pied de page (mentions légales, CGV… ; pages à la racine
+	 * seulement, cf. `src/lib/pied-pages.ts`). Position décidée par le serveur.
+	 */
+	pied: { show: boolean; order: number };
 	/** Page réservée : groupes autorisés ; vide = toute personne connectée. */
 	access: AuthGroup[];
 	body: string;
@@ -172,12 +181,15 @@ async function readPageAt(path: string): Promise<PageSource | null> {
 		slug: segments[segments.length - 1],
 		title: str(data.title),
 		description: str(data.description),
-		type: data.type === 'enrichie' ? 'enrichie' : 'classique',
+		// Ancienne page « enrichie » sans `sections:` (blocs seulement) : page simple.
+		type: data.type === 'enrichie' && Array.isArray(data.sections) ? 'enrichie' : 'classique',
+		sections: Array.isArray(data.sections) ? data.sections : [],
 		menu: {
 			show: menu?.show === true,
 			order: typeof menu?.order === 'number' ? menu.order : 99,
 			label: str(menu?.label),
 		},
+		pied: placement.kind === 'reservee' ? { show: false, order: 99 } : piedDeLaPage(path, data.pied, menu?.show === true),
 		access: (Array.isArray(access) ? access : typeof access === 'string' ? [access] : []).filter(isAuthGroup),
 		body,
 		blocs: data.blocs && typeof data.blocs === 'object' && !Array.isArray(data.blocs) ? (data.blocs as Record<string, unknown>) : {},
@@ -289,22 +301,29 @@ async function normalizePage(input: PageInput, currentPath: string | null): Prom
 	}
 
 	const body = input.body.replace(/\r\n?/g, '\n').trim();
-	if (!body) errors.push('Le texte de la page est vide.');
+	const enrichie = input.type === 'enrichie';
+	// Page enrichie sans section « Contenu de la page » : pas de texte exigé.
+	const texteAffiche = !enrichie || (input.sections ?? []).some((m) => (m as { type?: unknown })?.type === 'contenu');
+	if (!body && texteAffiche) errors.push('Le texte de la page est vide.');
 	if (Buffer.byteLength(body) > BODY_MAX) errors.push('Le texte est trop long (200 Ko max).');
 	errors.push(...checkBody(body));
 	const unknownVars = unknownPageVariables(body);
 	if (unknownVars.length) errors.push(`Variable(s) inconnue(s) : ${unknownVars.map((v) => `{{${v}}}`).join(', ')}.`);
 
-	let blocs: Record<string, Bloc> = {};
-	let photos: PhotoAEcrire[] = [];
-	if (input.type === 'enrichie') {
-		const prepares = await preparerBlocs(input.blocs ?? {}, input.photos ?? {}, currentPath ? join(pagesSourceDir(), currentPath) : null);
-		({ blocs, photos } = prepares);
-		errors.push(...prepares.errors);
-		const manquants = marqueursSansBloc(body, input.blocs ?? {});
-		if (manquants) errors.push(manquants);
-	} else if (blocMarkersIn(body).length) {
-		errors.push('Une page classique ne peut pas contenir de marqueur [[bloc:…]] : choisissez « page enrichie ».');
+	// Blocs : toute page (ils enrichissent le texte) ; sections : page enrichie. Photos des deux dans le dossier de la page.
+	const prepares = await preparerBlocs(input.blocs ?? {}, input.photos ?? {}, currentPath ? join(pagesSourceDir(), currentPath) : null, {
+		sections: enrichie ? (input.sections ?? []) : [],
+	});
+	const { blocs, photos } = prepares;
+	errors.push(...prepares.errors);
+	const manquants = marqueursSansBloc(body, input.blocs ?? {});
+	if (manquants) errors.push(manquants);
+	let sections: HomeModule[] = [];
+	if (enrichie) {
+		const checked = validateHomeModules(prepares.sections, { contexte: 'page' });
+		errors.push(...checked.errors, ...verifierSections(checked.modules));
+		sections = checked.modules;
+		if (!sections.length) errors.push('Une page enrichie a au moins une section.');
 	}
 
 	const groups = [...new Set(input.access.filter(isAuthGroup))];
@@ -315,10 +334,17 @@ async function normalizePage(input: PageInput, currentPath: string | null): Prom
 		const label = input.menu.label.trim();
 		frontmatter.menu = { show: Boolean(input.menu.show), order, ...(label && label !== title ? { label } : {}) };
 	}
-	if (input.type === 'enrichie') frontmatter.type = 'enrichie';
+	// Pied de page : pages à la racine. Une ancienne page affichée d'office
+	// (`PIED_HISTORIQUES`) garde un `pied:` explicite, même retirée du pied.
+	const auPied = placement.kind === 'racine' && Boolean(input.pied?.show);
+	if (auPied || (placement.kind === 'racine' && (PIED_HISTORIQUES as readonly string[]).includes(path))) {
+		frontmatter.pied = auPied ? { show: true, order: piedOrderFor(currentPath, pages) } : { show: false };
+	}
+	if (enrichie) frontmatter.type = 'enrichie';
 	if (placement.kind === 'reservee' && groups.length) frontmatter.access = groups.length === 1 ? groups[0] : groups;
 	if (input.imageCredit.trim()) frontmatter.imageCredit = input.imageCredit.trim();
-	if (input.type === 'enrichie' && Object.keys(blocs).length) frontmatter.blocs = blocs;
+	if (Object.keys(blocs).length) frontmatter.blocs = blocs;
+	if (enrichie) frontmatter.sections = sections;
 
 	return errors.length ? { errors } : { page: { path, frontmatter, body, photos }, errors };
 }
@@ -348,6 +374,14 @@ async function menuOrderFor(
 		const sitePages = sitePagesState(await readSitePagesSettings()).filter((p) => p.active);
 		others.push(...sitePages.map((p) => p.order), ...dropdowns.map((d) => d.order));
 	}
+	return others.length ? Math.floor(Math.max(...others) / ORDER_STEP) * ORDER_STEP + ORDER_STEP : ORDER_STEP;
+}
+
+/** Position d'une page dans le pied : inchangée si elle y était déjà, sinon la dernière. */
+function piedOrderFor(currentPath: string | null, pages: PageSource[]): number {
+	const current = currentPath ? pages.find((p) => p.path === currentPath) : undefined;
+	if (current && current.placement.kind === 'racine' && current.pied.show) return current.pied.order;
+	const others = pages.filter((p) => p.path !== currentPath && p.placement.kind === 'racine' && p.pied.show).map((p) => p.pied.order);
 	return others.length ? Math.floor(Math.max(...others) / ORDER_STEP) * ORDER_STEP + ORDER_STEP : ORDER_STEP;
 }
 
@@ -410,10 +444,17 @@ export async function savePage(
 				cover = './cover.jpg';
 			}
 			// Photos des blocs : nouvelles écrites, celles qu'aucun bloc ne cite plus retirées.
-			await ecrireBlocPhotos(dir, page.photos, (page.frontmatter.blocs ?? {}) as Record<string, Bloc>);
-			// `cover` avant `imageCredit` et les blocs : ordre de lecture habituel.
-			const { blocs, imageCredit, ...head } = page.frontmatter;
-			const frontmatter = { ...head, ...(cover ? { cover } : {}), ...(imageCredit ? { imageCredit } : {}), ...(blocs ? { blocs } : {}) };
+			const sections = (page.frontmatter.sections ?? []) as HomeModule[];
+			await ecrireBlocPhotos(dir, page.photos, (page.frontmatter.blocs ?? {}) as Record<string, Bloc>, sections.flatMap(sectionPhotos));
+			// `cover` avant `imageCredit`, les blocs puis les sections : ordre de lecture habituel.
+			const { blocs, sections: _sections, imageCredit, ...head } = page.frontmatter;
+			const frontmatter = {
+				...head,
+				...(cover ? { cover } : {}),
+				...(imageCredit ? { imageCredit } : {}),
+				...(blocs ? { blocs } : {}),
+				...(sections.length ? { sections } : {}),
+			};
 			await writeFile(join(dir, 'index.md'), serialize(frontmatter, page.body), 'utf8');
 			await removeEmptyReservedFolder(root);
 		});
@@ -502,9 +543,34 @@ export interface SitePageInput {
 	textes: Record<string, string>;
 	/** Page à modules (accueil) : nouvelle liste ; absent = modules actuels gardés. */
 	modules?: unknown[];
+	/** Photos des sections (`nouvelle:<clé>` → `{ type, data }`), rangées dans `src/content/pages/`. */
+	photos?: Record<string, unknown>;
 }
 
 const SITE_TEXT_MAX = 2000;
+
+/**
+ * Contrôles des textes des sections (accueil, page enrichie), en plus de
+ * `validateHomeModules` : longueur, variables `{{…}}` connues, liens des
+ * champs Markdown — éléments répétés compris.
+ */
+function verifierSections(modules: HomeModule[]): string[] {
+	const errors: string[] = [];
+	const verifier = (label: string, field: { label: string; type: string }, value: string) => {
+		if (value.length > SITE_TEXT_MAX) errors.push(`${label} : « ${field.label} » est trop long.`);
+		const unknown = unknownPageVariables(value);
+		if (unknown.length) errors.push(`${label} : variable(s) inconnue(s) ${unknown.map((v) => `{{${v}}}`).join(', ')}.`);
+		if (field.type === 'markdown') errors.push(...checkBody(value).map((e) => `${label} : ${e}`));
+	};
+	for (const module of modules) {
+		const def = homeModuleDef(module.type);
+		for (const field of def.fields) verifier(def.label, field, champ(module, field.name));
+		for (const item of module.items ?? []) {
+			for (const field of def.items?.fields ?? []) verifier(def.label, field, item[field.name] ?? '');
+		}
+	}
+	return errors;
+}
 
 /**
  * Règle une page du site : activation, libellé et visibilité de son lien,
@@ -534,19 +600,16 @@ export async function saveSitePage(id: string, input: SitePageInput): Promise<{ 
 
 	const pages = await readSitePagesSettings();
 	let modules: HomeModule[] | undefined;
+	// Photos des sections de l'accueil : dossier `src/content/pages/` lui-même.
+	let photos: PhotoAEcrire[] = [];
+	let toucherPhotos = false;
 	if (def.modules && input.modules !== undefined) {
-		const checked = validateHomeModules(input.modules);
-		errors.push(...checked.errors);
-		for (const module of checked.modules) {
-			const moduleDef = homeModuleDef(module.type);
-			for (const field of moduleDef.fields) {
-				const value = module[field.name] ?? '';
-				if (value.length > SITE_TEXT_MAX) errors.push(`${moduleDef.label} : « ${field.label} » est trop long.`);
-				const unknown = unknownPageVariables(value);
-				if (unknown.length) errors.push(`${moduleDef.label} : variable(s) inconnue(s) ${unknown.map((v) => `{{${v}}}`).join(', ')}.`);
-				if (field.type === 'markdown') errors.push(...checkBody(value).map((e) => `${moduleDef.label} : ${e}`));
-			}
-		}
+		const prepares = await preparerBlocs({}, input.photos ?? {}, pagesSourceDir(), { sections: input.modules });
+		photos = prepares.photos;
+		toucherPhotos = true;
+		errors.push(...prepares.errors);
+		const checked = validateHomeModules(prepares.sections);
+		errors.push(...checked.errors, ...verifierSections(checked.modules));
 		// Identique à l'accueil d'origine : rien à enregistrer.
 		modules = JSON.stringify(checked.modules) === JSON.stringify(DEFAULT_HOME) ? undefined : checked.modules;
 	} else if (def.modules && Array.isArray(pages[id]?.modules)) {
@@ -564,22 +627,33 @@ export async function saveSitePage(id: string, input: SitePageInput): Promise<{ 
 	if (Object.keys(settings).length) pages[id] = settings;
 	else delete pages[id];
 
-	const applied = await transaction((root) => writeSitePages(root, pages));
+	let applied: Applied;
+	try {
+		applied = await transaction(async (root) => {
+			await writeSitePages(root, pages);
+			// Nouvelles photos écrites, celles qu'aucune section de l'accueil ne cite plus retirées.
+			if (toucherPhotos) await ecrireBlocPhotos(root, photos, {}, (modules ?? DEFAULT_HOME).flatMap(sectionPhotos));
+		});
+	} catch (err) {
+		if (err instanceof BlocPhotoError) return { errors: [BLOC_PHOTO_ERREUR] };
+		throw err;
+	}
 	return { label, applied, errors: [] };
 }
 
 // --- Ordre du menu de navigation --------------------------------------------
 
-/** Niveau du menu réordonné : `racine` (premier niveau) ou `dropdown:<dossier>`. */
-export type MenuLevel = 'racine' | `dropdown:${string}`;
+/** Niveau réordonné : `racine` (premier niveau du menu), `dropdown:<dossier>` ou `pied` (liens du pied de page). */
+export type MenuLevel = 'racine' | 'pied' | `dropdown:${string}`;
 
 /**
  * Éléments d'un niveau du menu, par clé : `site:<id>` (page du site
  * active), `page:<chemin>`, `dropdown:<dossier>`. Premier niveau = pages du
  * site actives, pages à la racine affichées et menus déroulants ; menu déroulant =
- * toutes ses pages.
+ * toutes ses pages ; pied de page = ses liens (`pied:<chemin>`).
  */
 function levelKeys(level: string, source: Awaited<ReturnType<typeof listPagesSource>>): string[] | null {
+	if (level === 'pied') return source.pages.filter((p) => p.placement.kind === 'racine' && p.pied.show).map((p) => `pied:${p.path}`);
 	if (level === 'racine') {
 		return [
 			...source.sitePages.filter((p) => p.active).map((p) => `site:${p.id}`),
@@ -625,11 +699,20 @@ export async function saveMenuOrder(levels: Record<string, string[]>): Promise<{
 	const applied = await transaction(async (root) => {
 		for (const page of source.pages) {
 			const order = orders.get(`page:${page.path}`);
-			if (order === undefined || order === page.menu.order) continue;
+			const piedOrder = orders.get(`pied:${page.path}`);
+			const menuChange = order !== undefined && order !== page.menu.order;
+			if (!menuChange && piedOrder === undefined) continue;
 			const file = join(root, page.path, page.technique ? 'index.mdx' : 'index.md');
-			const { data, body } = readFrontmatter(await readFile(file, 'utf8'));
-			const menu = data.menu && typeof data.menu === 'object' ? (data.menu as Record<string, unknown>) : { show: true };
-			await writeFile(file, serialize({ ...data, menu: { ...menu, order } }, body), 'utf8');
+			let { data, body } = readFrontmatter(await readFile(file, 'utf8'));
+			// Ancienne page du pied sans `pied:` : réglage écrit au premier réordonnancement.
+			const piedChange = piedOrder !== undefined && (piedOrder !== page.pied.order || !data.pied);
+			if (!menuChange && !piedChange) continue;
+			if (menuChange) {
+				const menu = data.menu && typeof data.menu === 'object' ? (data.menu as Record<string, unknown>) : { show: true };
+				data = { ...data, menu: { ...menu, order } };
+			}
+			if (piedChange) data = { ...data, pied: { show: true, order: piedOrder } };
+			await writeFile(file, serialize(data, body), 'utf8');
 		}
 		for (const dropdown of source.dropdowns) {
 			const order = orders.get(`dropdown:${dropdown.folder}`);
@@ -663,7 +746,9 @@ export function readPageInput(raw: unknown): PageInput {
 		title: text(data.title),
 		description: text(data.description),
 		type: data.type === 'enrichie' ? 'enrichie' : 'classique',
+		sections: Array.isArray(data.sections) ? data.sections : [],
 		menu: { show: menu.show === true, order: Number(menu.order ?? 99), label: text(menu.label) },
+		pied: { show: Boolean(data.pied && typeof data.pied === 'object' && (data.pied as Record<string, unknown>).show === true), order: 99 },
 		access: Array.isArray(data.access) ? data.access.filter(isAuthGroup) : [],
 		body: text(data.body),
 		blocs: data.blocs && typeof data.blocs === 'object' && !Array.isArray(data.blocs) ? (data.blocs as Record<string, unknown>) : {},

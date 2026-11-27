@@ -4,6 +4,8 @@ import type { PageAccess } from './auth/access';
 import { blocMarkersIn, type Bloc } from './blocs';
 import { decouperBlocs, type BlocPart } from './bloc-parts';
 import { applyPageVariables } from './page-variables';
+import { piedDeLaPage, type PiedMeta } from './pied-pages';
+import type { HomeModule } from './home-modules';
 import { sanitizeNewsHtml } from './sanitize-news';
 
 /**
@@ -17,7 +19,7 @@ import { sanitizeNewsHtml } from './sanitize-news';
  *   src/content/pages/association/_group.md           -> libellé du menu déroulant « Association »
  *   src/content/pages/association/notre-histoire/...  -> /association/notre-histoire (dans le dropdown)
  *
- * Pages `.md` (classiques ou enrichies de blocs, cf. `src/lib/blocs.ts`) :
+ * Pages `.md` (texte et blocs, cf. `src/lib/blocs.ts` ; pages enrichies : sections) :
  * HTML nettoyé comme celui des actualités, variables `{{…}}` remplacées
  * (`page-variables.ts`). Pages `.mdx` : écrites dans le code, rendues telles
  * quelles (jamais produites par l'Espace Admin).
@@ -50,6 +52,8 @@ export interface ContentPage {
 	description?: string;
 	/** `null` si le frontmatter ne contient pas de bloc `menu:`. */
 	menu: PageMenuMeta | null;
+	/** Lien du bas du pied de page (`pied:`, cf. `src/lib/pied-pages.ts`). */
+	pied: PiedMeta;
 	/** Image de couverture (frontmatter `cover:`). */
 	image?: CollectionEntry<'pages'>['data']['cover'];
 	imageCredit?: string;
@@ -59,10 +63,12 @@ export interface ContentPage {
 	 * de `access:`), et n'apparaît jamais dans le menu.
 	 */
 	access: PageAccess;
-	/** `enrichie` = blocs autorisés. */
+	/** `classique` = page simple (texte + blocs) ; `enrichie` = page composée de sections. */
 	type: 'classique' | 'enrichie';
-	/** Blocs d'une page enrichie, par identifiant. */
+	/** Blocs du texte, par identifiant (toute page). */
 	blocs: Record<string, Bloc>;
+	/** Sections d'une page enrichie (`null` : page simple), cf. `src/lib/home-modules.ts`. */
+	sections: HomeModule[] | null;
 	/** Source `.mdx` (code) plutôt que `.md`. */
 	mdx: boolean;
 	/** Entrée brute de la collection (pour `render()`). */
@@ -98,9 +104,6 @@ function toPage(entry: CollectionEntry<'pages'>): ContentPage {
 	const blocs = data.blocs ?? {};
 	const mdx = Boolean(entry.filePath?.endsWith('.mdx'));
 	if (!mdx) {
-		if (data.type !== 'enrichie' && Object.keys(blocs).length > 0) {
-			throw new Error(`Page "${slug}" : \`blocs:\` n'est possible que pour une page \`type: enrichie\`.`);
-		}
 		const unknown = blocMarkersIn(entry.body ?? '').filter((id) => !blocs[id]);
 		if (unknown.length > 0) {
 			throw new Error(`Page "${slug}" : marqueur(s) sans bloc correspondant dans \`blocs:\` : ${unknown.join(', ')}.`);
@@ -114,11 +117,14 @@ function toPage(entry: CollectionEntry<'pages'>): ContentPage {
 		title,
 		description: data.description,
 		menu: data.menu ? { show: data.menu.show, order: data.menu.order, label: data.menu.label ?? title } : null,
+		pied: piedDeLaPage(slug, data.pied, data.menu?.show === true),
 		image: data.cover,
 		imageCredit: data.imageCredit,
 		access: reserved ? (data.access ?? 'connecte') : null,
-		type: data.type,
+		// Ancienne page « enrichie » (blocs seulement, sans `sections:`) : page simple.
+		type: data.type === 'enrichie' && data.sections ? 'enrichie' : 'classique',
 		blocs,
+		sections: data.type === 'enrichie' && data.sections ? data.sections : null,
 		mdx,
 		entry,
 	};

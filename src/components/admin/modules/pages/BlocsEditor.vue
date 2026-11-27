@@ -1,19 +1,15 @@
 <script setup lang="ts">
 /**
- * Blocs d'une page enrichie : ajout depuis le catalogue (`src/lib/blocs.ts`),
- * champs de chaque bloc, éléments répétés (cartes…, ordre par glisser-déposer ou ↑/↓ ; photos en
- * grille compacte : `PhotosGrille.vue`), et insertion du marqueur `[[bloc:<id>]]` dans le texte (`insert`).
+ * Blocs d'un contenu (page, actualité, activité) : ajout depuis le catalogue
+ * (`src/lib/blocs.ts`), champs de chaque bloc, éléments répétés
+ * (`ElementsEditor.vue`), et insertion du marqueur `[[bloc:<id>]]` dans le texte (`insert`).
  */
 import { computed, ref } from 'vue';
-import { VueDraggable } from 'vue-draggable-plus';
 import { disponible } from '../../../../plugins';
-import { BLOC_TYPES, blocMarkersIn, emptyBloc, emptyValue, type Bloc, type BlocType, type BlocTypeDef } from '../../../../lib/blocs';
-import { iconButtonClass, inputClass, sortableProps } from '../../context';
+import { BLOC_TYPES, blocMarkersIn, emptyBloc, type Bloc, type BlocType, type BlocTypeDef } from '../../../../lib/blocs';
+import { inputClass } from '../../context';
 import BlocFields from './BlocFields.vue';
-import { useBlocPhotos } from './bloc-photos';
-import DragHandle from './DragHandle.vue';
-import OrderArrows from './OrderArrows.vue';
-import PhotosGrille from './PhotosGrille.vue';
+import ElementsEditor from './ElementsEditor.vue';
 
 const props = defineProps<{ blocs: Record<string, Bloc>; body: string }>();
 const emit = defineEmits<{ insert: [id: string] }>();
@@ -34,56 +30,6 @@ function add() {
 
 function remove(id: string) {
 	delete props.blocs[id];
-}
-
-function addItem(bloc: Bloc) {
-	const fields = def(bloc.type).items!.fields;
-	(bloc.items ??= []).push(Object.fromEntries(fields.map((f) => [f.name, emptyValue(f)])));
-}
-
-// --- Plusieurs photos d'un coup (blocs dont les éléments ont un champ photo) ---
-
-const photos = useBlocPhotos();
-const champPhoto = (bloc: Bloc) => def(bloc.type).items?.fields.find((f) => f.type === 'photo')?.name;
-const erreurPhotos = ref<Record<string, string>>({});
-
-/** Une photo par élément : d'abord les éléments sans photo, puis de nouveaux éléments (dans la limite du bloc). */
-async function ajouterPhotos(id: string, bloc: Bloc, event: Event) {
-	const input = event.target as HTMLInputElement;
-	const files = [...(input.files ?? [])];
-	input.value = '';
-	const champ = champPhoto(bloc);
-	if (!photos || !champ) return;
-	const max = def(bloc.type).items!.max;
-	const problemes: string[] = [];
-	for (const file of files) {
-		let item = bloc.items?.find((it) => !it[champ]);
-		if (!item) {
-			if ((bloc.items?.length ?? 0) >= max) {
-				problemes.push(`${max} photos au plus : les suivantes sont ignorées.`);
-				break;
-			}
-			addItem(bloc);
-			item = bloc.items![bloc.items!.length - 1];
-		}
-		try {
-			item[champ] = await photos.choisir(file);
-		} catch (e) {
-			problemes.push((e as Error).message);
-		}
-	}
-	erreurPhotos.value = { ...erreurPhotos.value, [id]: problemes.join(' ') };
-}
-
-function moveItem(bloc: Bloc, index: number, delta: number) {
-	const items = bloc.items!;
-	const [item] = items.splice(index, 1);
-	items.splice(index + delta, 0, item);
-}
-
-/** Éléments glissés-déposés : nouvel ordre complet. */
-function reorderItems(bloc: Bloc, list: NonNullable<Bloc['items']>) {
-	bloc.items!.splice(0, bloc.items!.length, ...list);
 }
 </script>
 
@@ -114,57 +60,7 @@ function reorderItems(bloc: Bloc, list: NonNullable<Bloc['items']>) {
 
 			<BlocFields :fields="def(bloc.type).fields" :values="bloc" :id-prefix="`bloc-${id}`" />
 
-			<div v-if="def(bloc.type).items && photos && champPhoto(bloc)" class="mt-4">
-				<PhotosGrille :bloc="bloc" :def="def(bloc.type)" :id-prefix="`bloc-${id}`" :champ="champPhoto(bloc)!" @ajouter="ajouterPhotos(String(id), bloc, $event)" />
-				<p v-if="erreurPhotos[String(id)]" class="mt-1 text-xs text-red-700" role="alert">{{ erreurPhotos[String(id)] }}</p>
-			</div>
-			<div v-else-if="def(bloc.type).items" class="mt-4 space-y-3">
-				<VueDraggable
-					v-bind="sortableProps"
-					:model-value="bloc.items ?? []"
-					class="space-y-3"
-					@update:model-value="(list: NonNullable<Bloc['items']>) => reorderItems(bloc, list)"
-				>
-					<div v-for="(item, i) in bloc.items" :key="i" class="rounded-lg bg-gray-100 p-3">
-						<div class="mb-2 flex items-center gap-2 text-sm">
-							<DragHandle :disabled="false" />
-							<span class="font-semibold text-gray-700">{{ def(bloc.type).items!.label }} {{ i + 1 }}</span>
-							<span class="ml-auto flex items-center gap-1">
-								<OrderArrows
-									:label="`${def(bloc.type).items!.label} ${i + 1}`"
-									:first="i === 0"
-									:last="i === (bloc.items?.length ?? 0) - 1"
-									:disabled="false"
-									@up="moveItem(bloc, i, -1)"
-									@down="moveItem(bloc, i, 1)"
-								/>
-								<button
-									type="button"
-									:class="[iconButtonClass, 'text-red-600']"
-									:disabled="(bloc.items?.length ?? 0) <= def(bloc.type).items!.min"
-									aria-label="Retirer"
-									title="Retirer"
-									@click="bloc.items!.splice(i, 1)"
-								>
-									<i class="fa-solid fa-trash" aria-hidden="true"></i>
-								</button>
-							</span>
-						</div>
-						<BlocFields :fields="def(bloc.type).items!.fields" :values="item" :id-prefix="`bloc-${id}-${i}`" />
-					</div>
-				</VueDraggable>
-				<div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-					<button
-						v-if="(bloc.items?.length ?? 0) < def(bloc.type).items!.max"
-						type="button"
-						class="text-sm font-medium text-primary hover:underline"
-						@click="addItem(bloc)"
-					>
-						<i class="fa-solid fa-plus mr-1" aria-hidden="true"></i>Ajouter : {{ def(bloc.type).items!.label.toLowerCase() }}
-					</button>
-				</div>
-				<p v-if="erreurPhotos[String(id)]" class="text-xs text-red-700" role="alert">{{ erreurPhotos[String(id)] }}</p>
-			</div>
+			<ElementsEditor v-if="def(bloc.type).items" :valeur="bloc" :spec="def(bloc.type).items!" :id-prefix="`bloc-${id}`" />
 		</div>
 
 		<div class="flex flex-wrap items-end gap-2 rounded-xl border border-dashed border-gray-300 p-4">

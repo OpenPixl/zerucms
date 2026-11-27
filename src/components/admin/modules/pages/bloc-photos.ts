@@ -1,13 +1,14 @@
 /**
- * Photos des blocs d'une page enrichie (blocs « Photos », « Carrousel »)
- * dans le formulaire du module « Pages ».
+ * Photos des blocs (« Photos », « Carrousel ») et des sections (« L'équipe »,
+ * « Bandeau défilant ») dans les formulaires de l'Espace Admin.
  *
  * Une photo choisie reste dans le navigateur jusqu'à l'enregistrement : le
  * champ vaut `nouvelle:<clé>` (`BLOC_PHOTO_NOUVELLE`), le fichier part avec
  * la page (`PageInput.photos`) et le serveur le range dans le dossier de la
  * page (`./photo_<n>.jpg`, `src/lib/page-writer.ts`). Avant l'envoi,
- * la photo est réduite (2000 px au plus, JPEG) : envoi plus léger, plusieurs
- * photos d'un coup restent raisonnables.
+ * la photo est réduite (2000 px au plus, JPEG ; PNG / WebP en WebP, qui
+ * garde la transparence des logos) : envoi plus léger, plusieurs photos
+ * d'un coup restent raisonnables.
  *
  * `fournirBlocPhotos()` dans le formulaire (`PageForm.vue`),
  * `useBlocPhotos()` dans les champs (`BlocFields.vue`, `BlocsEditor.vue`).
@@ -33,11 +34,17 @@ export interface BlocPhotos {
 
 const CLE: InjectionKey<BlocPhotos> = Symbol('bloc-photos');
 
-const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+/** Formats acceptés ; SVG : champs `svg` seulement (logos), filtré par le sélecteur de fichier et revérifié par le serveur. */
+const TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+const SVG = 'image/svg+xml';
 const COTE_MAX = 2000;
 const POIDS_MAX = 10 * 1024 * 1024;
 
-/** Photo réduite à 2000 px (orientation EXIF appliquée, métadonnées perdues) ; l'originale si le navigateur ne sait pas. */
+/**
+ * Photo réduite à 2000 px (orientation EXIF appliquée, métadonnées perdues) ;
+ * l'originale si le navigateur ne sait pas. JPEG en JPEG ; PNG et WebP en
+ * WebP (transparence gardée : logos du « Bandeau défilant »).
+ */
 async function reduire(file: File): Promise<Blob> {
 	try {
 		const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
@@ -47,7 +54,8 @@ async function reduire(file: File): Promise<Blob> {
 		canvas.height = Math.round(bitmap.height * echelle);
 		canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 		bitmap.close();
-		const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+		const sortie = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp';
+		const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, sortie, 0.88));
 		return blob ?? file;
 	} catch {
 		return file;
@@ -56,20 +64,26 @@ async function reduire(file: File): Promise<Blob> {
 
 /** Photo prête à envoyer : réduite, `{ type, data (base64) }` (aussi pour les dépôts envoyés tels quels). */
 export async function photoPourEnvoi(file: Blob): Promise<{ type: string; data: string }> {
-	const blob = file.type === 'image/jpeg' && file.size < 300 * 1024 ? file : await reduire(file as File);
+	// SVG : envoyé tel quel (vectoriel, pas de réduction).
+	const blob = file.type === SVG || (file.type === 'image/jpeg' && file.size < 300 * 1024) ? file : await reduire(file as File);
 	const f = new File([blob], 'photo', { type: blob.type || 'image/jpeg' });
 	return { type: f.type, data: await fileToBase64(f) };
 }
 
-/** Valeurs `nouvelle:<clé>` citées par les blocs (champs et éléments). */
-function nouvellesCitees(blocs: Record<string, Bloc>): Set<string> {
+/** Blocs (par identifiant) ou sections (liste) dont on cherche les photos. */
+type AvecPhotos = Record<string, Bloc> | { [champ: string]: unknown; items?: Record<string, string>[] }[];
+
+/** Valeurs `nouvelle:<clé>` citées par des blocs ou des sections (champs et éléments). */
+function nouvellesCitees(groupes: AvecPhotos[]): Set<string> {
 	const citees = new Set<string>();
 	const voir = (v: unknown) => {
 		if (typeof v === 'string' && BLOC_PHOTO_NOUVELLE.test(v)) citees.add(v);
 	};
-	for (const bloc of Object.values(blocs)) {
-		Object.values(bloc).forEach(voir);
-		for (const item of bloc.items ?? []) Object.values(item).forEach(voir);
+	for (const groupe of groupes) {
+		for (const valeur of Object.values(groupe) as { items?: unknown }[]) {
+			Object.values(valeur).forEach(voir);
+			for (const item of Array.isArray(valeur.items) ? (valeur.items as Record<string, unknown>[]) : []) Object.values(item).forEach(voir);
+		}
 	}
 	return citees;
 }
@@ -83,8 +97,8 @@ export function fournirBlocPhotos(apercus: Record<string, string> = {}) {
 	const api: BlocPhotos = {
 		apercu: (valeur) => attente.get(valeur)?.url ?? apercus[valeur] ?? null,
 		async choisir(file) {
-			if (!TYPES.includes(file.type)) throw new Error(`« ${file.name} » : formats acceptés JPEG, PNG ou WebP.`);
-			const blob = await reduire(file);
+			if (!TYPES.includes(file.type)) throw new Error(`« ${file.name} » : formats acceptés JPEG, PNG, WebP (et SVG pour les logos).`);
+			const blob = file.type === SVG ? file : await reduire(file);
 			if (blob.size > POIDS_MAX) throw new Error(`« ${file.name} » est trop lourde (10 Mo max).`);
 			const valeur = cle();
 			attente.set(valeur, { blob, url: URL.createObjectURL(blob) });
@@ -105,10 +119,10 @@ export function fournirBlocPhotos(apercus: Record<string, string> = {}) {
 
 	return {
 		api,
-		/** Photos à envoyer avec la page : seulement celles encore citées par un bloc. */
-		async envoi(blocs: Record<string, Bloc>): Promise<Record<string, { type: string; data: string }>> {
+		/** Photos à envoyer avec la page : seulement celles encore citées par un bloc ou une section. */
+		async envoi(...groupes: AvecPhotos[]): Promise<Record<string, { type: string; data: string }>> {
 			const photos: Record<string, { type: string; data: string }> = {};
-			for (const valeur of nouvellesCitees(blocs)) {
+			for (const valeur of nouvellesCitees(groupes)) {
 				const photo = attente.get(valeur);
 				if (!photo) continue;
 				if (photo.aReduire) {

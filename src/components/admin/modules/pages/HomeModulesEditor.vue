@@ -1,14 +1,18 @@
 <script setup lang="ts">
 /**
- * Modules de la page d'accueil (catalogue `src/lib/home-modules.ts`) :
- * ajout, retrait, ordre (glisser-déposer ou ↑/↓) et contenu de chaque module, replié en
- * accordéon, photo du bandeau comprise (`HomePhotoField.vue`). Modifie la liste reçue sur place ; l'enregistrement est fait par
- * le formulaire parent (`SitePageForm.vue`).
+ * Sections d'une page (catalogue `src/lib/home-modules.ts`) : accueil
+ * (`SitePageForm.vue`) ou page enrichie (`PageForm.vue`, `contexte="page"` :
+ * section « Contenu de la page » proposée, pas de retour à l'accueil d'origine).
+ * Ajout, retrait, ordre (glisser-déposer ou ↑/↓) et contenu de chaque section, replié en
+ * accordéon, photo du bandeau comprise (`HomePhotoField.vue`, accueil),
+ * éléments répétés (`ElementsEditor.vue`). Modifie la liste reçue sur place ;
+ * l'enregistrement est fait par le formulaire parent.
  */
 import { computed, nextTick, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { disponible } from '../../../../plugins';
-import { DEFAULT_HOME, HOME_MODULES, homeModuleDef, newHomeModule, type HomeModule, type HomeModuleDef, type HomeModuleType } from '../../../../lib/home-modules';
+import { DEFAULT_HOME, HOME_MODULES, champ, homeModuleDef, newHomeModule, sectionPossible, type HomeModule, type HomeModuleDef, type HomeModuleType } from '../../../../lib/home-modules';
+import ElementsEditor from './ElementsEditor.vue';
 import { iconButtonClass, inputClass, sortableProps } from '../../context';
 import BlocFields from './BlocFields.vue';
 import HomePhotoField from './HomePhotoField.vue';
@@ -23,7 +27,9 @@ import OrderArrows from './OrderArrows.vue';
  * `photo` : brouillon de la photo d'accueil (fond du module « Bandeau ») ;
  * `illustration` : celui de l'illustration propre au module « Présentation ».
  */
-const props = defineProps<{ modules: HomeModule[]; photo?: HomePhotoDraft; illustration?: HomePhotoDraft }>();
+const props = withDefaults(defineProps<{ modules: HomeModule[]; photo?: HomePhotoDraft; illustration?: HomePhotoDraft; contexte?: 'accueil' | 'page' }>(), {
+	contexte: 'accueil',
+});
 
 /**
  * Module déplié, par objet (l'index change quand on déplace) : un seul à la
@@ -38,7 +44,7 @@ function toggle(m: HomeModule, event: MouseEvent) {
 }
 
 // Types d'un plugin inactif : non proposés (rendu ignoré par index.astro).
-const types = (Object.entries(HOME_MODULES) as [HomeModuleType, HomeModuleDef][]).filter(([, d]) => disponible(d));
+const types = (Object.entries(HOME_MODULES) as [HomeModuleType, HomeModuleDef][]).filter(([, d]) => disponible(d) && sectionPossible(d, props.contexte));
 /** Types encore ajoutables (un module unique déjà présent ne se rajoute pas). */
 const available = computed(() => types.filter(([type, def]) => def.multiple || !props.modules.some((m) => m.type === type)));
 const newType = ref<HomeModuleType | ''>('');
@@ -72,14 +78,14 @@ function resetHome() {
 }
 
 /** Résumé d'un module replié : son titre. */
-const summary = (m: HomeModule) => m.titre || '';
+const summary = (m: HomeModule) => champ(m, 'titre');
 </script>
 
 <template>
 	<fieldset class="space-y-3">
-		<legend class="font-heading text-sm font-semibold text-gray-900">Modules de la page</legend>
+		<legend class="font-heading text-sm font-semibold text-gray-900">Sections de la page</legend>
 		<p class="text-xs font-light text-gray-500">
-			Dans l'ordre d'affichage. Cliquez sur un module pour le modifier.
+			Bandes pleine largeur, dans l'ordre d'affichage. Cliquez sur une section pour la modifier.
 		</p>
 
 		<VueDraggable
@@ -145,18 +151,22 @@ const summary = (m: HomeModule) => m.titre || '';
 						libelle="Photo d'accueil"
 						aide="Même photo que le fond du module « Bandeau » (JPEG, PNG ou WebP, 10 Mo max)."
 					/>
+					<p v-if="m.type === 'contenu'" class="text-sm text-gray-600">
+						<i class="fa-solid fa-circle-info mr-1 text-primary" aria-hidden="true"></i>Le texte de la page et ses blocs se saisissent dans l'onglet « Contenu ».
+					</p>
 					<BlocFields :fields="homeModuleDef(m.type).fields" :values="m" :id-prefix="`hm-${i}`" />
+					<ElementsEditor v-if="homeModuleDef(m.type).items" :valeur="m" :spec="homeModuleDef(m.type).items!" :id-prefix="`hm-${i}`" />
 				</div>
 			</li>
 			<li v-if="!props.modules.length" class="px-4 py-3 text-sm font-light text-gray-500">
-				Aucun module : la page d'accueil sera vide.
+				Aucune section : la page sera vide.
 			</li>
 		</VueDraggable>
 
 		<div class="flex flex-wrap items-center gap-2">
-			<label for="hm-new" class="sr-only">Module à ajouter</label>
+			<label for="hm-new" class="sr-only">Section à ajouter</label>
 			<select id="hm-new" v-model="newType" :class="[inputClass, 'mt-0 w-auto min-w-0 flex-1']">
-				<option value="" disabled>Ajouter un module…</option>
+				<option value="" disabled>Ajouter une section…</option>
 				<option v-for="[type, def] in available" :key="type" :value="type">{{ def.label }} — {{ def.description }}</option>
 			</select>
 			<button
@@ -168,7 +178,7 @@ const summary = (m: HomeModule) => m.titre || '';
 				<i class="fa-solid fa-plus mr-1" aria-hidden="true"></i>Ajouter
 			</button>
 		</div>
-		<p class="text-xs font-light text-gray-500">
+		<p v-if="props.contexte === 'accueil'" class="text-xs font-light text-gray-500">
 			<button type="button" class="text-primary hover:underline" @click="resetHome">Revenir à l'accueil d'origine</button>
 		</p>
 	</fieldset>

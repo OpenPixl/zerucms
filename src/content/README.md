@@ -79,17 +79,17 @@ imageCredit: "Photo : Prénom Nom / Source (licence)"
 Si le fichier cité n'existe pas, le site refuse de se construire et indique
 la page en cause.
 
-### Page enrichie (blocs)
+### Blocs dans le texte
 
-Une page peut recevoir des **blocs** prêts à l'emploi (grille de cartes,
-encadré tarif, bouton, encadré d'information, rendez-vous du Conseiller
-Numérique) : `type: enrichie`, les blocs décrits sous `blocs:`, et un
-marqueur **seul sur sa ligne** à l'endroit où chacun doit s'afficher :
+Toute page peut recevoir des **blocs** prêts à l'emploi, placés dans son
+texte (grille de cartes, encadré tarif, bouton, encadré d'information,
+photos, carrousel, vidéo, rendez-vous du Conseiller Numérique) : les blocs
+décrits sous `blocs:`, et un marqueur **seul sur sa ligne** à l'endroit où
+chacun doit s'afficher :
 
 ```md
 ---
 title: "Adhérer en tant qu'association"
-type: enrichie
 blocs:
   cotisation:
     type: tarif
@@ -113,6 +113,41 @@ Types et champs : `src/lib/blocs.ts` (exemple complet :
 champ obligatoire manquant ou un marqueur sans bloc empêchent le site de se
 construire, avec un message qui nomme la page.
 
+### Page enrichie (sections)
+
+Une **page enrichie** est composée de **sections** : des bandes pleine
+largeur, les mêmes que celles de l'accueil (bandeau, présentation, grille de
+tarifs, équipe, bandeau défilant de logos, appel à l'action, partenaires,
+texte libre…). La section `contenu` affiche le texte de la page, avec ses
+blocs, à l'endroit choisi :
+
+```md
+---
+title: "Nos offres"
+type: enrichie
+sections:
+  - type: presentation
+    titre: "Nos offres"
+    accroche: "Des ateliers pour tous les âges."
+  - type: contenu
+  - type: tarifs
+    titre: "Nos formules"
+    items:
+      - { titre: "Découverte", prix: "Gratuit" }
+      - { titre: "Adhésion", prix: "20 €", periode: "/ an", avant: oui, mention: "La plus choisie" }
+  - type: appel
+    titre: "Envie de nous rejoindre ?"
+    bouton-texte: "Adhérer"
+    bouton-lien: "/adherer"
+---
+
+Le texte de la page (section « contenu »).
+```
+
+Sections et champs : `src/lib/home-modules.ts` ; le plus simple est de
+télécharger le modèle « page enrichie » dans l'Espace Admin. Une ancienne
+page `type: enrichie` sans `sections:` est une page simple.
+
 ### Informations de l'association dans le texte
 
 `{{association.nom}}`, `{{association.email}}`, `{{association.adresse}}`…
@@ -132,7 +167,30 @@ menu:
 ---
 ```
 
-La page reste consultable via son URL (utile pour les liens de pied de page).
+La page reste consultable via son URL.
+
+### Page en bas du pied de page (mentions légales, CGV…)
+
+Les liens tout en bas du site (à côté de « Espace Admin ») sont les pages
+qui portent un bloc `pied:` ; `order` règle leur ordre (le plus petit en
+premier). Le plus simple : dans l'Espace Admin, module « Pages »,
+emplacement **« Pied de page »**, puis ordre par glisser-déposer dans la
+section « Pied de page » de la liste.
+
+```md
+---
+title: "Conditions générales de vente"
+menu:
+  show: false
+  label: "CGV"   # facultatif : texte du lien si différent du titre
+pied:
+  show: true
+  order: 40
+---
+```
+
+Les pages `mentions-legales`, `statuts` et `reglement-interieur` sans bloc
+`pied:` (et hors du menu) y figurent d'office, comme avant ce réglage.
 
 ### Page réservée au bureau ou aux animateur·rice·s
 
@@ -248,8 +306,9 @@ Les noms des textes de chaque page sont dans `src/lib/site-pages.ts`.
 | `menu.label` | non | Texte du menu si différent de `title` |
 | `cover` | non | Photo, chemin relatif au dossier (`./cover.jpg`) |
 | `imageCredit` | non | Crédit affiché sous la photo |
-| `type` | non | `enrichie` pour une page à blocs (défaut : `classique`) |
-| `blocs` | non | Blocs d'une page enrichie, par identifiant (voir plus haut) |
+| `type` | non | `enrichie` pour une page composée de sections (défaut : page simple) |
+| `blocs` | non | Blocs du texte, par identifiant (voir plus haut) |
+| `sections` | non | Sections d'une page enrichie, dans l'ordre d'affichage |
 | `access` | non | Pages réservées seulement : groupe(s) autorisé(s) |
 
 ### Menu déroulant — `pages/<dossier>/_group.md`

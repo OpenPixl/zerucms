@@ -70,12 +70,12 @@ const keep = (name: string) => (el: unknown) => {
 					<input
 						:id="`${props.idPrefix}-${f.name}`"
 						type="file"
-						accept="image/jpeg,image/png,image/webp"
+						:accept="f.svg ? 'image/jpeg,image/png,image/webp,image/svg+xml' : 'image/jpeg,image/png,image/webp'"
 						class="sr-only"
 						@change="choisirPhoto(f.name, $event)"
 					/>
 				</label>
-				<span v-if="!value(f.name)" class="block text-xs font-light text-gray-500">JPEG, PNG ou WebP</span>
+				<span v-if="!value(f.name)" class="block text-xs font-light text-gray-500">{{ f.svg ? 'SVG, PNG, JPEG ou WebP' : 'JPEG, PNG ou WebP' }}</span>
 				<span v-if="erreurPhoto" class="block text-xs text-red-700" role="alert">{{ erreurPhoto }}</span>
 			</span>
 		</div>

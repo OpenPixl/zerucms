@@ -28,7 +28,7 @@ Deux mécanismes coexistent :
 | `src/content/pages/statuts/index.md` | `/statuts` | contenu | Statuts (lien de pied de page) |
 | `src/content/pages/reglement-interieur/index.md` | `/reglement-interieur` | contenu | Règlement intérieur (lien de pied de page) |
 | `src/content/pages/mentions-legales/index.md` | `/mentions-legales` | contenu | Mentions légales (lien de pied de page), variables `{{association.…}}` |
-| `src/content/pages/association/adhesion-associations/index.md` | `/association/adhesion-associations` | contenu (enrichie) | Adhésion des associations : cartes, tarif, bouton |
+| `src/content/pages/association/adhesion-associations/index.md` | `/association/adhesion-associations` | contenu (blocs) | Adhésion des associations : cartes, tarif, bouton |
 | `src/content/pages/association/_group.md` | — | contenu | Décrit le menu déroulant « Association » |
 | `src/content/pages/association/notre-histoire/index.md` | `/association/notre-histoire` | contenu | Histoire de l'association |
 | `src/content/pages/association/ethique-du-logiciel-libre/index.md` | `/association/ethique-du-logiciel-libre` | contenu | Éthique du logiciel libre |
@@ -64,19 +64,43 @@ Deux mécanismes coexistent :
 ### Détails
 
 - **Hors menu mais accessible** : omettre le bloc `menu:` ou mettre
-  `show: false`. Utile pour les pages liées seulement depuis le pied de page.
+  `show: false`.
+- **Pied de page** (liens du bas : mentions légales, CGV, statuts…) :
+  `pied: { show: true, order: <n> }`, page à la racine ; libellé =
+  `menu.label`, sinon le titre. Règle partagée `src/lib/pied-pages.ts`
+  (`piedDeLaPage()`) : une page de `PIED_HISTORIQUES` (`mentions-legales`,
+  `statuts`, `reglement-interieur`) sans `pied:` et hors du menu y figure
+  d'office (affichage figé d'avant ce réglage) ; la retirer du pied écrit
+  `pied: { show: false }`. Rendu : `Footer.astro`.
 - **Menu déroulant** : ranger les pages dans un sous-dossier + y placer un
   `_group.md` (`label`, `order`). Voir [navigation.md](navigation.md).
 - **Valeurs de la configuration dans le texte** : variables
   `{{association.nom}}`, `{{association.adresse}}`, `{{hebergeur.nom}}`…
   (`src/lib/page-variables.ts`), remplacées à l'affichage (ex.
   `mentions-legales`).
-- **Page enrichie** : `type: enrichie` + `blocs:` + marqueurs
-  `[[bloc:<id>]]` seuls sur leur ligne (catalogue `src/lib/blocs.ts`,
-  rendu `src/components/blocs/BlocView.astro`). Ajouter un type de bloc =
-  une entrée dans `BLOC_TYPES` (champs : formulaire du module + validation
-  au build) + une branche dans `BlocView.astro`. Un composant avec
-  `client:*` (îlot) y est possible.
+- **Blocs et sections** — deux notions distinctes :
+  - **blocs** = éléments qui enrichissent un *contenu* (page, actualité,
+    activité), placés dans le texte : `blocs:` + marqueurs `[[bloc:<id>]]`
+    seuls sur leur ligne (catalogue `src/lib/blocs.ts`, rendu
+    `src/components/blocs/BlocView.astro`), **dans toute page** ;
+  - **sections** = bandes pleine largeur qui enrichissent une *page* : un
+    seul catalogue pour l'accueil et les pages enrichies
+    (`src/lib/home-modules.ts`, code : « modules » ; rendu commun
+    `src/components/sections/Sections.astro`).
+- **Deux types de page** : **simple** (`type` absent ou `classique` : texte
+  + blocs) et **enrichie** (`type: enrichie` + `sections:` = liste des
+  sections dans l'ordre d'affichage). Section **« Contenu de la page »**
+  (`contenu`, pages enrichies seulement : `contexte: 'page'`) = le texte
+  et ses blocs, placé où l'on veut ou retiré (texte alors facultatif),
+  avec la même colonne de droite qu'une page simple (partage, sommaire :
+  `Article.astro`).
+  En-tête de page (titre, fil d'Ariane) sauf si la première section en
+  tient lieu (Bandeau, Présentation : `h1`). Ancienne page `type: enrichie`
+  **sans** `sections:` (blocs seulement, avant 0.5.32) = page simple, à la
+  lecture comme à l'enregistrement. Ajouter un type de bloc = une entrée
+  dans `BLOC_TYPES` + une branche dans `BlocView.astro` ; une section = une
+  entrée dans `MODULES_DU_CMS` de `home-modules.ts` + son composant dans
+  `Sections.astro`.
 - **Blocs avec médias** : **Photos** (`photos`, 1 à 12, disposition
   automatique / 1 / 2 / 3 colonnes), **Carrousel** (`carrousel`, 2 à 20
   photos, interrupteurs `fleches`, `points`, `auto` + `delai` en secondes ;
@@ -98,8 +122,45 @@ Deux mécanismes coexistent :
   pris dans le dossier), celles qu'aucun bloc ne cite plus supprimées ; rendu
   par `<Image>` via `src/lib/bloc-images.ts` (`import.meta.glob`), fichier
   manquant ignoré ; vignettes du module : `blocPhotoUrls` des GET.
+- **Sections à éléments** (champ `items` d'une section, mêmes règles que
+  les éléments des blocs : `validerElements`, éditeur `ElementsEditor.vue`
+  partagé avec les blocs, photos dans le dossier de la page — accueil :
+  `src/content/pages/` —, `sectionPhotos()`, `preparerBlocs(…, { sections })`) :
+  **Grille de tarifs** (`tarifs`, 1 à 6 formules : `titre`, `prix`,
+  `periode`, `description`, `details` en Markdown — liste « - » affichée
+  cochée —, `bouton` + `lien`, `avant` (interrupteur) + `mention` = pastille
+  de la formule mise en avant ; `note` sous la grille), **L'équipe**
+  (`equipe`, 1 à 30 personnes : `photo` facultative — initiales sinon —,
+  `nom`, `role`, `texte`, `lien`, sans cadre ; `colonnes` 2 / 3 / 4 = nombre par
+  ligne, rangées centrées (ligne incomplète au milieu) ; `items.liste: true`
+  = liste d'éléments, pas la grille de vignettes) et **Bandeau
+  défilant** (`defilement`, 2 à 30 logos : `photo`, `nom` (texte
+  alternatif, infobulle), `lien` ; `titre`, `vitesse` lente / normale /
+  rapide, `gris` ; boucle CSS sur deux copies de la liste — la seconde
+  `aria-hidden` —, pause au survol / focus, immobile et sur plusieurs
+  lignes si « réduire les animations »). Composants `TarifsSection`,
+  `EquipeSection`, `DefilementSection`, au style des autres sections :
+  conteneur `max-w-6xl`, en-tête commun aligné à gauche (`EnTeteSection` :
+  surtitre, titre `text-3xl`, texte), grille pleine largeur, champ
+  « Couleur du fond » (`champFond()`, teintes de `src/lib/section-fonds.ts`,
+  partagées avec Présentation) ; bandeau défilant : logos répétés jusqu'à
+  12 par bande pour toujours remplir la largeur (répétitions masquées aux
+  lecteurs d'écran et au mouvement réduit).
+- **Images transparentes** (logos) : réduites en WebP dans le navigateur
+  (`bloc-photos.ts`) puis écrites en `photo_<n>.webp` par `bloc-writer.ts`
+  (`stats().isOpaque` de sharp) ; les photos opaques restent en JPEG.
+- **SVG** : accepté seulement pour un champ `photo` marqué `svg: true`
+  (logos de la section « Bandeau défilant ») — refusé ailleurs par
+  `checkBlocField` ; envoyé et écrit tel quel (`photo_<n>.svg`), contenus
+  actifs refusés (`svgProblem()` de `src/lib/svg-sur.ts`, partagé avec le
+  logo du site). Logos affichés sur 64 px de haut (80 px sur écran large).
+- **Blocs et texte** : `BlocView.astro` enveloppe chaque bloc dans `.bloc` ;
+  les règles des liens et listes de `.markdown-content` (`global.css`,
+  hors couche, donc plus fortes que les utilitaires) l'excluent
+  (`:not(.bloc *)`) — sinon un bouton plein prend la couleur des liens.
+  La marge des `p` du texte s'applique encore aux blocs.
 - **Photos dans le formulaire** (blocs dont les éléments ont un champ
-  `photo` : Photos, Carrousel) : `modules/pages/PhotosGrille.vue` au lieu
+  `photo` : Photos, Carrousel, section Bandeau défilant) : `modules/pages/PhotosGrille.vue` au lieu
   de la liste d'éléments de `BlocsEditor.vue` — grille de 4 vignettes par
   ligne, numéro et pastille orange (champ obligatoire vide) sur chaque
   vignette, corbeille dans un coin (masquée au minimum d'éléments du bloc),
@@ -113,8 +174,8 @@ Deux mécanismes coexistent :
   garder le défilement), et boutons « Reculer » / « Avancer » du panneau
   pour le clavier. Les autres blocs à éléments (cartes…) gardent la liste
   avec poignée et flèches ↑/↓.
-- **Blocs dans les actualités et les activités** : mêmes blocs, sans choix
-  « classique / enrichie » (`blocs:` facultatif dans leur en-tête, éditeur
+- **Blocs dans les actualités et les activités** : mêmes blocs
+  (`blocs:` facultatif dans leur en-tête, éditeur
   dans l'onglet Contenu, rendu `ContenuBlocs.astro` par `renderNews()` /
   `renderActivity()` qui renvoient `parts`). Marqueur sans bloc : refusé à
   l'enregistrement, ignoré au rendu.
@@ -158,7 +219,8 @@ ajoute la modification au lot en attente, publié plus tard en une fois :
   une page du site), (`pages/PageForm.vue`,
   `pages/BlocsEditor.vue`, `pages/BlocFields.vue` — champs `markdown` et
   `url` suivis du sélecteur de liens `LinkPicker.vue`) ; création = choix
-  **page classique** ou **page enrichie**, ou dépôt d'un fichier `.md` qui
+  **page simple** ou **page enrichie** (onglet « Sections » :
+  `HomeModulesEditor.vue` `contexte="page"`), ou dépôt d'un fichier `.md` qui
   pré-remplit le formulaire (`pages/page-markdown.ts` : `parsePageMarkdown()`,
   modèles `downloadPageTemplate()` ; emplacement, adresse, accès et photo
   restent à régler dans le formulaire, le serveur revalide tout).
@@ -211,9 +273,13 @@ ajoute la modification au lot en attente, publié plus tard en une fois :
 - Nouvelle page dans la bibliothèque : une entrée `SITE_PAGES` (textes et
   valeurs par défaut), lecture de ses textes avec `getSitePage()` dans la page
   `.astro`, et `if (!page.active) return new Response(null, { status: 404 })`.
+- Emplacement **« Pied de page »** du formulaire (`PageForm.vue`) : page à la
+  racine, `menu.show: false`, `pied.show: true`, dernière position à
+  l'arrivée (`piedOrderFor()`) ; section « Pied de page » de la liste,
+  ordonnable (niveau `pied`, clés `pied:<chemin>`).
 - Ordre : glisser-déposer (poignée ⠿) ou flèches ↑/↓ dans le bloc « Menu de navigation » (premier niveau :
   liens du site, liens directs, menus déroulants ; ou pages d'un menu
-  déroulant), brouillon local puis `PUT /api/admin/ordre-menu`
+  déroulant) ou « Pied de page » (`pied.order`), brouillon local puis `PUT /api/admin/ordre-menu`
   (`saveMenuOrder()` : liste complète du niveau exigée, positions
   renumérotées 0, 10, 20… dans `menu.order`, `_group.md` et
   `_pages-site.md`, une seule transaction et une seule publication).

@@ -5,13 +5,11 @@ import { SOCIAL_NETWORKS, association, getAddressLines } from '../../lib/associa
 import { getContentPages } from '../../lib/content-pages';
 const year = new Date().getFullYear();
 
-/** Pages légales du pied de page : seulement celles qui existent (statuts et règlement : associations). */
-const slugs = new Set((await getContentPages()).filter((p) => !p.access).map((p) => p.slug));
-const legalLinks = [
-	{ href: '/mentions-legales', label: 'Mentions légales', slug: 'mentions-legales' },
-	{ href: '/statuts', label: 'Statuts', slug: 'statuts' },
-	{ href: '/reglement-interieur', label: 'Règlement intérieur', slug: 'reglement-interieur' },
-].filter((l) => slugs.has(l.slug));
+/** Liens du bas : pages à l'emplacement « Pied de page » du module Pages (`pied:`, `src/lib/pied-pages.ts`). */
+const legalLinks = (await getContentPages())
+	.filter((p) => !p.access && p.pied.show)
+	.sort((a, b) => a.pied.order - b.pied.order || a.title.localeCompare(b.title, 'fr'))
+	.map((p) => ({ href: p.url, label: p.menu?.label ?? p.title }));
 
 const socialLinks = Object.entries(association.social)
 	.filter(([, url]) => !!url)
