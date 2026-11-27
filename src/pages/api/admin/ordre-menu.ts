@@ -1,8 +1,9 @@
 /**
  * Ordre du menu de navigation (flèches ↑/↓ du module « Pages », groupes
  * `redacteur` / `admin`) :
- *  - PUT : `{ levels: { racine?: [clés], 'dropdown:<dossier>'?: [clés] } }`
- *          (clés `builtin:<id>`, `page:<chemin>`, `dropdown:<dossier>`),
+ *  - PUT : `{ levels: { racine?: [clés], 'dropdown:<dossier>'?: [clés], pied?: [clés] } }`
+ *          (clés `site:<id>`, `page:<chemin>`, `dropdown:<dossier>`, `pied:<chemin>` pour les
+ *          liens du pied de page),
  *          cf. `saveMenuOrder()` ; puis reconstruction du site.
  */
 import type { APIRoute } from 'astro';
@@ -22,13 +23,14 @@ export const PUT: APIRoute = withErrors(async ({ request, locals }) => {
 		if (Array.isArray(keys)) levels[level] = keys.map(String);
 	}
 	const result = await saveMenuOrder(levels);
+	const seulPied = Object.keys(levels).every((l) => l === 'pied');
 	if (!result.applied) return jsonError(result.errors.join(' '), 422);
 	return publishChange({
 		request,
 		user: locals.user!,
 		action: 'ordre-menu.modification',
-		subject: 'Ordre du menu de navigation',
-		label: 'Nouvel ordre du menu',
+		subject: seulPied ? 'Ordre du pied de page' : 'Ordre du menu de navigation',
+		label: seulPied ? 'Nouvel ordre du pied de page' : 'Nouvel ordre du menu',
 		applied: result.applied,
 	});
 });

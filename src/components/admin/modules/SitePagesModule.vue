@@ -2,8 +2,8 @@
 /**
  * Module « Pages » (groupes `redacteur` / `admin`) : pages de contenu et
  * menus déroulants de la barre de navigation, tels qu'ils sont dans les
- * sources (`src/content/pages/`). Création (page classique ou enrichie de
- * blocs), modification, déplacement, suppression ; menus déroulants :
+ * sources (`src/content/pages/`). Création (page simple — texte et blocs —
+ * ou enrichie — sections), modification, déplacement, suppression ; menus déroulants :
  * création (en dernière position), libellé, suppression d'un menu déroulant
  * vide ; ordre du menu par glisser-déposer ou flèches ↑/↓. Chaque modification reconstruit le
  * site (suivi par `usePublication`), comme le module « Actualités ».
@@ -52,6 +52,8 @@ const pages = ref<PageSourceView[]>([]);
 const homePhoto = ref<string | null>(null);
 /** Aperçu de l'illustration du module « Présentation » (formulaire de l'Accueil). */
 const homeIllustration = ref<string | null>(null);
+/** Vignettes des photos des sections de l'accueil. */
+const accueilPhotoUrls = ref<Record<string, string>>({});
 const availability = ref<{ ok: boolean; reason?: string }>({ ok: true });
 const loading = ref(true);
 const busy = ref(false);
@@ -74,6 +76,7 @@ async function load() {
 		pages.value = res.pages;
 		homePhoto.value = res.homePhoto;
 		homeIllustration.value = res.homeIllustration;
+		accueilPhotoUrls.value = res.accueilPhotoUrls ?? {};
 		orderDraft.value = {};
 		availability.value = res.availability;
 		receive(res.status);
@@ -132,8 +135,17 @@ async function saveOrder(event: Event) {
 }
 
 const byPath = computed(() => new Map(pages.value.map((p) => [p.path, p])));
-/** Pages à la racine absentes du menu de navigation (accessibles par leur adresse seulement). */
-const freePages = computed(() => pages.value.filter((p) => p.placement.kind === 'racine' && !p.menu.show));
+/** Pages à la racine absentes du menu de navigation et du pied de page (accessibles par leur adresse seulement). */
+const freePages = computed(() => pages.value.filter((p) => p.placement.kind === 'racine' && !p.menu.show && !p.pied.show));
+/** Liens du bas du pied de page (mentions légales, CGV…), par position. */
+const piedPages = computed(() =>
+	inDraftOrder(
+		'pied',
+		pages.value.filter((p) => p.placement.kind === 'racine' && p.pied.show).sort((a, b) => a.pied.order - b.pied.order || a.title.localeCompare(b.title, 'fr')),
+		(p) => `pied:${p.path}`,
+	),
+);
+const piedKeys = () => piedPages.value.map((p) => `pied:${p.path}`);
 const reservedPages = computed(() => pages.value.filter((p) => p.placement.kind === 'reservee'));
 const dropdownPages = (dropdown: DropdownView) =>
 	inDraftOrder(
@@ -341,7 +353,7 @@ onMounted(() => {
 				@submit.prevent="saveOrder"
 			>
 				<i class="fa-solid fa-arrows-up-down" aria-hidden="true"></i>
-				<span class="min-w-0 flex-1">Nouvel ordre du menu, pas encore enregistré.</span>
+				<span class="min-w-0 flex-1">Nouvel ordre {{ Object.keys(orderDraft).every((l) => l === 'pied') ? 'du pied de page' : 'du menu' }}, pas encore enregistré.</span>
 				<PublishButtons compact :disabled="publishLocked" />
 				<button type="button" class="text-xs font-medium text-gray-700 hover:underline" @click="orderDraft = {}">Annuler</button>
 			</form>
@@ -556,7 +568,50 @@ onMounted(() => {
 				</VueDraggable>
 			</section>
 
-			<!-- 2. Pages libres, 3. pages réservées -->
+			<!-- 2. Pied de page : liens du bas (mentions légales, CGV…) -->
+			<section class="overflow-hidden rounded-xl border border-gray-200">
+				<header class="flex flex-wrap items-center gap-2 rounded-t-xl border-b border-gray-100 bg-gray-100 px-4 py-2.5">
+					<i class="fa-solid fa-shoe-prints text-gray-400" aria-hidden="true"></i>
+					<span class="font-heading font-semibold text-gray-900">Pied de page</span>
+					<span class="text-xs text-gray-500">liens du bas de page (mentions légales, CGV…), dans l'ordre d'affichage</span>
+				</header>
+				<VueDraggable
+					v-bind="sortableProps"
+					tag="ul"
+					:model-value="piedPages"
+					class="divide-y divide-gray-100"
+					@update:model-value="(list: PageSourceView[]) => reorder('pied', list.map((p) => `pied:${p.path}`))"
+				>
+					<PageRow
+						v-for="(p, i) in piedPages"
+						:key="p.path"
+						:page="p"
+						:locked="locked"
+						:confirming="confirming === `page:${p.path}`"
+						@edit="openPage(p)"
+						@ask-delete="confirming = `page:${p.path}`"
+						@confirm-delete="removePage(p, $event)"
+						@cancel-delete="confirming = null"
+					>
+						<template #handle><DragHandle :disabled="publishLocked" /></template>
+						<template #order>
+							<OrderArrows
+								:label="p.title"
+								:first="i === 0"
+								:last="i === piedPages.length - 1"
+								:disabled="publishLocked"
+								@up="move('pied', piedKeys(), i, -1)"
+								@down="move('pied', piedKeys(), i, 1)"
+							/>
+						</template>
+					</PageRow>
+				</VueDraggable>
+				<p v-if="!piedPages.length" class="px-4 py-2.5 text-sm font-light text-gray-500">
+					Aucune page : choisissez l'emplacement « Pied de page » en créant ou en modifiant une page.
+				</p>
+			</section>
+
+			<!-- 3. Pages libres, 4. pages réservées -->
 			<section
 				v-for="group in [
 					{
@@ -596,7 +651,7 @@ onMounted(() => {
 				</ul>
 			</section>
 
-			<!-- 4. Bibliothèque : pages du site désactivées -->
+			<!-- 5. Bibliothèque : pages du site désactivées -->
 			<section class="overflow-hidden rounded-xl border border-dashed border-gray-300">
 				<header class="flex flex-wrap items-center gap-2 rounded-t-xl border-b border-gray-100 px-4 py-2.5">
 					<i class="fa-solid fa-book-open text-gray-400" aria-hidden="true"></i>
@@ -653,6 +708,7 @@ onMounted(() => {
 		:page="view.page"
 		:home-photo="homePhoto"
 		:home-illustration="homeIllustration"
+		:photo-urls="accueilPhotoUrls"
 		:disabled="locked"
 		@published="onPublished"
 		@cancel="go({ name: 'list' })"

@@ -7,7 +7,8 @@
  * (src/lib/page-writer.ts).
  */
 import type { Bloc } from '../../../../lib/blocs';
-import { lireBlocsFichier, type PhotoDeposee } from '../../blocs-fichier';
+import { lireBlocsFichier, lireSectionsFichier, type PhotoDeposee } from '../../blocs-fichier';
+import type { HomeModule } from '../../../../lib/home-modules';
 import { contentKindProblem } from '../../content-import';
 import { buildMarkdownFile, downloadMarkdown, keyWarnings, parseMarkdownFile, textField } from '../../markdown-file';
 
@@ -21,15 +22,19 @@ export interface ImportedPage {
 	/** `undefined` = pas de bloc `menu:` dans le fichier (le formulaire garde son choix). */
 	menuShow?: boolean;
 	menuLabel: string;
+	/** `true` = `pied: { show: true }` dans le fichier : emplacement « Pied de page ». */
+	piedShow: boolean;
 	imageCredit: string;
 	blocs: Record<string, Bloc>;
+	/** Sections d'une page enrichie (vide : page simple). */
+	sections: HomeModule[];
 	/** Photo de couverture citée (`cover:`), à retrouver parmi les fichiers déposés. */
 	cover: string;
 	body: string;
 }
 
 /** Clés du frontmatter reprises ; les autres sont signalées puis ignorées. */
-const KNOWN = ['title', 'description', 'type', 'menu', 'imageCredit', 'blocs', 'cover'];
+const KNOWN = ['title', 'description', 'type', 'menu', 'pied', 'imageCredit', 'blocs', 'sections', 'cover'];
 /** Clés connues du site mais réglées dans le formulaire (emplacement, photo…). */
 const SET_IN_FORM: Record<string, string> = {
 	access: "l'accès se règle avec l'emplacement « Page réservée »",
@@ -43,8 +48,12 @@ export function pageMarkdownFile(page: {
 	title: string;
 	description: string;
 	menu: { show: boolean; label: string } | null;
+	/** Lien du bas du pied de page (la position reste réglée dans le module). */
+	pied?: boolean;
 	imageCredit: string;
 	blocs: Record<string, Bloc>;
+	/** Sections d'une page enrichie. */
+	sections?: HomeModule[];
 	body: string;
 	/** Photo de couverture jointe au `.zip` (nom dans l'archive). */
 	cover?: string;
@@ -56,9 +65,11 @@ export function pageMarkdownFile(page: {
 			description: page.description,
 			type: page.type === 'enrichie' ? 'enrichie' : undefined,
 			menu: page.menu ? { show: page.menu.show, ...(page.menu.label ? { label: page.menu.label } : {}) } : undefined,
+			pied: page.pied ? { show: true } : undefined,
 			cover: page.cover,
 			imageCredit: page.imageCredit,
-			blocs: page.type === 'enrichie' && Object.keys(page.blocs).length ? page.blocs : undefined,
+			blocs: Object.keys(page.blocs).length ? page.blocs : undefined,
+			sections: page.type === 'enrichie' && page.sections?.length ? page.sections : undefined,
 		},
 		page.body,
 	);
@@ -75,12 +86,15 @@ export function parsePageMarkdown(source: string, photo?: PhotoDeposee): { page?
 	if (wrongKind) return { warnings: [], error: wrongKind };
 	const warnings = keyWarnings(data, KNOWN, SET_IN_FORM);
 
-	const rawBlocs = data.blocs && typeof data.blocs === 'object' && !Array.isArray(data.blocs) ? (data.blocs as Record<string, unknown>) : {};
 	const lus = lireBlocsFichier(data.blocs, photo);
 	const blocs = lus.blocs;
 	warnings.push(...lus.warnings);
-	const type: PageKind = data.type === 'enrichie' || Object.keys(rawBlocs).length > 0 ? 'enrichie' : 'classique';
+	// Page enrichie = composée de sections ; un ancien fichier « enrichie » sans `sections:` (blocs seulement) est une page simple.
+	const type: PageKind = data.type === 'enrichie' && Array.isArray(data.sections) ? 'enrichie' : 'classique';
+	const sectionsLues = type === 'enrichie' ? lireSectionsFichier(data.sections, photo) : { sections: [], warnings: [] };
+	warnings.push(...sectionsLues.warnings);
 	const menu = data.menu && typeof data.menu === 'object' ? (data.menu as Record<string, unknown>) : null;
+	const pied = data.pied && typeof data.pied === 'object' ? (data.pied as Record<string, unknown>) : null;
 
 	return {
 		page: {
@@ -89,8 +103,10 @@ export function parsePageMarkdown(source: string, photo?: PhotoDeposee): { page?
 			description: text(data.description),
 			menuShow: menu ? menu.show === true : undefined,
 			menuLabel: text(menu?.label),
+			piedShow: pied?.show === true,
 			imageCredit: text(data.imageCredit),
 			blocs,
+			sections: sectionsLues.sections,
 			cover: text(data.cover),
 			body,
 		},
@@ -106,41 +122,14 @@ description: "Une ou deux phrases, affichées sous le titre et dans les moteurs 
 # menu:
 #   show: true            # false = page accessible par son adresse, hors du menu
 #   label: "Libellé court dans le menu"
-# imageCredit: "Photo : Prénom Nom"
----
-
-Premier paragraphe : l'essentiel en quelques phrases. Les informations de
-l'association s'insèrent avec des variables : {{association.nom}},
-{{association.email}}, {{association.telephone}}…
-
-## Un sous-titre
-
-Du texte en **gras** ou en *italique*, et un [lien](/contact).
-
-- Un point de liste
-- Un autre point
-
-> Une citation ou un passage à mettre en avant.
-
-| Colonne 1 | Colonne 2 |
-| --- | --- |
-| Valeur | Valeur |
-`;
-
-const ENRICHIE = `---
-contenu: page
-title: "Titre de la page"
-description: "Une ou deux phrases, affichées sous le titre et dans les moteurs de recherche."
-type: enrichie
-# Facultatif — retirer les « # » en début de ligne pour activer :
-# menu:
-#   show: true
-#   label: "Libellé court dans le menu"
+# pied:
+#   show: true            # lien en bas du pied de page (mentions légales, CGV…), à la place du menu
 # imageCredit: "Photo : Prénom Nom"
 
-# Chaque bloc a un identifiant (minuscules, chiffres, tirets) repris dans le
-# texte par un marqueur [[bloc:identifiant]] seul sur sa ligne.
-# Retirez les blocs inutiles ET leur marqueur.
+# Blocs (facultatifs) : éléments placés dans le texte. Chaque bloc a un
+# identifiant (minuscules, chiffres, tirets) repris dans le texte par un
+# marqueur [[bloc:identifiant]] seul sur sa ligne. Retirez les blocs
+# inutiles ET leur marqueur.
 # Blocs « Photos » et « Carrousel » : photos citées par leur nom de fichier
 # et déposées avec ce .md (ou dans le même .zip), par exemple :
 #   galerie:
@@ -182,9 +171,13 @@ blocs:
     titre: "Titre de la vidéo"
 ---
 
-Premier paragraphe : l'essentiel en quelques phrases.
+Premier paragraphe : l'essentiel en quelques phrases. Les informations de
+l'association s'insèrent avec des variables : {{association.nom}},
+{{association.email}}, {{association.telephone}}…
 
 ## Ce que nous proposons
+
+Du texte en **gras** ou en *italique*, et un [lien](/contact).
 
 [[bloc:services]]
 
@@ -203,6 +196,83 @@ Premier paragraphe : l'essentiel en quelques phrases.
 Écrivez-nous à {{association.email}}.
 
 [[bloc:contact]]
+`;
+
+const ENRICHIE = `---
+contenu: page
+title: "Titre de la page"
+description: "Une ou deux phrases, affichées sous le titre et dans les moteurs de recherche."
+type: enrichie
+# Facultatif — retirer les « # » en début de ligne pour activer :
+# menu:
+#   show: true
+#   label: "Libellé court dans le menu"
+# imageCredit: "Photo : Prénom Nom"
+
+# Sections : bandes pleine largeur, dans l'ordre d'affichage (mêmes sections
+# que l'accueil). « contenu » = le texte de la page ci-dessous, avec ses
+# blocs (cf. modèle de page simple). Retirez les sections inutiles.
+# Section « Bandeau défilant » (logos) : images citées par leur nom de
+# fichier et déposées avec ce .md (ou dans le même .zip), par exemple :
+#   - type: defilement
+#     titre: "Ils nous soutiennent"
+#     vitesse: normale     # lente, normale ou rapide
+#     gris: non            # oui = logos en gris, couleur au survol
+#     items:               # 2 logos au moins (PNG transparent conseillé)
+#       - { photo: "logo-mairie.png", nom: "Mairie", lien: "https://…" }
+#       - { photo: "logo-region.png", nom: "Région" }
+sections:
+  - type: presentation
+    surtitre: "Notre association"
+    titre: "Titre accrocheur de la page"
+    accroche: "Une phrase qui donne envie, avec des **mots en gras**."
+    bouton1-texte: "Nous contacter"
+    bouton1-lien: "/contact"
+    illustration: logo     # logo, photo (photo d'accueil) ou aucune
+    fond: gris             # gris, fond, surface, primaire, secondaire ou accent
+  - type: contenu
+  - type: tarifs
+    titre: "Nos formules"
+    note: "Tarifs TTC."
+    items:
+      - titre: "Découverte"
+        prix: "Gratuit"
+        description: "Pour essayer"
+        details: |        # une ligne « - » par point
+          - Un atelier d'essai
+          - Accès libre aux postes
+      - titre: "Adhésion"
+        prix: "20 €"
+        periode: "/ an"
+        details: |
+          - Tous les ateliers
+          - Prêt de matériel
+        bouton: "J'adhère"
+        lien: "/adherer"
+        avant: oui         # formule mise en avant
+        mention: "La plus choisie"
+  - type: equipe
+    titre: "L'équipe"
+    colonnes: "3"          # "2", "3" ou "4" par ligne
+    items:                 # photo facultative : photo: "prenom.jpg", déposée avec ce .md
+      - nom: "Prénom Nom"
+        role: "Président·e"
+        texte: "Quelques mots de présentation."
+      - nom: "Prénom Nom"
+        role: "Animateur·rice"
+  - type: appel
+    titre: "Envie de nous rejoindre ?"
+    texte: "Bénévoles, adhérent·e·s ou partenaires : chacun·e a sa place chez {{association.nom}}."
+    bouton-texte: "Adhérer"
+    bouton-lien: "/adherer"
+---
+
+Le texte de la page, affiché à l'emplacement de la section « contenu ».
+Il peut recevoir des blocs, comme une page simple.
+
+## Un sous-titre
+
+Du texte en **gras** ou en *italique*, et un [lien](/contact).
 `;
 
 /** Télécharge le modèle de page (généré dans le navigateur). */

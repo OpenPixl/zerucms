@@ -1,4 +1,5 @@
 ---
+import { classeFond } from '../../lib/section-fonds';
 /**
  * Module « Présentation » de l'accueil (src/lib/home-modules.ts) : texte à
  * gauche (surtitre, grand titre, accroche, deux boutons), illustration à
@@ -44,16 +45,8 @@ const {
 	background = 'gris',
 } = Astro.props;
 
-// Classes écrites en entier (lues par Tailwind) ; valeur inconnue = gris clair.
-const FONDS = {
-	gris: 'bg-gray-100',
-	fond: 'bg-fond',
-	surface: 'bg-surface',
-	primaire: 'bg-primary/10',
-	secondaire: 'bg-secondary/10',
-	accent: 'bg-accent/10',
-};
-const fondClass = FONDS[background] ?? FONDS.gris;
+// Teintes de la charte (src/lib/section-fonds.ts) ; valeur inconnue = gris clair.
+const fondClass = classeFond(background);
 
 const Heading = headingLevel === 1 ? 'h1' : 'h2';
 const showPrimary = primaryHref && primaryLabel && !lienPluginIndisponible(primaryHref);

@@ -1,7 +1,8 @@
 /**
  * Module « Pages » (groupes `redacteur` / `admin`, garde dans `src/middleware.ts`) :
  *  - GET  : arborescence des sources (menus déroulants, pages, pages réservées), aperçu de la
- *           photo d'accueil (`homePhoto`), état de
+ *           photo d'accueil (`homePhoto`), vignettes des photos des sections de l'accueil
+ *           (`accueilPhotoUrls`), état de
  *           la dernière publication, disponibilité de la publication ;
  *  - POST : `{ page, cover?: { type, data (base64) } }` → crée
  *           `src/content/pages/<…>/index.md` puis reconstruit le site
@@ -13,6 +14,8 @@ import { publishBlocked, publishChange } from '../../../../lib/admin-publish';
 import { readCover } from '../../../../lib/admin-cover';
 import { readHomePhotoPreview, readIllustrationPreview } from '../../../../lib/home-photo';
 import { listPagesSource, readPageInput, savePage } from '../../../../lib/page-writer';
+import { blocPhotoUrls } from '../../../../lib/bloc-images';
+import { sectionPhotos } from '../../../../lib/home-modules';
 import { canPublish, readStatus } from '../../../../lib/site-build';
 
 export const prerender = false;
@@ -24,9 +27,13 @@ export const GET: APIRoute = withErrors(async () => {
 	const status = await readStatus();
 	const finished = status.finishedAt ? Date.parse(status.finishedAt) : 0;
 	const recent = status.state === 'running' || status.state === 'idle' || Date.now() - finished < STATUS_RECALL_MS;
+	const source = await listPagesSource();
+	const accueil = source.sitePages.find((p) => p.id === 'accueil');
 	return json({
-		...(await listPagesSource()),
+		...source,
 		homePhoto: await readHomePhotoPreview(),
+		// Vignettes des photos des sections de l'accueil (dossier `src/content/pages/`).
+		accueilPhotoUrls: await blocPhotoUrls('pages', {}, (accueil?.modules ?? []).flatMap(sectionPhotos)),
 		homeIllustration: await readIllustrationPreview(),
 		status: recent ? status : { state: 'idle' },
 		availability: await canPublish(),

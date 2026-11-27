@@ -601,11 +601,21 @@ blocs :
 
 **Nouvelle page** : choisir d'abord le type —
 
-- **Page classique** : du texte mis en forme (titres `##`, listes, liens,
-  tableaux) et une photo de couverture facultative ;
-- **Page enrichie** : la même chose, plus des **blocs** (photos, carrousel,
-  vidéo, grille de cartes, encadré tarif, bouton, encadré d'information, et
-  ceux des extensions installées, ex. prise de rendez-vous). « Ajouter un bloc » le crée et insère son marqueur
+- **Page simple** : du texte mis en forme (titres `##`, listes, liens,
+  tableaux), une photo de couverture facultative et des **blocs** placés
+  dans le texte (photos, carrousel, vidéo, grille de cartes, encadré
+  tarif, bouton, encadré d'information, et ceux des extensions installées,
+  ex. prise de rendez-vous). Les blocs sont aussi disponibles dans les
+  actualités et les activités ;
+- **Page enrichie** : une page composée de **sections**, des bandes pleine
+  largeur comme celles de l'accueil (onglet **Sections** du formulaire) :
+  bandeau, présentation, grille de tarifs, équipe, bandeau défilant de
+  logos, appel à l'action, partenaires, texte libre… La section **Contenu
+  de la page** affiche le texte de la page (avec ses blocs) à l'endroit
+  choisi ; sans elle, le texte est facultatif. Si la première section est
+  un bandeau ou une présentation, elle remplace l'en-tête de la page.
+
+**Les blocs** (onglet Contenu) : « Ajouter un bloc » le crée et insère son marqueur
   `[[bloc:…]]` dans le texte à l'endroit du curseur ; le bloc s'affiche à
   cet endroit (on peut déplacer la ligne du marqueur). Sous les textes des
   blocs (cartes, encadré), « Insérer un lien vers une page du site » ; sous
@@ -628,16 +638,38 @@ blocs :
     (Framatube, peertube.fr) ; le formulaire indique si le lien est
     reconnu. Une vidéo par bloc ; les fichiers vidéo ne se déposent pas.
 
+**Les sections propres aux pages** (onglet Sections ; aussi sur l'accueil) :
+
+- **Grille de tarifs** : jusqu'à 6 formules côte à côte, chacune avec son
+  nom, son prix (« 25 € », « Gratuit », « Sur devis »), sa période
+  (« / an »), une phrase, ce qui est compris (une ligne « - » par point,
+  affichée en liste cochée) et un bouton facultatif (texte + lien). Une
+  formule peut être **mise en avant** (encadrée, avec une pastille comme
+  « La plus choisie ») ; une mention facultative s'affiche sous la grille.
+- **L'équipe** : jusqu'à 30 personnes avec photo (facultative : sans
+  photo, ses initiales s'affichent), nom, rôle, quelques mots et un lien
+  (e-mail, site, réseau) ; 2, 3 ou 4 par ligne.
+- **Bandeau défilant** : de 2 à 30 logos ou illustrations (partenaires,
+  soutiens, logiciels, marques…) qui défilent en continu, chacun avec son
+  nom et un lien facultatif ; titre, vitesse et logos en gris (couleur au
+  survol) au choix. Le défilement s'arrête au survol ; il est remplacé par
+  des logos immobiles pour les personnes qui ont demandé à réduire les
+  animations. Logos en SVG ou en PNG transparent conseillés : la
+  transparence est gardée (un SVG contenant du script est refusé).
+
 **Ou à partir d'un fichier `.md`** (même écran) : « Télécharger un modèle »
-(page classique ou page enrichie, avec des exemples de chaque bloc), le
+(page simple, avec des exemples de chaque bloc, ou page enrichie, avec
+des exemples de sections), le
 compléter dans un éditeur de texte, puis le déposer. Le formulaire est
-pré-rempli (titre, description, texte, blocs, libellé du menu) ; il reste à
+pré-rempli (titre, description, texte, blocs, sections, libellé du menu) ; il reste à
 vérifier, choisir l'emplacement et publier. Les champs non repris
 (`access`, `cover`…) sont signalés en tête du formulaire.
 
 Puis : titre, description, **emplacement** — **menu de navigation** (lien
 direct ou dans un menu déroulant, au choix sous « Position dans le menu »),
-**page libre** (hors menu, accessible par son adresse ou un lien) ou **page
+**pied de page** (lien tout en bas du site, à côté de « Espace Admin » :
+mentions légales, CGV, statuts… ; ordre réglé dans la section « Pied de
+page » de la liste, par glisser-déposer ou flèches ↑/↓), **page libre** (hors menu, accessible par son adresse ou un lien) ou **page
 réservée** (avec les groupes autorisés) —, adresse (déduite du titre),
 libellé dans le menu de navigation. Une nouvelle page (ou une page changée
 d'emplacement) se place en **dernière position** de son menu.

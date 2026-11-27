@@ -1,0 +1,88 @@
+---
+/**
+ * Section « L'équipe » (`equipe`, catalogue `src/lib/home-modules.ts`) :
+ * sans cadre, photo ronde (initiales sans photo), nom, rôle, quelques mots
+ * et lien facultatif, centrés ; rangées centrées dans la page. Photos : fichiers du dossier de la page (`dossier`,
+ * cf. `src/lib/bloc-images.ts`).
+ */
+import { Image } from 'astro:assets';
+import EnTeteSection from './EnTeteSection.astro';
+import { blocImage } from '../../lib/bloc-images';
+import { renderMarkdownFragment, typographie } from '../../lib/markdown-fragment';
+import type { ElementSection } from '../../lib/home-modules';
+import { classeFond } from '../../lib/section-fonds';
+
+interface Props {
+	surtitre?: string;
+	titre?: string;
+	texte?: string;
+	colonnes?: string;
+	/** Couleur du fond (teinte de la charte, `src/lib/section-fonds.ts`). */
+	fond?: string;
+	personnes: ElementSection[];
+	/** Dossier des photos, relatif à `src/content/` (ex. `pages/notre-equipe`). */
+	dossier: string;
+	niveau?: 1 | 2;
+}
+
+const { surtitre, titre, texte, colonnes = '3', fond = 'fond', personnes, dossier, niveau } = Astro.props;
+const enTete = Boolean(surtitre || titre || texte);
+const liste = personnes.map((p) => ({
+	nom: p.nom ?? '',
+	role: p.role ?? '',
+	texte: p.texte ?? '',
+	lien: p.lien ?? '',
+	image: p.photo ? blocImage(dossier, p.photo) : undefined,
+	initiales: (p.nom ?? '')
+		.split(/[\s-]+/)
+		.filter(Boolean)
+		.slice(0, 2)
+		.map((mot) => mot.charAt(0).toUpperCase())
+		.join(''),
+}));
+// Largeur d'une personne selon le nombre par ligne ; rangées centrées (une ligne incomplète reste au milieu).
+const largeur = { '2': 'sm:w-1/2', '3': 'sm:w-1/2 lg:w-1/3', '4': 'sm:w-1/2 lg:w-1/4' }[colonnes] ?? 'sm:w-1/2 lg:w-1/3';
+const externe = (lien: string) => /^https?:\/\//.test(lien);
+---
+
+{liste.length > 0 && (
+	<section class:list={[classeFond(fond, 'fond'), 'py-16']}>
+		<div class="mx-auto max-w-6xl px-4 sm:px-6">
+			<EnTeteSection surtitre={surtitre} titre={titre} texte={texte} niveau={niveau} />
+			<ul class:list={['-mx-3 flex flex-wrap justify-center gap-y-10', enTete && 'mt-10']}>
+				{liste.map((p) => (
+					<li class:list={['flex w-full flex-col items-center px-3 text-center', largeur]}>
+						{p.image ? (
+							<Image src={p.image} alt="" widths={[160, 320]} sizes="160px" class="h-32 w-32 rounded-full object-cover" loading="lazy" />
+						) : (
+							<span class="flex h-32 w-32 items-center justify-center rounded-full bg-primary/10 font-heading text-3xl font-semibold text-primary" aria-hidden="true">
+								{p.initiales}
+							</span>
+						)}
+						<h3 class="mt-4 font-heading text-lg font-semibold text-gray-900">
+							{p.lien ? (
+								<a href={p.lien} class="hover:text-primary hover:underline" {...(externe(p.lien) ? { target: '_blank', rel: 'noopener' } : {})}>
+									{typographie(p.nom)}
+								</a>
+							) : (
+								typographie(p.nom)
+							)}
+						</h3>
+						{p.role && <div class="text-sm font-medium text-primary">{typographie(p.role)}</div>}
+						{p.texte && <div class="equipe-texte mt-3 text-sm font-light text-gray-600" set:html={renderMarkdownFragment(p.texte)} />}
+					</li>
+				))}
+			</ul>
+		</div>
+	</section>
+)}
+
+<style>
+	.equipe-texte :global(p + p) {
+		margin-top: 0.5rem;
+	}
+	.equipe-texte :global(a) {
+		color: var(--color-primary);
+		text-decoration: underline;
+	}
+</style>

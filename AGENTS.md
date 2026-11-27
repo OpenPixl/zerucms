@@ -118,7 +118,7 @@ Fonctionnement technique :
   (`getContentPages()`, `pageParts()`, `renderPage()`, `getGroups()`),
   frontmatter `menu:` et fichiers `_group.md`. Page `.md` : HTML nettoyé
   (`sanitizeNewsHtml`), variables `{{association.…}}`
-  (`src/lib/page-variables.ts`) et, si `type: enrichie`, **blocs** (`blocs:`
+  (`src/lib/page-variables.ts`) et **blocs** dans toute page (`blocs:`
   + marqueurs `[[bloc:<id>]]` seuls sur leur ligne ; catalogue
   `src/lib/blocs.ts`, rendu `src/components/blocs/BlocView.astro` ; nouveau
   bloc = entrée `BLOC_TYPES` + branche `BlocView` ; blocs **Photos**,
@@ -129,9 +129,11 @@ Fonctionnement technique :
   actualités et activités** (`blocs:` des trois collections,
   `blocsSchema()` de `content.config.ts`) : écriture `src/lib/bloc-writer.ts`
   (`preparerBlocs` : validation + photos fournies sous la valeur du champ —
-  `nouvelle:<clé>`, nom de fichier déposé, copie —, `ecrireBlocPhotos`,
+  `nouvelle:<clé>`, nom de fichier déposé, copie —, `ecrireBlocPhotos` ;
+  image transparente = `photo_<n>.webp`, sinon `.jpg`,
   `marqueursSansBloc`), découpage `src/lib/bloc-parts.ts`, rendu
-  `ContenuBlocs.astro` (prop `dossier` relatif à `src/content/`), photos
+  `ContenuBlocs.astro` (prop `dossier` relatif à `src/content/` ; chaque bloc
+  dans `.bloc`, exclu des règles liens / listes de `.markdown-content`), photos
   `src/lib/bloc-images.ts` (`blocImage`, `blocPhotoUrls`), éditeur
   `BlocsEditor.vue` dans l'onglet Contenu des trois formulaires (photos des blocs en grille de 4 vignettes : `PhotosGrille.vue`, glisser pour l'ordre, clic = description)
   (`pages/marqueur.ts`) ; l'onglet « Partage » d'une activité copie ses
@@ -142,7 +144,21 @@ Fonctionnement technique :
   `modules/pages/*`, `src/lib/page-writer.ts` (validation = schéma,
   transaction sur tout `src/content/pages/`, puis `admin-publish.ts` →
   `site-build.ts`), routes `/api/admin/pages*` et
-  `/api/admin/menus-deroulants*`. Création : page classique ou enrichie,
+  `/api/admin/menus-deroulants*`. **Blocs ≠ sections** : un bloc enrichit
+  un *contenu* (dans son texte), une **section** enrichit une *page* (bande
+  pleine largeur). Deux types de page : **simple** (texte + blocs) et
+  **enrichie** (`type: enrichie` + `sections:`, onglet « Sections » du
+  formulaire ; ancienne page `enrichie` sans `sections:` = simple). Un seul
+  catalogue de sections pour l'accueil et les pages enrichies :
+  `src/lib/home-modules.ts` (code : « modules » ; `items` = éléments répétés,
+  `contexte: 'page'` = section « Contenu de la page » (`contenu`), pages
+  seulement ; sections **Grille de tarifs** `tarifs`, **L'équipe** `equipe`
+  (`items.liste`), **Bandeau défilant** `defilement`), rendu commun
+  `src/components/sections/Sections.astro` (accueil + `ContentPageView`),
+  éditeur `HomeModulesEditor.vue` (prop `contexte`) + `ElementsEditor.vue`
+  (éléments, partagé avec les blocs), photos des sections dans le dossier de
+  la page (accueil : `src/content/pages/`, `preparerBlocs(…, { sections })`,
+  `sectionPhotos()`). Création : page simple ou enrichie,
   ou fichier `.md` déposé qui pré-remplit le formulaire (modèles
   téléchargeables, `modules/pages/page-markdown.ts`) ; emplacement racine / menu déroulant / réservée ; menus déroulants =
   `_group.md`, un seul niveau, suppression si vide. Vocabulaire : « menu »
@@ -161,7 +177,11 @@ Fonctionnement technique :
   (`src/lib/site-pages-content.ts`). Nouvelle page de bibliothèque = entrée
   `SITE_PAGES` + `getSitePage()` dans la page `.astro`. Ordre : glisser-déposer
   ou flèches ↑/↓ du module → `PUT /api/admin/ordre-menu` (`saveMenuOrder()`) ; une nouvelle
-  page se place en dernier (`menuOrderFor()`).
+  page se place en dernier (`menuOrderFor()`). Emplacement **« Pied de
+  page »** (liens du bas : mentions légales, CGV…) : `pied: { show, order }`
+  du frontmatter, `src/lib/pied-pages.ts` (`piedDeLaPage()`, anciennes pages
+  affichées d'office : `PIED_HISTORIQUES`), section ordonnable du module
+  (niveau `pied` de `saveMenuOrder()`), rendu `Footer.astro`.
 - **Module « Activités »** (`redacteur`) : `ActivitiesModule.vue` +
   `modules/activites/ActivityForm.vue`, `src/lib/activity-writer.ts`
   (validation = schéma `activites`, frontmatter modifié en place via `yaml`

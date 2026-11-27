@@ -2,7 +2,7 @@
  * « Télécharger le fichier » d'un contenu (page, actualité, activité) : le
  * `.md` construit depuis le formulaire (modifications en cours comprises),
  * et, si le contenu a des photos (blocs « Photos », « Carrousel »,
- * couverture), un `.zip` qui les contient avec le `.md`. Les photos y sont
+ * sections « L'équipe », « Bandeau défilant », couverture), un `.zip` qui les contient avec le `.md`. Les photos y sont
  * citées par leur nom dans le `.zip` (`photo_1.jpg`, `couverture.jpg`…) :
  * l'archive se redépose telle quelle (`depot.ts`), dans ce contenu ou pour en
  * créer un autre — c'est ce qu'un membre de l'association modifie chez lui.
@@ -12,6 +12,8 @@
  */
 import { zipSync } from 'fflate';
 import { BLOC_PHOTO, BLOC_PHOTO_NOUVELLE, type Bloc } from '../../lib/blocs';
+import { HOME_MODULES, type HomeModule } from '../../lib/home-modules';
+import { remplacerPhotos } from '../../lib/blocs';
 import { transformerPhotos } from './blocs-fichier';
 import { downloadMarkdown } from './markdown-file';
 import type { BlocPhotos } from './modules/pages/bloc-photos';
@@ -39,10 +41,12 @@ export async function telechargerContenu(options: {
 	/** Dossier du contenu relatif à `src/content/` (`news/<slug>`…), `null` à la création. */
 	dossier: string | null;
 	blocs: Record<string, Bloc>;
+	/** Sections d'une page enrichie (photos de leurs éléments comprises dans le `.zip`). */
+	sections?: HomeModule[];
 	photos: BlocPhotos | null;
 	couverture?: Couverture;
-	/** `.md` du contenu avec ces blocs et cette couverture (`cover:` = nom dans le `.zip`). */
-	construire: (blocs: Record<string, Bloc>, cover?: string) => string;
+	/** `.md` du contenu avec ces blocs, ces sections et cette couverture (`cover:` = nom dans le `.zip`). */
+	construire: (blocs: Record<string, Bloc>, cover?: string, sections?: HomeModule[]) => string;
 }): Promise<void> {
 	const { nom, dossier, photos, couverture } = options;
 	const fichiers: Record<string, Uint8Array> = {};
@@ -62,12 +66,16 @@ export async function telechargerContenu(options: {
 		}
 		const blob = BLOC_PHOTO_NOUVELLE.test(valeur) ? photos?.fichier(valeur) : null;
 		if (!blob) return valeur;
-		const fichier = `nouvelle_${++nouvelles}.${blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg'}`;
+		const fichier = `nouvelle_${++nouvelles}.${blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : blob.type === 'image/svg+xml' ? 'svg' : 'jpg'}`;
 		noms.set(valeur, fichier);
 		attente.push(blob.arrayBuffer().then((data) => void (fichiers[fichier] = new Uint8Array(data))));
 		return fichier;
 	};
 	const blocs = Object.fromEntries(Object.entries(options.blocs).map(([id, bloc]) => [id, transformerPhotos(id, bloc, renommer) as Bloc]));
+	const sections = (options.sections ?? []).map((m, i) => {
+		const def = HOME_MODULES[m.type];
+		return def ? (remplacerPhotos(def, m, `Section ${i + 1}`, renommer) as HomeModule) : m;
+	});
 
 	let cover: string | undefined;
 	if (couverture?.nouvelle) {
@@ -81,11 +89,11 @@ export async function telechargerContenu(options: {
 	}
 
 	if (!attente.length) {
-		downloadMarkdown(`${nom}.md`, options.construire(options.blocs));
+		downloadMarkdown(`${nom}.md`, options.construire(options.blocs, undefined, options.sections));
 		return;
 	}
 	await Promise.all(attente);
-	fichiers[`${nom}.md`] = new TextEncoder().encode(options.construire(blocs, cover));
+	fichiers[`${nom}.md`] = new TextEncoder().encode(options.construire(blocs, cover, sections));
 	// Photos déjà compressées : stockées sans recompression.
 	const zip = zipSync(Object.fromEntries(Object.entries(fichiers).map(([n, d]) => [n, [d, { level: n.endsWith('.md') ? 6 : 0 }]])));
 	const url = URL.createObjectURL(new Blob([zip as BlobPart], { type: 'application/zip' }));

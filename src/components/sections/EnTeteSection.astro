@@ -1,0 +1,29 @@
+---
+/**
+ * En-tête des sections Grille de tarifs, L'équipe et Bandeau défilant, au
+ * style des autres sections (Actualités, Partenaires) : surtitre en
+ * capitales, titre `text-3xl`, texte d'introduction, alignés à gauche sur
+ * `max-w-2xl`. Rien n'est affiché sans texte ; l'appelant espace la suite
+ * (`mt-10`) avec `aUnEnTete()`. `niveau` : 1 si la section ouvre la page.
+ */
+import { inlineMarkdownHtml } from '../../lib/inline-markdown';
+import { typographie } from '../../lib/markdown-fragment';
+
+interface Props {
+	surtitre?: string;
+	titre?: string;
+	texte?: string;
+	niveau?: 1 | 2;
+}
+
+const { surtitre = '', titre = '', texte = '', niveau = 2 } = Astro.props;
+const Titre = niveau === 1 ? 'h1' : 'h2';
+---
+
+{(surtitre || titre || texte) && (
+	<div class="max-w-2xl">
+		{surtitre && <span class="font-heading text-xs uppercase tracking-wide text-secondary">{typographie(surtitre)}</span>}
+		{titre && <Titre class:list={['text-3xl text-gray-900', surtitre && 'mt-2']}>{typographie(titre)}</Titre>}
+		{texte && <div class="mt-4 font-light text-gray-600 [&_strong]:font-semibold [&_strong]:text-gray-900" set:html={inlineMarkdownHtml(texte)} />}
+	</div>
+)}

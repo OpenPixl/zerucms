@@ -1,0 +1,129 @@
+---
+/**
+ * Section « Bandeau défilant » (`defilement`, catalogue
+ * `src/lib/home-modules.ts`) : logos ou illustrations en boucle continue
+ * (CSS seul : deux copies de la liste, la seconde masquée aux lecteurs
+ * d'écran), pause au survol ou au clavier ; immobiles et sur plusieurs
+ * lignes si la personne a demandé à réduire les animations. Images : fichiers
+ * du dossier de la page (`dossier`), transparence gardée (`photo_<n>.webp`).
+ */
+import { Image } from 'astro:assets';
+import EnTeteSection from './EnTeteSection.astro';
+import { blocImage } from '../../lib/bloc-images';
+import { typographie } from '../../lib/markdown-fragment';
+import type { ElementSection } from '../../lib/home-modules';
+import { classeFond } from '../../lib/section-fonds';
+
+interface Props {
+	surtitre?: string;
+	titre?: string;
+	texte?: string;
+	vitesse?: string;
+	gris?: boolean;
+	/** Couleur du fond (teinte de la charte, `src/lib/section-fonds.ts`). */
+	fond?: string;
+	logos: ElementSection[];
+	/** Dossier des images, relatif à `src/content/`. */
+	dossier: string;
+	niveau?: 1 | 2;
+}
+
+const { surtitre = '', titre = '', texte = '', vitesse = 'normale', gris = false, fond = 'fond', logos: elements, dossier, niveau } = Astro.props;
+const logos = elements
+	.map((item) => ({ image: blocImage(dossier, item.photo ?? ''), nom: typographie(item.nom ?? ''), lien: item.lien ?? '' }))
+	.filter((l) => l.image);
+/**
+ * Une bande = les logos répétés jusqu'à 12 au moins : elle dépasse la largeur
+ * du conteneur, le défilement la remplit toujours. Les répétitions sont
+ * masquées aux lecteurs d'écran (et au mouvement réduit, cf. style).
+ */
+const PAR_BANDE = 12;
+const bande = Array.from({ length: Math.max(1, Math.ceil(PAR_BANDE / Math.max(1, logos.length))) }, (_, tour) =>
+	logos.map((l) => ({ ...l, repete: tour > 0 })),
+).flat();
+const SECONDES_PAR_LOGO: Record<string, number> = { lente: 5, normale: 3.2, rapide: 2 };
+const dureeTour = bande.length * (SECONDES_PAR_LOGO[vitesse] ?? SECONDES_PAR_LOGO.normale);
+const externe = (lien: string) => /^https?:\/\//.test(lien);
+const enTete = Boolean(surtitre || titre || texte);
+---
+
+{logos.length > 0 && (
+	<section class:list={[classeFond(fond, 'fond'), 'py-16']} aria-label={enTete ? undefined : 'Logos'}>
+		<div class="mx-auto max-w-6xl px-4 sm:px-6">
+			<EnTeteSection surtitre={surtitre} titre={titre} texte={texte} niveau={niveau} />
+			<div class:list={['defilement overflow-hidden', gris && 'defilement-gris', enTete && 'mt-10']} style={`--defilement-duree: ${dureeTour}s`}>
+				<!-- Deux fois la même bande : la seconde (masquée aux lecteurs d'écran) assure la boucle sans à-coup. -->
+				<div class="defilement-piste flex w-max">
+					{[false, true].map((copie) => (
+						<ul class="defilement-liste flex shrink-0 items-center" aria-hidden={copie ? 'true' : undefined}>
+							{bande.map((l) => {
+								const cache = copie || l.repete;
+								const img = <Image src={l.image!} alt={cache ? '' : l.nom} height={160} class="h-16 w-auto max-w-48 object-contain sm:h-20 sm:max-w-60" loading="lazy" />;
+								return (
+									<li class:list={['px-6 sm:px-8', l.repete && 'defilement-repete']} title={l.nom} aria-hidden={!copie && l.repete ? 'true' : undefined}>
+										{l.lien ? (
+											<a href={l.lien} tabindex={cache ? -1 : undefined} {...(externe(l.lien) ? { target: '_blank', rel: 'noopener' } : {})}>
+												{img}
+											</a>
+										) : (
+											img
+										)}
+									</li>
+								);
+							})}
+						</ul>
+					))}
+				</div>
+			</div>
+		</div>
+	</section>
+)}
+
+<style>
+	.defilement {
+		mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+	}
+	.defilement-piste {
+		animation: defilement var(--defilement-duree, 40s) linear infinite;
+	}
+	.defilement:hover .defilement-piste,
+	.defilement:focus-within .defilement-piste {
+		animation-play-state: paused;
+	}
+	@keyframes defilement {
+		to {
+			transform: translateX(-50%);
+		}
+	}
+	.defilement-gris :global(img) {
+		filter: grayscale(1);
+		opacity: 0.7;
+		transition: filter 0.2s, opacity 0.2s;
+	}
+	.defilement-gris li:hover :global(img),
+	.defilement-gris a:focus-visible :global(img) {
+		filter: none;
+		opacity: 1;
+	}
+	/* Mouvement réduit demandé : logos immobiles, sur plusieurs lignes, sans la copie. */
+	@media (prefers-reduced-motion: reduce) {
+		.defilement {
+			mask-image: none;
+		}
+		.defilement-piste {
+			animation: none;
+			width: auto;
+			justify-content: center;
+		}
+		.defilement-liste {
+			flex-wrap: wrap;
+			justify-content: center;
+			row-gap: 1.5rem;
+			flex-shrink: 1;
+		}
+		.defilement-liste[aria-hidden='true'],
+		.defilement-repete {
+			display: none;
+		}
+	}
+</style>

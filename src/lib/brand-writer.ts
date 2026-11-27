@@ -67,6 +67,7 @@ import { contentTransaction, type Applied } from './content-transaction';
 import { couleurSombreAuto, DEFAULT_SOMBRE, MARQUE, type ReglageSombre } from './mode-sombre';
 import { piedResolu, type PiedResolu, type ReglagePied } from './pied';
 import { siteRoot } from './news-writer';
+import { svgProblem } from './svg-sur';
 
 export const LOGO_MAX_WIDTH = 1600;
 export const FAVICON_SIZE = 512;
@@ -229,15 +230,7 @@ export interface BrandInput {
 	fonts: FontsInput | null;
 }
 
-/** Contenus actifs interdits dans un SVG servi tel quel par le site. */
-const SVG_DANGER = /<script|<foreignObject|<iframe|<embed|<object|\bon[a-z]+\s*=|javascript:|<!ENTITY|xlink:href\s*=\s*["']?\s*(?!#)|\bhref\s*=\s*["']?\s*(?!#|data:image\/)/i;
-
-export function svgProblem(data: Buffer, what: string): string | null {
-	const text = data.toString('utf8');
-	if (!/<svg[\s>]/i.test(text)) return `${what} : fichier SVG illisible.`;
-	if (SVG_DANGER.test(text)) return `${what} : ce SVG contient du script ou des liens externes, refusé par sécurité. Exportez-le en « SVG simple » ou en PNG.`;
-	return null;
-}
+export { svgProblem };
 
 function validateColors(colors: ThemeColors): string[] {
 	const errors: string[] = [];

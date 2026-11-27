@@ -14,6 +14,7 @@ import { publishBlocked, publishChange } from '../../../../lib/admin-publish';
 import { readCover } from '../../../../lib/admin-cover';
 import { blocPhotoUrls as blocPhotoUrlsDe } from '../../../../lib/bloc-images';
 import { deletePage, readPageInput, readPageSource, savePage, type CoverChange } from '../../../../lib/page-writer';
+import { sectionPhotos, type HomeModule } from '../../../../lib/home-modules';
 
 export const prerender = false;
 
@@ -23,7 +24,7 @@ export const GET: APIRoute = withErrors(async ({ params }) => {
 	// Aperçu de la photo actuelle : celle du site construit (la source n'est pas servie).
 	const entry = await getEntry('pages', source.path);
 	const coverUrl = entry?.data.cover ? (await getImage({ src: entry.data.cover, width: 640, height: 360, fit: 'cover' })).src : null;
-	const blocPhotoUrls = await blocPhotoUrlsDe(`pages/${source.path}`, source.blocs);
+	const blocPhotoUrls = await blocPhotoUrlsDe(`pages/${source.path}`, source.blocs, (source.sections as HomeModule[]).flatMap(sectionPhotos));
 	return json({ ...source, coverUrl, blocPhotoUrls });
 });
 

@@ -41,103 +41,107 @@ const photos = (bloc.items ?? [])
 	.filter((p) => p.image);
 const colonnes = field('colonnes') === 'auto' || !field('colonnes') ? String(Math.min(photos.length, 3)) : field('colonnes');
 const video = bloc.type === 'video' ? videoEmbed(field('lien')) : null;
+
 ---
 
-{bloc.type === 'cartes' && (
-	<div class:list={['mt-8 grid gap-6 sm:grid-cols-2', field('colonnes') === '3' && 'lg:grid-cols-3']}>
-		{(bloc.items ?? []).map((item) => (
-			<div class="rounded-2xl border border-gray-100 bg-surface p-6 shadow-sm transition-shadow hover:shadow-md">
-				{item.icone && (
-					<span class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-xl text-primary">
-						<i class={`fa-solid fa-${item.icone}`} aria-hidden="true"></i>
-					</span>
-				)}
-				<p class="font-heading text-lg font-semibold text-gray-900">{text(item.titre)}</p>
-				<div class="bloc-texte mt-2 text-sm font-light text-gray-600" set:html={renderMarkdownFragment(item.texte ?? '')} />
-			</div>
-		))}
-	</div>
-)}
-
-{bloc.type === 'tarif' && (
-	<div class="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-gray-100 p-6">
-		<span class="font-light text-gray-600">{text(field('libelle'))}</span>
-		<span class="shrink-0 font-heading text-2xl font-semibold text-gray-900">{text(field('montant'))}</span>
-	</div>
-)}
-
-{bloc.type === 'bouton' && (
-	<div class="mt-6">
-		<Button href={field('lien')} variant={(field('style') || 'primary') as 'primary' | 'secondary' | 'outline'}>{text(field('texte'))}</Button>
-	</div>
-)}
-
-{bloc.type === 'encart' && (
-	<div class:list={['mt-6 rounded-2xl border p-5', encart.box]} role="note">
-		{field('titre') && (
-			<p class="font-heading font-semibold">
-				<i class={`fa-solid ${encart.icon} mr-1.5`} aria-hidden="true"></i>{text(field('titre'))}
-			</p>
-		)}
-		<div class:list={['bloc-texte text-sm', field('titre') && 'mt-1']} set:html={renderMarkdownFragment(field('texte'))} />
-	</div>
-)}
-
-{bloc.type === 'photos' && photos.length > 0 && (
-	<div class:list={['mt-8 grid gap-6', colonnes === '2' && 'sm:grid-cols-2', colonnes === '3' && 'sm:grid-cols-2 lg:grid-cols-3']}>
-		{photos.map((p) => (
-			<figure>
-				<Image
-					src={p.image!}
-					alt={p.alt}
-					widths={[480, 800, 1200, 1600]}
-					sizes={colonnes === '1' ? '(min-width: 1024px) 768px, 100vw' : '(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw'}
-					class:list={['w-full rounded-2xl', colonnes !== '1' && 'aspect-[4/3] object-cover']}
-					loading="lazy"
-				/>
-				{p.legende && <figcaption class="mt-2 text-center text-sm font-light text-gray-500">{p.legende}</figcaption>}
-			</figure>
-		))}
-	</div>
-)}
-
-{bloc.type === 'carrousel' && photos.length > 0 && (
-	<Carrousel
-		photos={photos.map((p) => ({ image: p.image!, alt: p.alt, legende: p.legende }))}
-		fleches={field('fleches') !== 'non'}
-		points={field('points') !== 'non'}
-		delai={field('auto') === 'oui' ? Number(field('delai') || 5) : 0}
-	/>
-)}
-
-{video && (
-	<figure class="mt-8">
-		<div class="aspect-video overflow-hidden rounded-2xl bg-black">
-			<iframe
-				src={video.src}
-				title={text(field('titre')) || `Vidéo ${video.source}`}
-				class="h-full w-full"
-				loading="lazy"
-				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-				allowfullscreen
-				referrerpolicy="strict-origin-when-cross-origin"
-			></iframe>
+<!-- `.bloc` : hors des règles de texte de `.markdown-content` (global.css). -->
+<div class="bloc">
+	{bloc.type === 'cartes' && (
+		<div class:list={['mt-8 grid gap-6 sm:grid-cols-2', field('colonnes') === '3' && 'lg:grid-cols-3']}>
+			{(bloc.items ?? []).map((item) => (
+				<div class="rounded-2xl border border-gray-100 bg-surface p-6 shadow-sm transition-shadow hover:shadow-md">
+					{item.icone && (
+						<span class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-xl text-primary">
+							<i class={`fa-solid fa-${item.icone}`} aria-hidden="true"></i>
+						</span>
+					)}
+					<p class="font-heading text-lg font-semibold text-gray-900">{text(item.titre)}</p>
+					<div class="bloc-texte mt-2 text-sm font-light text-gray-600" set:html={renderMarkdownFragment(item.texte ?? '')} />
+				</div>
+			))}
 		</div>
-		{(field('titre') || field('legende')) && (
-			<figcaption class="mt-2 text-center text-sm font-light text-gray-500">
-				{field('titre') && <span class="font-medium text-gray-700">{text(field('titre'))}</span>}
-				{field('titre') && field('legende') && ' — '}
-				{text(field('legende'))}
-			</figcaption>
-		)}
-	</figure>
-)}
+	)}
 
-{BLOC_TYPES[bloc.type]?.extension && (() => {
-	// Bloc d'une extension : son composant (site.ts) ; extension inactive = rien.
-	const Composant = composantBloc(bloc.type);
-	return Composant ? <Composant bloc={bloc} /> : null;
-})()}
+	{bloc.type === 'tarif' && (
+		<div class="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-gray-100 p-6">
+			<span class="font-light text-gray-600">{text(field('libelle'))}</span>
+			<span class="shrink-0 font-heading text-2xl font-semibold text-gray-900">{text(field('montant'))}</span>
+		</div>
+	)}
+
+	{bloc.type === 'bouton' && (
+		<div class="mt-6">
+			<Button href={field('lien')} variant={(field('style') || 'primary') as 'primary' | 'secondary' | 'outline'}>{text(field('texte'))}</Button>
+		</div>
+	)}
+
+	{bloc.type === 'encart' && (
+		<div class:list={['mt-6 rounded-2xl border p-5', encart.box]} role="note">
+			{field('titre') && (
+				<p class="font-heading font-semibold">
+					<i class={`fa-solid ${encart.icon} mr-1.5`} aria-hidden="true"></i>{text(field('titre'))}
+				</p>
+			)}
+			<div class:list={['bloc-texte text-sm', field('titre') && 'mt-1']} set:html={renderMarkdownFragment(field('texte'))} />
+		</div>
+	)}
+
+	{bloc.type === 'photos' && photos.length > 0 && (
+		<div class:list={['mt-8 grid gap-6', colonnes === '2' && 'sm:grid-cols-2', colonnes === '3' && 'sm:grid-cols-2 lg:grid-cols-3']}>
+			{photos.map((p) => (
+				<figure>
+					<Image
+						src={p.image!}
+						alt={p.alt}
+						widths={[480, 800, 1200, 1600]}
+						sizes={colonnes === '1' ? '(min-width: 1024px) 768px, 100vw' : '(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw'}
+						class:list={['w-full rounded-2xl', colonnes !== '1' && 'aspect-[4/3] object-cover']}
+						loading="lazy"
+					/>
+					{p.legende && <figcaption class="mt-2 text-center text-sm font-light text-gray-500">{p.legende}</figcaption>}
+				</figure>
+			))}
+		</div>
+	)}
+
+	{bloc.type === 'carrousel' && photos.length > 0 && (
+		<Carrousel
+			photos={photos.map((p) => ({ image: p.image!, alt: p.alt, legende: p.legende }))}
+			fleches={field('fleches') !== 'non'}
+			points={field('points') !== 'non'}
+			delai={field('auto') === 'oui' ? Number(field('delai') || 5) : 0}
+		/>
+	)}
+
+	{video && (
+		<figure class="mt-8">
+			<div class="aspect-video overflow-hidden rounded-2xl bg-black">
+				<iframe
+					src={video.src}
+					title={text(field('titre')) || `Vidéo ${video.source}`}
+					class="h-full w-full"
+					loading="lazy"
+					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+					allowfullscreen
+					referrerpolicy="strict-origin-when-cross-origin"
+				></iframe>
+			</div>
+			{(field('titre') || field('legende')) && (
+				<figcaption class="mt-2 text-center text-sm font-light text-gray-500">
+					{field('titre') && <span class="font-medium text-gray-700">{text(field('titre'))}</span>}
+					{field('titre') && field('legende') && ' — '}
+					{text(field('legende'))}
+				</figcaption>
+			)}
+		</figure>
+	)}
+
+	{BLOC_TYPES[bloc.type]?.extension && (() => {
+		// Bloc d'une extension : son composant (site.ts) ; extension inactive = rien.
+		const Composant = composantBloc(bloc.type);
+		return Composant ? <Composant bloc={bloc} /> : null;
+	})()}
+</div>
 
 <style>
 	/* Texte Markdown d'un bloc : listes et paragraphes compacts. */
@@ -155,6 +159,7 @@ const video = bloc.type === 'video' ? videoEmbed(field('lien')) : null;
 		margin-top: 0.25rem;
 	}
 	.bloc-texte :global(a) {
+		color: var(--color-primary);
 		text-decoration: underline;
 	}
 </style>

@@ -14,9 +14,9 @@ import { blocPhotos, type Bloc } from './blocs';
 
 const fichiers = import.meta.glob<ImageMetadata>(
 	[
-		'../content/pages/**/photo_*.{jpg,jpeg,png,webp}',
-		'../content/news/*/photo_*.{jpg,jpeg,png,webp}',
-		'../content/activites/*/photo_*.{jpg,jpeg,png,webp}',
+		'../content/pages/**/photo_*.{jpg,jpeg,png,webp,svg}',
+		'../content/news/*/photo_*.{jpg,jpeg,png,webp,svg}',
+		'../content/activites/*/photo_*.{jpg,jpeg,png,webp,svg}',
 	],
 	{ eager: true, import: 'default' },
 );
@@ -36,14 +36,16 @@ export function blocImage(dossier: string, photo: string): ImageMetadata | undef
  * `blocPhotoUrls` des routes GET d'un contenu), par valeur de champ
  * (`./photo_1.jpg`). Une photo pas encore publiée n'en a pas.
  */
-export async function blocPhotoUrls(dossier: string, blocs: Record<string, unknown>): Promise<Record<string, string>> {
+export async function blocPhotoUrls(dossier: string, blocs: Record<string, unknown>, autres: string[] = []): Promise<Record<string, string>> {
 	const urls: Record<string, string> = {};
-	for (const bloc of Object.values(blocs)) {
-		if (!bloc || typeof bloc !== 'object') continue;
-		for (const photo of blocPhotos(bloc as Bloc)) {
-			const image = blocImage(dossier, photo);
-			if (image && !urls[photo]) urls[photo] = (await getImage({ src: image, width: 320, height: 200, fit: 'cover' })).src;
-		}
+	const photos = [
+		...Object.values(blocs).flatMap((bloc) => (bloc && typeof bloc === 'object' ? blocPhotos(bloc as Bloc) : [])),
+		// Photos des sections (page enrichie, accueil), cf. `sectionPhotos()`.
+		...autres,
+	];
+	for (const photo of photos) {
+		const image = blocImage(dossier, photo);
+		if (image && !urls[photo]) urls[photo] = (await getImage({ src: image, width: 320, height: 200, fit: 'cover' })).src;
 	}
 	return urls;
 }

@@ -3,11 +3,11 @@
  * Formulaire d'une page du site (bibliothèque `src/lib/site-pages.ts` :
  * Accueil, Activités…) dans le module « Pages » : lien dans le menu
  * (libellé, visibilité) et textes de la page, section par section — ou,
- * pour l'accueil, ses modules (`HomeModulesEditor.vue`). Un texte
+ * pour l'accueil, ses sections (`HomeModulesEditor.vue`). Un texte
  * vidé reprend sa valeur par défaut ; le serveur n'enregistre que les écarts.
  * Activer / désactiver se fait depuis la liste.
  */
-import { computed, inject, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, inject, onBeforeUnmount, reactive, ref, toRaw } from 'vue';
 import { PAGE_VARIABLES } from '../../../../lib/page-variables';
 import { SITE_PAGES } from '../../../../lib/site-pages';
 import { ApiError, sitePagesApi, type SaveResult, type SitePageView } from '../../client';
@@ -16,10 +16,20 @@ import PublishButtons from '../../PublishButtons.vue';
 import { ADMIN_CONTEXT, fileToBase64, inputClass, rememberOpenModule } from '../../context';
 import type { HomePhotoDraft } from './home-photo-draft';
 import HomeModulesEditor from './HomeModulesEditor.vue';
+import { fournirBlocPhotos } from './bloc-photos';
 import SeoLength from '../../SeoLength.vue';
 
-/** `homePhoto` / `homeIllustration` : aperçus de la photo du bandeau et de l'illustration de la présentation (accueil). */
-const props = defineProps<{ page: SitePageView; disabled: boolean; homePhoto?: string | null; homeIllustration?: string | null }>();
+/**
+ * `homePhoto` / `homeIllustration` : aperçus de la photo du bandeau et de l'illustration de la présentation (accueil) ;
+ * `photoUrls` : vignettes des photos des sections de l'accueil (équipe, logos…).
+ */
+const props = defineProps<{
+	page: SitePageView;
+	disabled: boolean;
+	homePhoto?: string | null;
+	homeIllustration?: string | null;
+	photoUrls?: Record<string, string>;
+}>();
 const emit = defineEmits<{ published: [label: string, result: SaveResult]; cancel: [] }>();
 const { sessionExpired } = inject(ADMIN_CONTEXT)!;
 
@@ -28,8 +38,12 @@ const form = reactive({
 	label: props.page.label,
 	show: props.page.show,
 	textes: { ...props.page.textes },
-	modules: (props.page.modules ?? []).map((m) => ({ ...m })),
+	// Copie profonde : les éléments des sections (listes) sont modifiés sur place.
+	modules: structuredClone(toRaw(props.page.modules ?? [])),
 });
+/** Photos des éléments des sections : choisies dans le formulaire, envoyées avec la page. */
+const sectionPhotos = fournirBlocPhotos(props.photoUrls);
+onBeforeUnmount(sectionPhotos.liberer);
 const error = ref('');
 const busy = ref(false);
 /** Photo du bandeau (accueil) : modifiée depuis le module « Bandeau », envoyée avec la page. */
@@ -67,7 +81,7 @@ async function submit(event: Event) {
 			show: form.show,
 			active: props.page.active,
 			textes: form.textes,
-			...(def.modules ? { modules: form.modules } : {}),
+			...(def.modules ? { modules: form.modules, photos: await sectionPhotos.envoi(form.modules) } : {}),
 			...(photo.change.action === 'remove' ? { photo: 'remove' as const } : {}),
 			...(photo.change.action === 'replace'
 				? { photo: { type: photo.change.file.type, data: await fileToBase64(photo.change.file) } }
@@ -94,7 +108,7 @@ const variables = Object.entries(PAGE_VARIABLES).map(([name, v]) => ({ token: `{
 <template>
 	<form class="space-y-5" @submit.prevent="submit">
 		<p class="text-sm font-light text-gray-600">
-			Vous réglez ici son lien dans le menu et {{ def.modules ? 'ses modules' : 'ses textes' }}.
+			Vous réglez ici son lien dans le menu et {{ def.modules ? 'ses sections' : 'ses textes' }}.
 		</p>
 		<p v-if="error" class="alerte-erreur" role="alert">{{ error }}</p>
 

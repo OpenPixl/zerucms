@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
- * Formulaire de page du module « Pages » : création (choix page classique /
- * enrichie, ou fichier `.md` déposé qui pré-remplit le formulaire, modèles
- * téléchargeables : ./page-markdown.ts) ou modification d'une page des sources
- * (onglets Informations / Contenu / Image ; fichier `.md` à télécharger ou à
+ * Formulaire de page du module « Pages » : création (choix page simple —
+ * texte et blocs — ou enrichie — composée de sections —, ou fichier `.md`
+ * déposé qui pré-remplit le formulaire, modèles téléchargeables :
+ * ./page-markdown.ts) ou modification d'une page des sources (onglets
+ * Informations / Contenu / Sections (page enrichie) / Image ; fichier `.md` à télécharger ou à
  * recharger, `EditFileBar`). Emplacement : menu de navigation (lien direct
  * ou dans un menu déroulant), page libre (racine, hors menu) ou réservée
  * (Espace Admin). « Menu » = menu de navigation (frontmatter `menu:`). Le serveur valide
@@ -22,7 +23,9 @@ import SeoLength from '../../SeoLength.vue';
 import EditFileBar from '../../EditFileBar.vue';
 import FormHeader from '../../FormHeader.vue';
 import FormTabs from '../../FormTabs.vue';
-import { EDIT_TABS, useFormTabs, type EditTab } from '../../form-tabs';
+import { EDIT_TABS, useFormTabs, type EditTab, type FormTab } from '../../form-tabs';
+import { SECTIONS_NOUVELLE_PAGE, type HomeModule } from '../../../../lib/home-modules';
+import HomeModulesEditor from './HomeModulesEditor.vue';
 import { telechargerContenu } from '../../zip-contenu';
 import { fournirBlocPhotos } from './bloc-photos';
 import { DEPOT_ACCEPT, lireDepot, photosDuDepot, remarquesDepot, trouverPhoto, type Depot } from '../../depot';
@@ -55,8 +58,8 @@ function slugify(text: string): string {
 		.replace(/-+$/g, '');
 }
 
-/** Emplacement proposé à la saisie (un seul menu de navigation pour l'instant). */
-type Emplacement = 'menu' | 'libre' | 'reservee';
+/** Emplacement proposé à la saisie (un seul menu de navigation pour l'instant ; `pied` = bas du pied de page). */
+type Emplacement = 'menu' | 'pied' | 'libre' | 'reservee';
 
 function placementKey(p: PageInput['placement']): string {
 	return p.kind === 'dropdown' ? `dropdown:${p.dropdown}` : p.kind;
@@ -65,7 +68,8 @@ function placementKey(p: PageInput['placement']): string {
 function emplacementOf(source: PageSourceView): Emplacement {
 	if (source.placement.kind === 'reservee') return 'reservee';
 	// Une page rangée dans un menu déroulant reste dans le menu de navigation.
-	return source.placement.kind === 'dropdown' || source.menu.show ? 'menu' : 'libre';
+	if (source.placement.kind === 'dropdown' || source.menu.show) return 'menu';
+	return source.pied.show ? 'pied' : 'libre';
 }
 
 const form = reactive({
@@ -82,17 +86,25 @@ const form = reactive({
 	imageCredit: editing?.imageCredit ?? '',
 });
 const blocs = reactive<Record<string, Bloc>>(structuredClone(toRaw(editing?.blocs ?? {})));
+/** Sections d'une page enrichie (gardées si l'on repasse en page simple avant d'enregistrer). */
+const sections = reactive<HomeModule[]>(structuredClone(toRaw(editing?.sections?.length ? editing.sections : SECTIONS_NOUVELLE_PAGE)));
+/** Onglets : « Sections » pour une page enrichie. */
+const tabs = computed<readonly FormTab[]>(() =>
+	form.type === 'enrichie' ? [EDIT_TABS[0], EDIT_TABS[1], { id: 'sections', label: 'Sections', icon: 'fa-layer-group' }, EDIT_TABS[2]] : EDIT_TABS,
+);
+/** Le texte s'affiche-t-il ? Page simple, ou page enrichie avec la section « Contenu de la page ». */
+const texteAffiche = computed(() => form.type !== 'enrichie' || sections.some((m) => m.type === 'contenu'));
 /** Photos des blocs (« Photos », « Carrousel ») : aperçus, fichiers choisis à envoyer avec la page. */
 const blocPhotos = fournirBlocPhotos(editing?.blocPhotoUrls);
 onBeforeUnmount(blocPhotos.liberer);
-/** Création : type pas encore choisi (écran de choix classique / enrichie). */
+/** Création : type pas encore choisi (écran de choix page simple / enrichie). */
 const typeChosen = ref(Boolean(editing));
 /** L'adresse suit le titre tant qu'elle n'a pas été modifiée à la main (création seulement). */
 const slugTouched = ref(Boolean(editing));
 const error = ref('');
 const busy = ref(false);
 const bodyField = ref<HTMLTextAreaElement | null>(null);
-const { tab, onInvalid } = useFormTabs<EditTab>('pg', 'infos');
+const { tab, onInvalid } = useFormTabs<EditTab | 'sections'>('pg', 'infos');
 
 // --- Fichier .md : création, ou rechargement en modification ---
 
@@ -136,10 +148,12 @@ async function pickMarkdown(entree: File[] | Depot | undefined) {
 		imageCredit: page.imageCredit,
 		body: page.body,
 	});
-	if (page.menuShow === false && form.placement === 'menu') form.placement = 'libre';
-	else if (page.menuShow === true && form.placement === 'libre') form.placement = 'menu';
+	if (page.piedShow && form.placement !== 'reservee') form.placement = 'pied';
+	else if (page.menuShow === false && form.placement === 'menu') form.placement = 'libre';
+	else if (page.menuShow === true && (form.placement === 'libre' || form.placement === 'pied')) form.placement = 'menu';
 	for (const id of Object.keys(blocs)) delete blocs[id];
 	Object.assign(blocs, page.blocs);
+	if (page.sections.length) sections.splice(0, sections.length, ...page.sections);
 	if (page.cover) {
 		const photoCouverture = trouverPhoto(depot, page.cover);
 		if (photoCouverture) {
@@ -163,7 +177,8 @@ async function downloadFile() {
 		await telechargerContenu({
 			nom: slug.value || 'page',
 			dossier: editing ? `pages/${editing.path}` : null,
-			blocs: form.type === 'enrichie' ? blocs : {},
+			blocs,
+			sections: form.type === 'enrichie' ? sections : [],
 			photos: blocPhotos.api,
 			couverture: { actuelle: editing?.cover ?? null, nouvelle: coverAction.value === 'replace' ? photo.value : null, retiree: coverAction.value === 'remove' },
 			construire: (b, cover) =>
@@ -172,8 +187,10 @@ async function downloadFile() {
 					title: form.title,
 					description: form.description,
 					menu: form.placement === 'reservee' ? null : { show: form.placement === 'menu', label: form.menuLabel },
+					pied: form.placement === 'pied',
 					imageCredit: form.imageCredit,
 					blocs: b,
+					sections: form.type === 'enrichie' ? sections : [],
 					body: form.body,
 					cover,
 				}),
@@ -256,11 +273,13 @@ async function submit(event: Event) {
 			type: form.type,
 			// Position décidée par le serveur (dernière à la création ou en changeant d'emplacement).
 			menu: { show: form.placement === 'menu', order: editing?.menu.order ?? 0, label: form.menuLabel },
+			pied: { show: form.placement === 'pied', order: editing?.pied.order ?? 0 },
 			access: form.placement === 'reservee' ? form.access : [],
 			body: form.body,
-			blocs: form.type === 'enrichie' ? blocs : {},
+			blocs,
+			sections: form.type === 'enrichie' ? sections : [],
 			imageCredit: form.imageCredit,
-			photos: form.type === 'enrichie' ? await blocPhotos.envoi(blocs) : {},
+			photos: await blocPhotos.envoi(blocs, form.type === 'enrichie' ? sections : []),
 		};
 		const newPhoto = coverAction.value === 'replace' && photo.value ? { type: photo.value.type, data: await fileToBase64(photo.value) } : null;
 		rememberOpenModule('pages-site');
@@ -296,10 +315,11 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 			@click="chooseType('classique')"
 		>
 			<span class="flex items-center gap-2 font-heading font-semibold text-gray-900">
-				<i class="fa-solid fa-file-lines text-primary" aria-hidden="true"></i>Page classique
+				<i class="fa-solid fa-file-lines text-primary" aria-hidden="true"></i>Page simple
 			</span>
 			<span class="mt-1 block text-sm font-light text-gray-600">
-				Du texte mis en forme (titres, listes, liens, tableaux), avec une photo de couverture facultative.
+				Du texte mis en forme (titres, listes, liens, tableaux), enrichi de blocs placés où vous voulez : photos,
+				carrousel, vidéo, grille de cartes, tarif, bouton, encadré…
 			</span>
 		</button>
 		<button
@@ -308,11 +328,11 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 			@click="chooseType('enrichie')"
 		>
 			<span class="flex items-center gap-2 font-heading font-semibold text-gray-900">
-				<i class="fa-solid fa-puzzle-piece text-primary" aria-hidden="true"></i>Page enrichie
+				<i class="fa-solid fa-layer-group text-primary" aria-hidden="true"></i>Page enrichie
 			</span>
 			<span class="mt-1 block text-sm font-light text-gray-600">
-				Le texte, plus des blocs placés où vous voulez : photos, carrousel, vidéo, grille de cartes, tarif, bouton,
-				encadré…
+				Une page composée de sections pleine largeur, comme l'accueil : bandeau, présentation, grille de tarifs,
+				équipe, bandeau de logos, appel à l'action… et le texte de la page (avec ses blocs) où vous voulez.
 			</span>
 		</button>
 
@@ -336,7 +356,7 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 			</label>
 			<p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
 				<span class="text-gray-600"><i class="fa-solid fa-download mr-1 text-xs text-gray-400" aria-hidden="true"></i>Télécharger un modèle :</span>
-				<button type="button" class="font-medium text-primary hover:underline" @click="downloadPageTemplate('classique')">page classique</button>
+				<button type="button" class="font-medium text-primary hover:underline" @click="downloadPageTemplate('classique')">page simple</button>
 				<button type="button" class="font-medium text-primary hover:underline" @click="downloadPageTemplate('enrichie')">page enrichie</button>
 			</p>
 		</div>
@@ -361,13 +381,13 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 
 		<div>
 			<EditFileBar v-if="editing && !editing.technique" :imported="imported" @download="downloadFile" @load="pickMarkdown" />
-			<FormTabs v-model="tab" :tabs="EDIT_TABS" prefix="pg" />
+			<FormTabs v-model="tab" :tabs="tabs" prefix="pg" />
 
 			<div v-show="tab === 'infos'" id="pg-panel-infos" role="tabpanel" aria-labelledby="pg-tab-infos" class="space-y-5">
 				<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
 					<span class="font-semibold text-gray-700">Type :</span>
-					<label class="flex items-center gap-1.5"><input v-model="form.type" type="radio" value="classique" /> Page classique</label>
-					<label class="flex items-center gap-1.5"><input v-model="form.type" type="radio" value="enrichie" /> Page enrichie (blocs)</label>
+					<label class="flex items-center gap-1.5"><input v-model="form.type" type="radio" value="classique" /> Page simple</label>
+					<label class="flex items-center gap-1.5"><input v-model="form.type" type="radio" value="enrichie" /> Page enrichie (sections)</label>
 				</div>
 
 				<div>
@@ -391,6 +411,7 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 						<label for="pg-placement" class="champ-libelle">Emplacement</label>
 						<select id="pg-placement" v-model="form.placement" :class="inputClass">
 							<option value="menu">Menu de navigation</option>
+							<option value="pied">Pied de page (mentions légales, CGV, statuts…)</option>
 							<option value="libre">Page libre (hors menu, accessible par son adresse ou un lien)</option>
 							<option value="reservee">Page réservée (Espace Admin, connexion requise)</option>
 						</select>
@@ -428,6 +449,15 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 							La page se place en dernière position {{ dropdownLabel ? `du menu déroulant « ${dropdownLabel} »` : 'du menu de navigation' }}.
 						</p>
 					</div>
+					<div v-else-if="form.placement === 'pied'">
+						<label for="pg-pied-label" class="champ-libelle">
+							Libellé dans le pied de page <span class="font-light text-gray-500">(facultatif)</span>
+						</label>
+						<input id="pg-pied-label" v-model="form.menuLabel" type="text" :placeholder="form.title" :class="inputClass" />
+						<p v-if="!editing?.pied.show" class="champ-aide">
+							Lien ajouté en bas du pied de page, en dernière position (ordre réglable dans la liste des pages).
+						</p>
+					</div>
 					<fieldset v-else-if="form.placement === 'reservee'">
 						<legend class="text-sm font-semibold text-gray-700">Accès</legend>
 						<p class="text-xs font-light text-gray-500">Aucune case cochée : toute personne connectée.</p>
@@ -448,7 +478,7 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 						ref="bodyField"
 						v-model="form.body"
 						rows="6"
-						required
+						:required="texteAffiche"
 						:class="[inputClass, 'font-mono text-sm leading-relaxed']"
 					></textarea>
 					<p class="champ-aide">
@@ -467,7 +497,11 @@ const groupChoices = ASSIGNABLE_GROUPS.map((g) => ({ value: g, label: AUTH_GROUP
 					<LinkPicker v-model="form.body" :field="bodyField" />
 				</div>
 
-				<BlocsEditor v-if="form.type === 'enrichie'" :blocs="blocs" :body="form.body" @insert="insertMarker" />
+				<BlocsEditor :blocs="blocs" :body="form.body" @insert="insertMarker" />
+			</div>
+
+			<div v-if="form.type === 'enrichie'" v-show="tab === 'sections'" id="pg-panel-sections" role="tabpanel" aria-labelledby="pg-tab-sections">
+				<HomeModulesEditor :modules="sections" contexte="page" />
 			</div>
 
 			<div v-show="tab === 'image'" id="pg-panel-image" role="tabpanel" aria-labelledby="pg-tab-image">

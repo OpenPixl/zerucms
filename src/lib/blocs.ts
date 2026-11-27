@@ -51,11 +51,13 @@ export interface BlocField {
 	defaut?: boolean;
 	/** Champ affiché seulement si un autre champ (interrupteur) vaut `oui`. */
 	si?: string;
+	/** Champ `photo` : SVG accepté en plus (logos ; contenus actifs refusés, cf. `svgProblem()`). */
+	svg?: boolean;
 	help?: string;
 }
 
 /** Photo d'un bloc : fichier du dossier de la page, écrit par `page-writer.ts`. */
-export const BLOC_PHOTO = /^\.\/photo_\d{1,4}\.(?:jpg|jpeg|png|webp)$/;
+export const BLOC_PHOTO = /^\.\/photo_\d{1,4}\.(?:jpg|jpeg|png|webp|svg)$/;
 
 /** Photo choisie dans le formulaire, pas encore envoyée (`nouvelle:<clé>`), remplacée par le serveur. */
 export const BLOC_PHOTO_NOUVELLE = /^nouvelle:[a-z0-9]{1,40}$/;
@@ -113,7 +115,27 @@ export interface BlocTypeDef {
 	extension?: string;
 	fields: BlocField[];
 	/** Liste d'éléments répétés (ex. cartes). */
-	items?: { label: string; fields: BlocField[]; min: number; max: number };
+	items?: ElementsDef;
+}
+
+/**
+ * Éléments répétés d'un bloc ou d'une section (cartes, photos, formules,
+ * personnes…). Éléments à champ `photo` : grille de vignettes dans le module
+ * (`PhotosGrille.vue`), sauf `liste: true` (photo facultative parmi d'autres
+ * champs, ex. section « L'équipe »).
+ */
+export interface ElementsDef {
+	label: string;
+	fields: BlocField[];
+	min: number;
+	max: number;
+	liste?: boolean;
+}
+
+/** Ce qui porte des champs et, peut-être, des éléments : type de bloc ou de section. */
+export interface ChampsDef {
+	fields: BlocField[];
+	items?: ElementsDef;
 }
 
 const STYLE_BOUTON = [
@@ -310,6 +332,7 @@ export function checkBlocField(field: BlocField, value: unknown, where: string, 
 	if (field.type === 'photo' && options.photosEnAttente) {
 		const texte = typeof value === 'string' ? value.trim() : '';
 		if (texte && !BLOC_PHOTO.test(texte) && !BLOC_PHOTO_NOUVELLE.test(texte)) errors.push(`${where} : photo invalide (« ${texte} »).`);
+		if (texte.endsWith('.svg') && !field.svg) errors.push(`${where} : SVG accepté seulement pour les logos (« ${field.label} » : JPEG, PNG ou WebP).`);
 		return texte;
 	}
 	if (field.type === 'interrupteur') {
@@ -337,6 +360,9 @@ export function checkBlocField(field: BlocField, value: unknown, where: string, 
 	}
 	if (field.type === 'photo' && !BLOC_PHOTO.test(text)) {
 		errors.push(`${where} : photo invalide (« ${text} »).`);
+	}
+	if (field.type === 'photo' && text.endsWith('.svg') && !field.svg) {
+		errors.push(`${where} : SVG accepté seulement pour les logos (« ${field.label} » : JPEG, PNG ou WebP).`);
 	}
 	if (field.type === 'video' && !videoEmbed(text)) {
 		errors.push(`${where} : lien de vidéo non reconnu (YouTube, Vimeo ou PeerTube : Framatube, peertube.fr).`);
@@ -382,21 +408,30 @@ export function validateBloc(
 		const value = checkBlocField(field, data[field.name], where, errors, options);
 		if (value !== undefined) bloc[field.name] = value;
 	}
-	if (def.items) {
-		const items = Array.isArray(data.items) ? data.items : [];
-		if (items.length < def.items.min) errors.push(`${where} : au moins ${def.items.min} ${def.items.label.toLowerCase()}.`);
-		if (items.length > def.items.max) errors.push(`${where} : ${def.items.max} ${def.items.label.toLowerCase()}s au plus.`);
-		bloc.items = items.slice(0, def.items.max).map((item, i) => {
-			const out: Record<string, string> = {};
-			const source = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
-			for (const field of def.items!.fields) {
-				const value = checkBlocField(field, source[field.name], `${where}, ${def.items!.label.toLowerCase()} ${i + 1}`, errors, options);
-				if (value !== undefined) out[field.name] = value;
-			}
-			return out;
-		});
-	}
+	if (def.items) bloc.items = validerElements(def.items, data.items, where, errors, options);
 	return errors.length ? { errors } : { bloc, errors };
+}
+
+/** Vérifie et normalise les éléments répétés d'un bloc ou d'une section (nombre, champs). */
+export function validerElements(
+	spec: ElementsDef,
+	raw: unknown,
+	where: string,
+	errors: string[],
+	options: { photosEnAttente?: boolean } = {},
+): Record<string, string>[] {
+	const items = Array.isArray(raw) ? raw : [];
+	if (items.length < spec.min) errors.push(`${where} : au moins ${spec.min} ${spec.label.toLowerCase()}.`);
+	if (items.length > spec.max) errors.push(`${where} : ${spec.max} ${spec.label.toLowerCase()}s au plus.`);
+	return items.slice(0, spec.max).map((item, i) => {
+		const out: Record<string, string> = {};
+		const source = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
+		for (const field of spec.fields) {
+			const value = checkBlocField(field, source[field.name], `${where}, ${spec.label.toLowerCase()} ${i + 1}`, errors, options);
+			if (value !== undefined) out[field.name] = value;
+		}
+		return out;
+	});
 }
 
 /** Textes Markdown d'un bloc (champs `markdown`, y compris dans les éléments), pour le contrôle des liens. */
@@ -412,12 +447,36 @@ export function blocMarkdownTexts(bloc: Bloc): string[] {
 /** Photos d'un bloc (champs `photo`, y compris dans les éléments) : valeurs telles qu'enregistrées. */
 export function blocPhotos(bloc: Bloc): string[] {
 	const def: BlocTypeDef | undefined = BLOC_TYPES[bloc.type];
-	if (!def) return [];
-	const photos = def.fields.filter((f) => f.type === 'photo').map((f) => String(bloc[f.name] ?? ''));
-	for (const item of bloc.items ?? []) {
-		for (const f of def.items?.fields ?? []) if (f.type === 'photo') photos.push(item[f.name] ?? '');
+	return def ? photosDesChamps(def, bloc) : [];
+}
+
+/** Photos citées par une valeur (bloc ou section) d'après sa définition : champs `photo` et ceux de ses éléments. */
+export function photosDesChamps(def: ChampsDef, valeur: { [champ: string]: unknown; items?: unknown }): string[] {
+	const photos = def.fields.filter((f) => f.type === 'photo').map((f) => String(valeur[f.name] ?? ''));
+	for (const item of Array.isArray(valeur.items) ? (valeur.items as Record<string, unknown>[]) : []) {
+		for (const f of def.items?.fields ?? []) if (f.type === 'photo') photos.push(String(item?.[f.name] ?? ''));
 	}
 	return photos.filter(Boolean);
+}
+
+/**
+ * Applique `fn` à chaque champ `photo` d'une valeur brute (bloc ou section),
+ * éléments compris ; copie, l'original n'est pas modifié. `where` nomme le
+ * champ dans les messages.
+ */
+export function remplacerPhotos(def: ChampsDef, raw: unknown, ou: string, fn: (valeur: unknown, where: string) => unknown): unknown {
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+	const copie = { ...(raw as Record<string, unknown>) };
+	for (const f of def.fields) if (f.type === 'photo') copie[f.name] = fn(copie[f.name], ou);
+	if (def.items && Array.isArray(copie.items)) {
+		copie.items = copie.items.map((item, i) => {
+			if (!item || typeof item !== 'object') return item;
+			const it = { ...(item as Record<string, unknown>) };
+			for (const f of def.items!.fields) if (f.type === 'photo') it[f.name] = fn(it[f.name], `${ou}, ${def.items!.label.toLowerCase()} ${i + 1}`);
+			return it;
+		});
+	}
+	return copie;
 }
 
 /** Valeur de départ d'un champ (formulaire du module). */
@@ -432,9 +491,12 @@ export function emptyBloc(type: BlocType): Bloc {
 	const def: BlocTypeDef = BLOC_TYPES[type];
 	const bloc: Bloc = { type };
 	for (const f of def.fields) bloc[f.name] = emptyValue(f);
-	if (def.items) {
-		const item = Object.fromEntries(def.items.fields.map((f) => [f.name, emptyValue(f)]));
-		bloc.items = Array.from({ length: def.items.min }, () => ({ ...item }));
-	}
+	if (def.items) bloc.items = elementsVides(def.items);
 	return bloc;
+}
+
+/** Éléments de départ (le minimum demandé, champs vides). */
+export function elementsVides(spec: ElementsDef): Record<string, string>[] {
+	const item = Object.fromEntries(spec.fields.map((f) => [f.name, emptyValue(f)]));
+	return Array.from({ length: spec.min }, () => ({ ...item }));
 }

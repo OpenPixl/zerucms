@@ -12,35 +12,21 @@
  * (`./photo_<n>.jpg`), sinon vidée avec une remarque : la photo se choisit
  * alors dans le formulaire.
  */
-import { BLOC_PHOTO, BLOC_TYPES, validateBloc, type Bloc, type BlocTypeDef } from '../../lib/blocs';
+import { BLOC_PHOTO, BLOC_TYPES, remplacerPhotos, validateBloc, type Bloc } from '../../lib/blocs';
+import { HOME_MODULES, validateHomeModules, type HomeModule } from '../../lib/home-modules';
 
 /** Retrouve une photo déposée avec le fichier ; rend la valeur du champ, ou `null`. */
 export type PhotoDeposee = (nom: string) => string | null;
 
 /** Applique `fn` à chaque champ `photo` d'un bloc (champs et éléments) ; copie, l'original n'est pas modifié. */
 export function transformerPhotos(id: string, bloc: unknown, fn: (valeur: unknown, where: string) => unknown): unknown {
-	const def: BlocTypeDef | undefined = bloc && typeof bloc === 'object' && typeof (bloc as Bloc).type === 'string' ? BLOC_TYPES[(bloc as Bloc).type] : undefined;
-	if (!def) return bloc;
-	const copie = { ...(bloc as Record<string, unknown>) };
-	for (const f of def.fields) if (f.type === 'photo') copie[f.name] = fn(copie[f.name], `Bloc « ${id} »`);
-	if (def.items && Array.isArray(copie.items)) {
-		copie.items = copie.items.map((item, i) => {
-			if (!item || typeof item !== 'object') return item;
-			const it = { ...(item as Record<string, unknown>) };
-			for (const f of def.items!.fields) if (f.type === 'photo') it[f.name] = fn(it[f.name], `Bloc « ${id} », photo ${i + 1}`);
-			return it;
-		});
-	}
-	return copie;
+	const def = bloc && typeof bloc === 'object' && typeof (bloc as Bloc).type === 'string' ? BLOC_TYPES[(bloc as Bloc).type] : undefined;
+	return def ? remplacerPhotos(def, bloc, `Bloc « ${id} »`, fn) : bloc;
 }
 
-export function lireBlocsFichier(raw: unknown, photo: PhotoDeposee = () => null): { blocs: Record<string, Bloc>; warnings: string[] } {
-	const warnings: string[] = [];
-	const blocs: Record<string, Bloc> = {};
-	if (raw === undefined) return { blocs, warnings };
-	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { blocs, warnings: ['« blocs » ignoré : liste de blocs par identifiant attendue (cf. modèle).'] };
-
-	const remplacer = (valeur: unknown, where: string): unknown => {
+/** Photo d'un fichier : déposée (valeur du formulaire), photo du contenu gardée, sinon vidée avec une remarque. */
+function remplacant(photo: PhotoDeposee, warnings: string[]) {
+	return (valeur: unknown, where: string): unknown => {
 		if (typeof valeur !== 'string' || !valeur.trim()) return valeur;
 		const texte = valeur.trim();
 		const deposee = photo(texte.replace(/^\.\//, ''));
@@ -49,6 +35,29 @@ export function lireBlocsFichier(raw: unknown, photo: PhotoDeposee = () => null)
 		warnings.push(`${where} : photo « ${texte} » absente — déposez-la avec le fichier, ou choisissez-la dans le formulaire.`);
 		return '';
 	};
+}
+
+/** Sections d'un fichier `.md` de page enrichie (`sections:`), photos déposées comprises ; erreurs = remarques. */
+export function lireSectionsFichier(raw: unknown, photo: PhotoDeposee = () => null): { sections: HomeModule[]; warnings: string[] } {
+	if (raw === undefined) return { sections: [], warnings: [] };
+	if (!Array.isArray(raw)) return { sections: [], warnings: ['« sections » ignoré : liste de sections attendue (cf. modèle).'] };
+	const warnings: string[] = [];
+	const remplacer = remplacant(photo, warnings);
+	const avecPhotos = raw.map((m, i) => {
+		const def = m && typeof m === 'object' ? HOME_MODULES[String((m as { type?: unknown }).type)] : undefined;
+		return def ? remplacerPhotos(def, m, `Section ${i + 1} (${def.label})`, remplacer) : m;
+	});
+	const { modules, errors } = validateHomeModules(avecPhotos, { contexte: 'page', photosEnAttente: true });
+	return { sections: modules, warnings: [...warnings, ...errors] };
+}
+
+export function lireBlocsFichier(raw: unknown, photo: PhotoDeposee = () => null): { blocs: Record<string, Bloc>; warnings: string[] } {
+	const warnings: string[] = [];
+	const blocs: Record<string, Bloc> = {};
+	if (raw === undefined) return { blocs, warnings };
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { blocs, warnings: ['« blocs » ignoré : liste de blocs par identifiant attendue (cf. modèle).'] };
+
+	const remplacer = remplacant(photo, warnings);
 
 	for (const [id, bloc] of Object.entries(raw as Record<string, unknown>)) {
 		const { bloc: valide, errors } = validateBloc(id, transformerPhotos(id, bloc, remplacer), { photosEnAttente: true });

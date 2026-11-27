@@ -10,13 +10,14 @@
  */
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
-import type { Bloc, BlocTypeDef } from '../../../../lib/blocs';
+import type { ChampsDef } from '../../../../lib/blocs';
 import BlocFields from './BlocFields.vue';
 import { useBlocPhotos } from './bloc-photos';
 
-type Item = NonNullable<Bloc['items']>[number];
+type Item = Record<string, string>;
 
-const props = defineProps<{ bloc: Bloc; def: BlocTypeDef; idPrefix: string; champ: string }>();
+/** `bloc` : bloc ou section dont on édite les éléments (`items`). */
+const props = defineProps<{ bloc: { items?: Item[] }; def: ChampsDef; idPrefix: string; champ: string }>();
 const emit = defineEmits<{ ajouter: [event: Event] }>();
 
 const photos = useBlocPhotos();
@@ -24,6 +25,8 @@ const items = computed(() => props.bloc.items ?? []);
 const spec = computed(() => props.def.items!);
 const autres = computed(() => spec.value.fields.filter((f) => f.name !== props.champ));
 const champPhoto = computed(() => spec.value.fields.filter((f) => f.name === props.champ));
+/** Champ photo qui accepte le SVG (logos du « Bandeau défilant »). */
+const svgAccepte = computed(() => champPhoto.value.some((f) => f.svg));
 
 /** Élément déroulé (référence : suit l'élément quand l'ordre change). */
 const ouvert = ref<Item | null>(null);
@@ -108,7 +111,7 @@ function reordonner(liste: Item[]) {
 			>
 				<i class="fa-solid fa-plus text-lg" aria-hidden="true"></i>
 				Ajouter
-				<input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" @change="emit('ajouter', $event)" />
+				<input type="file" :accept="svgAccepte ? 'image/jpeg,image/png,image/webp,image/svg+xml' : 'image/jpeg,image/png,image/webp'" multiple class="sr-only" @change="emit('ajouter', $event)" />
 			</label>
 		</VueDraggable>
 		<p class="mt-1.5 text-xs font-light text-gray-500">Cliquez sur une photo pour sa description ; glissez-la pour changer l'ordre.</p>

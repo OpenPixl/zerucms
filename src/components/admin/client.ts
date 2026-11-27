@@ -159,7 +159,10 @@ export interface PageInput {
 	slug: string;
 	title: string;
 	description: string;
+	/** `classique` = page simple (texte + blocs) ; `enrichie` = page composée de sections. */
 	type: 'classique' | 'enrichie';
+	/** Sections d'une page enrichie (catalogue `src/lib/home-modules.ts`). */
+	sections: HomeModule[];
 	menu: { show: boolean; order: number; label: string };
 	access: AuthGroup[];
 	body: string;
@@ -191,6 +194,8 @@ export interface SitePageInput {
 	textes: Record<string, string>;
 	/** Accueil : liste complète des modules (absent = inchangée). */
 	modules?: HomeModule[];
+	/** Accueil : photos des éléments des sections (équipe, logos…), cf. `BlocPhotosEnvoi`. */
+	photos?: BlocPhotosEnvoi;
 	/** Accueil : nouvelle photo du bandeau, `'remove'` pour la retirer (absent = inchangée). */
 	photo?: { type: string; data: string } | 'remove';
 	/** Accueil : nouvelle illustration du module « Présentation », `'remove'` pour la retirer (absent = inchangée). */
@@ -319,6 +324,8 @@ export const pagesApi = {
 			homePhoto: string | null;
 			/** Aperçu de l'illustration du module « Présentation », `null` sans illustration. */
 			homeIllustration: string | null;
+			/** Vignettes des photos des sections de l'accueil, par valeur (`./photo_1.jpg`). */
+			accueilPhotoUrls: Record<string, string>;
 			status: PublishStatus;
 			availability: { ok: boolean; reason?: string };
 		}>('GET', '/api/admin/pages'),

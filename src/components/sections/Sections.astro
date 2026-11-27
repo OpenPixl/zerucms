@@ -1,0 +1,147 @@
+---
+/**
+ * Rendu d'une suite de **sections** (catalogue `src/lib/home-modules.ts`) :
+ * page d'accueil (`src/pages/index.astro`) et pages enrichies
+ * (`ContentPageView.astro`). Section « Contenu de la page » (`contenu`) =
+ * slot `contenu` (texte et blocs de la page). Section d'un plugin ou d'une
+ * extension inactifs : ignorée (gardée dans le réglage, réapparaît si on
+ * le réactive).
+ *
+ * `dossier` : dossier des photos des sections, relatif à `src/content/`
+ * (`pages` pour l'accueil, `pages/<chemin>` pour une page enrichie).
+ * `titrePrincipal` : la première section porte le titre de la page (`h1`) ;
+ * faux quand la page a déjà son en-tête (`PageHeader`).
+ */
+import Hero from './Hero.astro';
+import PresentationSection from './PresentationSection.astro';
+import ActivitesSection from './ActivitesSection.astro';
+import ActualitesSection from './ActualitesSection.astro';
+import CtaSection from './CtaSection.astro';
+import PartenairesSection from './PartenairesSection.astro';
+import TexteSection from './TexteSection.astro';
+import TarifsSection from './TarifsSection.astro';
+import EquipeSection from './EquipeSection.astro';
+import DefilementSection from './DefilementSection.astro';
+import { accueilImage, logo, presentationImage } from '../../lib/site-images';
+import { applyPageVariablesText } from '../../lib/page-variables';
+import { inactiveSiteHrefs } from '../../lib/site-pages-content';
+import { champ, homeModuleDef, type HomeModule } from '../../lib/home-modules';
+import { disponible } from '../../plugins';
+import { composantAccueil } from '../../lib/extensions-site';
+
+interface Props {
+	modules: HomeModule[];
+	dossier: string;
+	titrePrincipal?: boolean;
+}
+
+const { modules: enregistres, dossier, titrePrincipal = true } = Astro.props;
+const modules = enregistres.filter((m) => homeModuleDef(m.type) && disponible(homeModuleDef(m.type)));
+// Liens vers une page du site désactivée : masqués ('' et non undefined, qui
+// rendrait au composant son lien par défaut).
+const off = await inactiveSiteHrefs();
+const link = (href: string) => (off.has(href.replace(/\/$/, '') || '/') ? '' : href);
+/** Texte d'un champ, variables {{association.…}} remplacées. */
+const txt = (m: HomeModule, name: string) => applyPageVariablesText(champ(m, name));
+/** Niveau du titre d'une section : 1 pour la première si elle porte le titre de la page. */
+const niveau = (i: number): 1 | 2 => (titrePrincipal && i === 0 ? 1 : 2);
+type Overlay = 'white' | 'black' | 'none';
+type Fond = 'gris' | 'fond' | 'surface' | 'primaire' | 'secondaire' | 'accent';
+---
+
+{modules.map((m, i) => (
+	<>
+		{m.type === 'bandeau' && (
+			<Hero
+				title={txt(m, 'titre')}
+				highlight={txt(m, 'mot')}
+				description={txt(m, 'accroche')}
+				primaryLabel={txt(m, 'bouton1-texte')}
+				primaryHref={link(champ(m, 'bouton1-lien'))}
+				secondaryLabel={txt(m, 'bouton2-texte')}
+				secondaryHref={link(champ(m, 'bouton2-lien'))}
+				backgroundImage={accueilImage}
+				overlay={champ(m, 'voile') as Overlay}
+			/>
+		)}
+		{m.type === 'presentation' && (
+			<PresentationSection
+				eyebrow={txt(m, 'surtitre')}
+				title={txt(m, 'titre')}
+				description={txt(m, 'accroche')}
+				primaryLabel={txt(m, 'bouton1-texte')}
+				primaryHref={link(champ(m, 'bouton1-lien'))}
+				secondaryLabel={txt(m, 'bouton2-texte')}
+				secondaryHref={link(champ(m, 'bouton2-lien'))}
+				image={{ logo, image: presentationImage, photo: accueilImage }[champ(m, 'illustration')]}
+				photo={champ(m, 'illustration') === 'photo'}
+				background={champ(m, 'fond') as Fond}
+				headingLevel={niveau(i)}
+			/>
+		)}
+		{m.type === 'actualites' && (
+			<ActualitesSection
+				eyebrow={txt(m, 'surtitre')}
+				title={txt(m, 'titre')}
+				ctaLabel={txt(m, 'lien-texte')}
+				ctaHref={link('/actualites')}
+				limit={Number(champ(m, 'nombre')) || 3}
+			/>
+		)}
+		{m.type === 'activites' && <ActivitesSection title={txt(m, 'titre')} ctaLabel={txt(m, 'lien-texte')} ctaHref={link('/activites')} />}
+		{m.type === 'appel' && (
+			<CtaSection
+				title={txt(m, 'titre')}
+				description={txt(m, 'texte')}
+				buttonLabel={txt(m, 'bouton-texte')}
+				buttonHref={link(champ(m, 'bouton-lien'))}
+			/>
+		)}
+		{m.type === 'partenaires' && <PartenairesSection title={txt(m, 'titre')} description={txt(m, 'texte')} />}
+		{m.type === 'texte' && <TexteSection title={txt(m, 'titre')} markdown={champ(m, 'texte')} />}
+		{m.type === 'contenu' && <slot name="contenu" />}
+		{m.type === 'tarifs' && (
+			<TarifsSection
+				surtitre={txt(m, 'surtitre')}
+				titre={txt(m, 'titre')}
+				texte={txt(m, 'texte')}
+				note={txt(m, 'note')}
+				fond={champ(m, 'fond')}
+				formules={m.items ?? []}
+				niveau={niveau(i)}
+				lien={link}
+			/>
+		)}
+		{m.type === 'equipe' && (
+			<EquipeSection
+				surtitre={txt(m, 'surtitre')}
+				titre={txt(m, 'titre')}
+				texte={txt(m, 'texte')}
+				colonnes={champ(m, 'colonnes')}
+				fond={champ(m, 'fond')}
+				personnes={m.items ?? []}
+				dossier={dossier}
+				niveau={niveau(i)}
+			/>
+		)}
+		{m.type === 'defilement' && (
+			<DefilementSection
+				surtitre={txt(m, 'surtitre')}
+				titre={txt(m, 'titre')}
+				texte={txt(m, 'texte')}
+				vitesse={champ(m, 'vitesse')}
+				gris={champ(m, 'gris') === 'oui'}
+				fond={champ(m, 'fond')}
+				logos={m.items ?? []}
+				dossier={dossier}
+				niveau={niveau(i)}
+			/>
+		)}
+		{homeModuleDef(m.type).extension && (() => {
+			// Section d'une extension : son composant (site.ts), champs aux variables remplacées.
+			const Composant = composantAccueil(m.type);
+			const champs = Object.fromEntries(Object.entries(m).map(([k, v]) => [k, k === 'type' || typeof v !== 'string' ? v : applyPageVariablesText(v)]));
+			return Composant ? <Composant champs={champs} /> : null;
+		})()}
+	</>
+))}
